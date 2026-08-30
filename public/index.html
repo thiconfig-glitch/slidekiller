@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gerador de Slides de Sermão & Culto (16:9 Full HD)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Cabeçalho -->
+  <header class="app-header">
+    <div class="header-left">
+      <div class="logo-badge">📖 PPTX</div>
+      <h1>Gerador de Slides de Sermão</h1>
+      <span class="version-tag">16:9 Full HD</span>
+    </div>
+    <div class="header-right">
+      <button class="btn btn-secondary" id="btn-new-presentation">Novo Documento</button>
+      <button class="btn btn-primary" id="btn-download-top" style="display: none;">
+        <span>📥</span> Baixar PowerPoint (.pptx)
+      </button>
+    </div>
+  </header>
+
+  <main class="app-main">
+    <!-- Tela Inicial de Entrada (Upload / Texto) -->
+    <section class="input-section" id="input-section">
+      <div class="card hero-card">
+        <h2>Transforme Esboços e PDFs em Slides Profissionais</h2>
+        <p>Extração automática de versículos, destaque de palavras-chave, quebra de múltiplos versículos e tipografia padronizada em 16:9.</p>
+        
+        <div class="tabs">
+          <button class="tab-btn active" data-tab="tab-pdf">📄 Enviar Arquivo PDF</button>
+          <button class="tab-btn" data-tab="tab-text">✍️ Colar Texto / Esboço</button>
+        </div>
+
+        <!-- Aba 1: Upload PDF -->
+        <div class="tab-content active" id="tab-pdf">
+          <div class="dropzone" id="dropzone">
+            <input type="file" id="pdf-file-input" accept=".pdf" style="display: none;">
+            <div class="dropzone-icon">📁</div>
+            <div class="dropzone-text">
+              <strong>Arraste o arquivo PDF do pastor aqui</strong>
+              <span>ou clique para selecionar do computador</span>
+            </div>
+            <div class="selected-file-info" id="selected-file-info" style="display: none;">
+              <span class="file-name" id="file-name-display"></span>
+              <button class="btn-clear" id="btn-clear-file">✕</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Aba 2: Colar Texto -->
+        <div class="tab-content" id="tab-text">
+          <textarea id="sermon-text-input" placeholder="Cole aqui o texto ou anotações do pastor com as referências bíblicas (ex: Mateus 6:19-21)..." rows="9"></textarea>
+        </div>
+
+        <!-- Opções Extras -->
+        <div class="options-bar">
+          <div class="option-item">
+            <label for="template-select">Plano de Fundo:</label>
+            <select id="template-select" class="form-select">
+              <option value="/assets/church_sermon_bg.png">Fundo Oficial da Igreja</option>
+            </select>
+          </div>
+          <div class="option-item">
+            <label class="checkbox-container">
+              <input type="checkbox" id="check-use-ai">
+              <span class="checkmark"></span>
+              Usar IA Gemini (Opcional)
+            </label>
+          </div>
+        </div>
+
+        <button class="btn btn-action" id="btn-generate">
+          <span class="btn-icon">⚡</span> Gerar Slides Instantaneamente
+        </button>
+      </div>
+    </section>
+
+    <!-- Tela de Resultados e Edição -->
+    <section class="results-section" id="results-section" style="display: none;">
+      <div class="results-header">
+        <div class="results-info">
+          <h2 id="results-title">Slides Gerados</h2>
+          <span class="badge" id="slide-count-badge">0 slides</span>
+        </div>
+        <div class="results-actions">
+          <button class="btn btn-secondary" id="btn-add-slide">+ Novo Slide</button>
+          <button class="btn btn-secondary" id="btn-rebuild">💾 Salvar Edições</button>
+          <button class="btn btn-primary" id="btn-download-main">📥 Baixar .pptx</button>
+        </div>
+      </div>
+
+      <!-- Grid de Slides -->
+      <div class="slides-grid" id="slides-grid"></div>
+    </section>
+
+    <!-- Modal / Toast de Notificação -->
+    <div id="toast" class="toast"></div>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
