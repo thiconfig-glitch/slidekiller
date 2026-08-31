@@ -478,18 +478,21 @@
         btn.innerHTML = '⏳ Validando...';
         btn.disabled = true;
 
-        const prompt = `Você é um auditor e validador estrutural de slides de sermão de igreja.
+        const prompt = `Você é um auditor e validador estrutural de slides de sermão de igreja para projeção e telão.
 SUA MISSÃO: Validar e estruturar o texto em uma sequência de SLIDES INDIVIDUAIS em formato JSON.
 
 REGRAS ESTRITAS E INVIOLÁVEIS:
-1. PROIBIDO ALTERAR O CONTEÚDO DO TEXTO: Mantenha cada palavra, concordância, ortografia e pontuação 100% IDÊNTICA ao original. NÃO altere o português, NÃO resuma, NÃO invente palavras.
-2. PRESERVAÇÃO RIGOROSA DOS DESTAQUES: Mantenha as tags [HL]...[/HL] EXATAMENTE nas palavras onde já estão no texto fornecido. NÃO invente novos destaques, NÃO remova os existentes.
-3. REGRAS ESTRUTURAIS:
-   - "topic": Títulos, princípios ou tópicos (ex: "Obediência acima de tudo:", "TUA CASA É MINHA CASA 122 DIAS").
-   - "question_short": Perguntas curtas de impacto (ex: "E Jairo?").
-   - "verse": Versículos bíblicos (SEMPRE 1 versículo por slide, com aspas tipográficas “ ... ”). O campo "reference" deve conter a referência correspondente (ex: "Mateus 7:19", "1 Samuel 15:22", "Salmos 122:1-9").
+1. NÃO CRIE SLIDES DE REFERÊNCIA ISOLADOS: Vá direto para os slides com o texto do versículo. NUNCA gere um slide contendo apenas o nome da passagem bíblica (ex: "Mateus 7:19-23").
+2. NÃO COLOQUE A REFERÊNCIA NEM O NÚMERO DO VERSÍCULO DENTRO DO TEXTO:
+   - O campo "content" deve conter apenas as palavras da mensagem/versículo entre aspas “ ... ” (remova o número do versículo como "19 " ou "20 " do início do texto).
+   - O campo "reference" conterá a referência correspondente (ex: "Mateus 7:19", "1 Samuel 15:22").
+3. PROIBIDO ALTERAR O TEXTO: Mantenha cada palavra, concordância e pontuação 100% IDÊNTICA ao original. NÃO altere o português, NÃO invente palavras, NÃO resuma.
+4. PRESERVE OS DESTAQUES [HL]...[/HL]: Mantenha as tags [HL]...[/HL] EXATAMENTE nas palavras onde vieram do PDF original. NÃO invente novos destaques.
+5. TIPOS DE SLIDES:
+   - "verse": 1 versículo por slide com aspas “ ... ” e campo "reference".
+   - "topic": Títulos ou tópicos (ex: "Obediência acima de tudo:").
+   - "question_short": Perguntas curtas dramáticas (ex: "E Jairo?").
    - "reflection": Frases de reflexão do pregador.
-4. PROIBIÇÃO DE GERAR IMAGENS.
 
 FORMATO DE RESPOSTA (APENAS JSON VÁLIDO):
 [
@@ -563,8 +566,18 @@ ${rawExtractedSermonText || slides.map(s => s.elements.map(e => e.content).join(
         const newSlides = [];
         aiSlides.forEach(item => {
             const tp = item.type || 'verse';
+            
+            // Se for um slide duplicado contendo apenas a referência pura, ignora
+            if (tp === 'verse' && isPureRef(item.content)) return;
+            
+            let cleanContent = item.content;
+            if (tp === 'verse') {
+                cleanContent = cleanContent.replace(/^“?\s*\d{1,3}\s+/, '“');
+                cleanContent = fmtQuote(cleanContent);
+            }
+            
             const s = newSlide(tp);
-            s.elements.push(newTextEl(item.content, false, tp));
+            s.elements.push(newTextEl(cleanContent, false, tp));
             if (item.reference && tp === 'verse') {
                 s.elements.push(newTextEl(normRef(item.reference), true, tp));
             }
