@@ -9,7 +9,21 @@ const pdf = require('pdf-parse');
  * 100% Local, Instant & Offline Sermon Parser
  * Zero API credits, Zero Internet required. Runs in ~5ms.
  */
-const BIBLE_BOOKS_REGEX = /(?:G[eê]nesis|[EÊ]xodo|Lev[ií]tico|N[uú]meros|Deuteron[oô]mio|Josu[eé]|Ju[ií]zes|Rute|1\s*Samuel|2\s*Samuel|1\s*Reis|2\s*Reis|1\s*Cr[oô]nicas|2\s*Cr[oô]nicas|Esdras|Neemias|Ester|J[oó]|Salmos?|Prov[eé]rbios?|Eclesiastes|C[aâ]nticos|Isa[ií]as|Jeremias|Lamenta[cç][oõ]es|Ezequiel|Daniel|Os[eé]ias|Joel|Am[oó]s|Obadias|Jonas|Miqu[eé]ias|Naum|Habacuque|Sofonias|Ageu|Zacarias|Malaquias|Mateus|Marcos|Lucas|Jo[aã]o|Atos|Romanos|1\s*Cor[ií]ntios|2\s*Cor[ií]ntios|G[aá]latas|Ef[eé]sios|Filipenses|Colossenses|1\s*Tessalonicenses|2\s*Tessalonicenses|1\s*Tim[oó]teo|2\s*Tim[oó]teo|Tito|Filemom|Hebreus|Tiago|1\s*Pedro|2\s*Pedro|1\s*Jo[aã]o|2\s*Jo[aã]o|3\s*Jo[aã]o|Judas|Apocalipse)\s+\d+:\d+(?:-\d+)?/i;
+const PREFIXES = "(?:1[ºª°\\.]?|2[ºª°\\.]?|3[ºª°\\.]?|I{1,3}|Primeir[oa]|Segund[oa]|Terceir[oa])";
+
+const BOOK_NAMES = [
+  `${PREFIXES}\\s*(?:Samuel|Sam\\.?|Sm\\.?)`,
+  `${PREFIXES}\\s*(?:Reis|Rs\\.?)`,
+  `${PREFIXES}\\s*(?:Cr[oôó]nicas|Cr\\.?)`,
+  `${PREFIXES}\\s*(?:Cor[ií]ntios|Co\\.?|Cor\\.?)`,
+  `${PREFIXES}\\s*(?:Tessalonicenses|Ts\\.?)`,
+  `${PREFIXES}\\s*(?:Tim[oó]teo|Tm\\.?)`,
+  `${PREFIXES}\\s*(?:Pedro|Pe\\.?|Ped\\.?)`,
+  `${PREFIXES}\\s*(?:Jo[aã]o|Jo\\.?)`,
+  "G[eê]nesis|Gn\\.?", "[EÊ]xodo|Ex\\.?", "Lev[ií]tico|Lv\\.?", "N[uú]meros|Nm\\.?", "Deuteron[oô]mio|Dt\\.?", "Josu[eé]|Js\\.?", "Ju[ií]zes|Jz\\.?", "Rute|Rt\\.?", "Esdras|Ed\\.?", "Neemias|Ne\\.?", "Ester|Et\\.?", "J[oó]", "Salmos?|Sl\\.?|Sal\\.?", "Prov[eé]rbios?|Pv\\.?|Prov\\.?", "Eclesiastes|Ec\\.?|Ecl\\.?", "C[aâ]nticos|Cantares|Ct\\.?", "Isa[ií]as|Is\\.?", "Jeremias|Jr\\.?", "Lamenta[cç][oõ]es|Lm\\.?", "Ezequiel|Ez\\.?", "Daniel|Dn\\.?", "Os[eé]ias|Os\\.?", "Joel|Jl\\.?", "Am[oó]s|Am\\.?", "Obadias|Ob\\.?", "Jonas|Jn\\.?", "Miqu[eé]ias|Mq\\.?", "Naum|Na\\.?", "Habacuque|Hc\\.?", "Sofonias|Sf\\.?", "Ageu|Ag\\.?", "Zacarias|Zc\\.?", "Malaquias|Ml\\.?", "Mateus|Mt\\.?|Mat\\.?", "Marcos|Mc\\.?|Marc\\.?", "Lucas|Lc\\.?|Luc\\.?", "Jo[aã]o|Jo\\.?", "Atos|At\\.?", "Romanos|Rm\\.?|Rom\\.?", "G[aá]latas|Gl\\.?|Gal\\.?", "Ef[eé]sios|Ef\\.?", "Filipenses|Fp\\.?|Fil\\.?", "Colossenses|Cl\\.?|Col\\.?", "Tito|Tt\\.?", "Filemom|Filemon|Fm\\.?", "Hebreus|Hb\\.?|Heb\\.?", "Tiago|Tg\\.?", "Judas|Jd\\.?", "Apocalipse|Ap\\.?|Apoc\\.?"
+].join("|");
+
+const BIBLE_BOOKS_REGEX = new RegExp(`(?:${BOOK_NAMES})\\s+\\d+\\s*[:.,]\\s*\\d+(?:\\s*[-–—a]\\s*\\d+)?(?:,\\s*\\d+)*`, 'i');
 
 async function extractTextFromPdf(pdfBuffer) {
   const data = await pdf(pdfBuffer);
@@ -25,43 +39,70 @@ function isBibleRef(line) {
 function isPureBibleRefLine(line) {
   const match = isBibleRef(line);
   if (!match) return false;
-  return line.trim().length <= match.length + 6;
+  return line.trim().length <= match.length + 8;
 }
 
-function isUpperCaseHeading(line) {
-  const clean = line.replace(/[^a-zA-ZÀ-ÿ\s]/g, '').trim();
-  if (clean.length < 5) return false;
-  const uppercaseLetters = (clean.match(/[A-ZÀ-Ý]/g) || []).length;
-  return uppercaseLetters / clean.length > 0.75;
+function isHeadingOrTopic(line) {
+  const trimmed = line.replace(/^[⸻\-_\s*#]+|[⸻\-_\s*#]+$/g, '').trim();
+  if (trimmed.length < 3) return false;
+  if (isBibleRef(trimmed)) return false;
+
+  // 1. Termina com dois pontos ":" (ex: "Obediência acima de tudo:", "A Oportunidade é para Todos:")
+  if (trimmed.endsWith(':') && trimmed.length < 80) {
+    return true;
+  }
+
+  // 2. É MAIÚSCULO (ex: "TUA CASA É MINHA CASA 122 DIAS")
+  const letters = trimmed.replace(/[^a-zA-ZÀ-ÿ]/g, '');
+  if (letters.length >= 4) {
+    const uppercaseLetters = (trimmed.match(/[A-ZÀ-Ý]/g) || []).length;
+    if (uppercaseLetters / letters.length >= 0.75) return true;
+  }
+
+  return false;
+}
+
+function normalizeBibleRefName(ref) {
+  return ref
+    .replace(/^I\s+/i, '1 ')
+    .replace(/^II\s+/i, '2 ')
+    .replace(/^III\s+/i, '3 ')
+    .replace(/^1[ºª°]\s*/i, '1 ')
+    .replace(/^2[ºª°]\s*/i, '2 ')
+    .replace(/^3[ºª°]\s*/i, '3 ')
+    .replace(/^Primeir[oa]\s+/i, '1 ')
+    .replace(/^Segund[oa]\s+/i, '2 ')
+    .replace(/^Terceir[oa]\s+/i, '3 ');
 }
 
 function parseSermonTextOffline(rawText) {
   // Normalizar espaços não separáveis comuns em PDFs (\u00A0)
   const normalized = (rawText || '').replace(/\u00A0/g, ' ');
 
-  const lines = normalized
+  const rawLines = normalized
     .split(/\r?\n/)
-    .map(l => l.trim())
-    .filter(l => l.length > 0 && !l.startsWith('---') && !l.startsWith('⸻'));
+    .map(l => l.replace(/^[⸻\-_\s]+|[⸻\-_\s]+$/g, '').trim())
+    .filter(l => l.length > 0);
 
   const slides = [];
   let i = 0;
 
-  while (i < lines.length) {
-    let line = lines[i];
+  while (i < rawLines.length) {
+    let line = rawLines[i];
 
-    // 1. Topic / Heading in UPPERCASE (e.g. "NÃO DEIXE A ANSIEDADE ROUBAR A CONFIANÇA:")
-    if (isUpperCaseHeading(line)) {
+    // 1. Tópico / Cabeçalho
+    if (isHeadingOrTopic(line)) {
+      const cleanTitle = line.replace(/^[⸻\-_\s*#]+|[⸻\-_\s*#]+$/g, '').trim();
       slides.push({
         type: 'topic',
-        runs: [{ text: line, highlight: false }]
+        runs: [{ text: cleanTitle, highlight: false }]
       });
       i++;
       continue;
     }
 
-    // 2. Short Dramatic Questions (e.g. "E Jairo?")
-    if (line.endsWith('?') && line.length <= 25) {
+    // 2. Pergunta retórica curta
+    if (line.endsWith('?') && line.length <= 25 && !isBibleRef(line)) {
       slides.push({
         type: 'question_short',
         runs: [{ text: line, highlight: false }]
@@ -70,83 +111,84 @@ function parseSermonTextOffline(rawText) {
       continue;
     }
 
-    // 3. Pure Bible Reference line (e.g. "Mateus 6:19-21" or "Marcos 5:22")
+    // 3. Linha com referência bíblica pura
     if (isPureBibleRefLine(line)) {
-      const baseRef = isBibleRef(line);
+      const rawRef = isBibleRef(line);
+      const baseRef = normalizeBibleRefName(rawRef);
       i++;
-      // Collect verse text lines
-      const textBlocks = [];
+
+      const verseLines = [];
       while (
-        i < lines.length &&
-        !isPureBibleRefLine(lines[i]) &&
-        !isUpperCaseHeading(lines[i]) &&
-        !(lines[i].endsWith('?') && lines[i].length <= 25) &&
-        !lines[i].startsWith('Quando ela')
+        i < rawLines.length &&
+        !isPureBibleRefLine(rawLines[i]) &&
+        !isHeadingOrTopic(rawLines[i]) &&
+        !(rawLines[i].endsWith('?') && rawLines[i].length <= 25)
       ) {
-        textBlocks.push(lines[i]);
+        const emb = isBibleRef(rawLines[i]);
+        if (emb && rawLines[i].length > emb.length + 12) break;
+        verseLines.push(rawLines[i]);
         i++;
       }
 
-      const combined = textBlocks.join(' ');
-      // Check if numbered verses exist (e.g. "19 Não ajunteis... 20 Mas ajuntai... 21 Porque...")
-      const verseSplit = combined.split(/(?=\b\d{1,3}\s+[A-ZÀ-Ý“"])/g).filter(s => s.trim().length > 0);
+      const combinedText = verseLines.join('\n');
+      const numberedRegex = /(?:^|\n)\s*(\d{1,3})\s+([A-ZÀ-Ý“"a-z])/;
+      const hasNumberedVerses = numberedRegex.test(combinedText);
 
-      if (verseSplit.length > 1 && /^\d+/.test(verseSplit[0].trim())) {
-        const bookAndChap = baseRef.split(':')[0]; // e.g. "Mateus 6"
-        verseSplit.forEach(vChunk => {
-          const vNumMatch = vChunk.trim().match(/^(\d+)\s+(.*)$/s);
-          if (vNumMatch) {
-            const vNum = vNumMatch[1];
-            let vText = vNumMatch[2].trim();
+      if (hasNumberedVerses) {
+        const chunks = combinedText.split(/(?=(?:^|\n)\s*\d{1,3}\s+[A-ZÀ-Ý“"])/).filter(s => s.trim().length > 0);
+        const bookAndChap = baseRef.split(/[:.,]/)[0];
+
+        chunks.forEach(chunk => {
+          const m = chunk.trim().match(/^(\d{1,3})\s+(.*)$/s);
+          if (m) {
+            const vNum = m[1];
+            let vText = m[2].replace(/\n+/g, ' ').trim();
             vText = formatQuotes(vText);
             slides.push({
               type: 'verse',
               reference: `${bookAndChap}:${vNum}`,
               runs: highlightKeywords(vText)
             });
+          } else {
+            let vText = formatQuotes(chunk.replace(/\n+/g, ' ').trim());
+            slides.push({
+              type: 'verse',
+              reference: baseRef,
+              runs: highlightKeywords(vText)
+            });
           }
         });
       } else {
-        let vText = combined.trim();
-        if (vText) {
-          vText = formatQuotes(vText);
-          slides.push({
-            type: 'verse',
-            reference: baseRef,
-            runs: highlightKeywords(vText)
+        if (verseLines.length > 0) {
+          verseLines.forEach(vL => {
+            let vText = formatQuotes(vL.trim());
+            if (vText.length > 3) {
+              slides.push({
+                type: 'verse',
+                reference: baseRef,
+                runs: highlightKeywords(vText)
+              });
+            }
           });
         }
       }
       continue;
     }
 
-    // 4. Line with embedded trailing reference (e.g. "... Marcos 5:24-26")
+    // 4. Linha com referência embutida no final
     const trailingRef = isBibleRef(line);
-    if (trailingRef && line.length > trailingRef.length + 12) {
-      const vText = formatQuotes(line.replace(trailingRef, '').trim());
+    if (trailingRef && line.length > trailingRef.length + 8) {
+      const vText = formatQuotes(line.replace(trailingRef, '').replace(/[()]/g, '').trim());
       slides.push({
         type: 'verse',
-        reference: trailingRef,
+        reference: normalizeBibleRefName(trailingRef),
         runs: highlightKeywords(vText)
       });
       i++;
       continue;
     }
 
-    // 5. Line followed immediately by reference on next line
-    if (i + 1 < lines.length && isPureBibleRefLine(lines[i + 1])) {
-      const vText = formatQuotes(line);
-      const ref = isBibleRef(lines[i + 1]);
-      slides.push({
-        type: 'verse',
-        reference: ref,
-        runs: highlightKeywords(vText)
-      });
-      i += 2;
-      continue;
-    }
-
-    // 6. Reflection / Narrative line
+    // 5. Linha de reflexão / texto livre
     slides.push({
       type: 'reflection',
       runs: highlightKeywords(line)
@@ -170,7 +212,7 @@ function formatQuotes(text) {
  * Intelligent keyword highlighter for church slides
  */
 function highlightKeywords(text) {
-  const highlightRegex = /(não temas,?\s*crê somente|quem me tocou\??|não o faria\??|não o confirmaria\??|angústia de espírito|tendo-os feito sair|teu coração|não se apóie|os teus bens|os teus celeiros|transbordarão|talitá cumi|prostrou-se|um dos principais da sinagoga|despendido tudo quanto tinha|não ajunteis tesouros|ajuntai tesouros|honra ao senhor|confia no senhor)/gi;
+  const highlightRegex = /(não temas,?\s*crê somente|quem me tocou\??|não o faria\??|não o confirmaria\??|angústia de espírito|tendo-os feito sair|teu coração|não se apóie|os teus bens|os teus celeiros|transbordarão|talitá cumi|prostrou-se|um dos principais da sinagoga|despendido tudo quanto tinha|não ajunteis tesouros|ajuntai tesouros|honra ao senhor|confia no senhor|obedecer é melhor|obedeça à palavra|palavra do senhor|casa do senhor|voluntariamente|transgressões|amor de mim|não me lembro|prosperarão|buscarei o teu bem|morar na casa do senhor|contemplar a formosura|inquirir no seu templo|senhor|jesus|deus)/gi;
 
   const runs = [];
   let lastIndex = 0;
