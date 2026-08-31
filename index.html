@@ -388,10 +388,42 @@
     }
 
     // --- Parser Engine ---
-    const BIB_REGEX = /(?:II?\s*Cr[oô]nicas|I?\s*Cr[oô]nicas|1\s*Cr[oô]nicas|2\s*Cr[oô]nicas|G[eê]nesis|[EÊ]xodo|Lev[ií]tico|N[uú]meros|Deuteron[oô]mio|Josu[eé]|Ju[ií]zes|Rute|1\s*Samuel|2\s*Samuel|1\s*Reis|2\s*Reis|Esdras|Neemias|Ester|J[oó]|Salmos?|Prov[eé]rbios?|Eclesiastes|C[aâ]nticos|Isa[ií]as|Jeremias|Lamenta[cç][oõ]es|Ezequiel|Daniel|Os[eé]ias|Joel|Am[oó]s|Obadias|Jonas|Miqu[eé]ias|Naum|Habacuque|Sofonias|Ageu|Zacarias|Malaquias|Mateus|Marcos|Lucas|Jo[aã]o|Atos|Romanos|1\s*Cor[ií]ntios|2\s*Cor[ií]ntios|G[aá]latas|Ef[eé]sios|Filipenses|Colossenses|1\s*Tessalonicenses|2\s*Tessalonicenses|1\s*Tim[oó]teo|2\s*Tim[oó]teo|Tito|Filemom|Hebreus|Tiago|1\s*Pedro|2\s*Pedro|1\s*Jo[aã]o|2\s*Jo[aã]o|3\s*Jo[aã]o|Judas|Apocalipse)\s+\d+:\d+(?:-\d+)?/i;
+    const PREFIXES = "(?:1[ºª°\\.]?|2[ºª°\\.]?|3[ºª°\\.]?|I{1,3}|Primeir[oa]|Segund[oa]|Terceir[oa])";
+
+    const BOOK_NAMES = [
+        `${PREFIXES}\\s*(?:Samuel|Sam\\.?|Sm\\.?)`,
+        `${PREFIXES}\\s*(?:Reis|Rs\\.?)`,
+        `${PREFIXES}\\s*(?:Cr[oôó]nicas|Cr\\.?)`,
+        `${PREFIXES}\\s*(?:Cor[ií]ntios|Co\\.?|Cor\\.?)`,
+        `${PREFIXES}\\s*(?:Tessalonicenses|Ts\\.?)`,
+        `${PREFIXES}\\s*(?:Tim[oó]teo|Tm\\.?)`,
+        `${PREFIXES}\\s*(?:Pedro|Pe\\.?|Ped\\.?)`,
+        `${PREFIXES}\\s*(?:Jo[aã]o|Jo\\.?)`,
+        "G[eê]nesis|Gn\\.?", "[EÊ]xodo|Ex\\.?", "Lev[ií]tico|Lv\\.?", "N[uú]meros|Nm\\.?", "Deuteron[oô]mio|Dt\\.?", "Josu[eé]|Js\\.?", "Ju[ií]zes|Jz\\.?", "Rute|Rt\\.?", "Esdras|Ed\\.?", "Neemias|Ne\\.?", "Ester|Et\\.?", "J[oó]", "Salmos?|Sl\\.?|Sal\\.?", "Prov[eé]rbios?|Pv\\.?|Prov\\.?", "Eclesiastes|Ec\\.?|Ecl\\.?", "C[aâ]nticos|Cantares|Ct\\.?", "Isa[ií]as|Is\\.?", "Jeremias|Jr\\.?", "Lamenta[cç][oõ]es|Lm\\.?", "Ezequiel|Ez\\.?", "Daniel|Dn\\.?", "Os[eé]ias|Os\\.?", "Joel|Jl\\.?", "Am[oó]s|Am\\.?", "Obadias|Ob\\.?", "Jonas|Jn\\.?", "Miqu[eé]ias|Mq\\.?", "Naum|Na\\.?", "Habacuque|Hc\\.?", "Sofonias|Sf\\.?", "Ageu|Ag\\.?", "Zacarias|Zc\\.?", "Malaquias|Ml\\.?", "Mateus|Mt\\.?|Mat\\.?", "Marcos|Mc\\.?|Marc\\.?", "Lucas|Lc\\.?|Luc\\.?", "Jo[aã]o|Jo\\.?", "Atos|At\\.?", "Romanos|Rm\\.?|Rom\\.?", "G[aá]latas|Gl\\.?|Gal\\.?", "Ef[eé]sios|Ef\\.?", "Filipenses|Fp\\.?|Fil\\.?", "Colossenses|Cl\\.?|Col\\.?", "Tito|Tt\\.?", "Filemom|Filemon|Fm\\.?", "Hebreus|Hb\\.?|Heb\\.?", "Tiago|Tg\\.?", "Judas|Jd\\.?", "Apocalipse|Ap\\.?|Apoc\\.?"
+    ].join("|");
+
+    const BIB_REGEX = new RegExp(`(?:${BOOK_NAMES})\\s+\\d+\\s*[:.,]\\s*\\d+(?:\\s*[-–—a]\\s*\\d+)?(?:,\\s*\\d+)*`, 'i');
+
     function isRef(l) { const m = l.match(BIB_REGEX); return m ? m[0] : null; }
-    function isPureRef(l) { const m = isRef(l); return m ? l.trim().length <= m.length+6 : false; }
-    function isHead(l) { const c = l.replace(/[^a-zA-ZÀ-ÿ\s]/g,'').trim(); return c.length>4 && (c.match(/[A-ZÀ-Ý]/g)||[]).length/c.length > 0.75; }
+    function isPureRef(l) { const m = isRef(l); return m ? l.trim().length <= m.length+8 : false; }
+    function isHead(l) {
+        const trimmed = l.replace(/^[⸻\-_\s*#]+|[⸻\-_\s*#]+$/g, '').trim();
+        if (trimmed.length < 3) return false;
+        if (isRef(trimmed)) return false;
+        if (trimmed.endsWith(':') && trimmed.length < 80) return true;
+        const letters = trimmed.replace(/[^a-zA-ZÀ-ÿ]/g, '');
+        if (letters.length >= 4) {
+            const up = (trimmed.match(/[A-ZÀ-Ý]/g) || []).length;
+            if (up / letters.length >= 0.75) return true;
+        }
+        return false;
+    }
+    function normRef(ref) {
+        return ref
+            .replace(/^I\s+/i, '1 ').replace(/^II\s+/i, '2 ').replace(/^III\s+/i, '3 ')
+            .replace(/^1[ºª°]\s*/i, '1 ').replace(/^2[ºª°]\s*/i, '2 ').replace(/^3[ºª°]\s*/i, '3 ')
+            .replace(/^Primeir[oa]\s+/i, '1 ').replace(/^Segund[oa]\s+/i, '2 ').replace(/^Terceir[oa]\s+/i, '3 ');
+    }
     function fmtQuote(t) { let x=t.trim(); if(!x.startsWith('“')&&!x.startsWith('"')) x='“'+x; if(!x.endsWith('”')&&!x.endsWith('"')) x=x.replace(/[.]+$/,'')+'”'; return x; }
     function genId() { return 'el_' + Math.random().toString(36).substr(2,9); }
 
@@ -399,59 +431,91 @@
     function newTextEl(txt, isR, type) {
         let fz=44, ff='Bahnschrift SemiBold Condensed', col='#ffffff', al='left', y=76, h=345, sh='dark', strk='none';
         if(isR) { fz=40; ff='Bebas Neue'; col='#E8B859'; y=441; h=76; }
-        else if(type==='topic') { fz=72; ff='Bebas Neue'; al='center'; y=150; }
+        else if(type==='topic') { fz=64; ff='Bebas Neue'; al='center'; y=180; h=180; }
         else if(type==='reflection') { al='center'; y=150; }
-        else if(type==='question_short') { fz=110; al='center'; y=150; }
-        else { if(txt.length<70) fz=54; else if(txt.length>160) fz=36; }
+        else if(type==='question_short') { fz=90; al='center'; y=150; }
+        else { if(txt.length<70) fz=52; else if(txt.length>160) fz=38; }
         return {
-            id: genId(), type: 'text', name: isR ? 'Referência' : 'Texto Principal', content: txt,
+            id: genId(), type: 'text', name: isR ? 'Referência Bíblica' : (type==='topic' ? 'Título do Tópico' : 'Texto Principal'), content: txt,
             x:48, y:y, w:864, h:h, rotation:0, opacity:1, locked:false, hidden:false,
             fontFace:ff, fontSize:fz, color:col, align:al, shadow:sh, stroke:strk, isRef:isR
         };
     }
 
     function parseSermon(raw) {
-        const lines = raw.split(/\r?\n/).map(l => l.replace(/^[⸻\-_\s]+/, '').trim());
+        const normalized = (raw || '').replace(/\u00A0/g, ' ');
+        const lines = normalized.split(/\r?\n/).map(l => l.replace(/^[⸻\-_\s]+|[⸻\-_\s]+$/g, '').trim()).filter(l => l.length > 0);
         const out = []; let i = 0;
-        const pushSld = (t, r, tp) => { const s = newSlide(tp); s.elements.push(newTextEl(fmtQuote(t), false, tp)); if(r) s.elements.push(newTextEl(r, true, tp)); out.push(s); };
-        const procBlk = (txt, ref) => {
-            const tp = ref ? 'verse' : 'reflection';
-            if(ref) {
-                const vs = txt.split(/(?=\b\d{1,3}\s+[A-ZÀ-Ý“"])/g).filter(x=>x.trim());
-                if(vs.length>0 && /^\d+/.test(vs[0].trim())) {
-                    const bc = ref.split(':')[0];
-                    vs.forEach(v => { const m = v.trim().match(/^(\d+)\s+(.*)$/s); if(m) pushSld(m[2], `${bc}:${m[1]}`, tp); else pushSld(v, ref, tp); });
-                    return;
-                }
-            }
-            if(txt.length>180) {
-                const sents = txt.replace(/([.?!]+["”]?)/g, "$1|").split("|").map(x=>x.trim()).filter(x=>x);
-                if(sents.length>1) {
-                    let cur=""; for(let s of sents) { if(!cur) cur=s; else if(cur.length+s.length<150) cur+=" "+s; else { pushSld(cur,ref,tp); cur=s; } }
-                    if(cur) pushSld(cur,ref,tp); return;
-                }
-            }
-            if(txt.trim()) pushSld(txt, ref, tp);
+        const pushSld = (t, r, tp) => { 
+            const s = newSlide(tp); 
+            s.elements.push(newTextEl(tp==='topic'||tp==='question_short' ? t : fmtQuote(t), false, tp)); 
+            if(r) s.elements.push(newTextEl(r, true, tp)); 
+            out.push(s); 
         };
 
-        while(i<lines.length) {
-            let l=lines[i]; if(!l) {i++; continue;}
-            if(isHead(l)) { pushSld(l,'','topic'); i++; continue; }
-            if(l.endsWith('?')&&l.length<=35) { pushSld(l,'','question_short'); i++; continue; }
-            let j=i, bRef=null;
-            while(j<lines.length && lines[j] && !isHead(lines[j]) && !(lines[j].endsWith('?')&&lines[j].length<=35)) { if(isPureRef(lines[j])) { if(j>i) bRef=isRef(lines[j]); break; } j++; }
-            if(bRef) { procBlk(lines.slice(i,j).join(' '), bRef); i=j+1; continue; }
-            if(isPureRef(l)) {
-                const bR=isRef(l); i++; let top=[];
-                while(i<lines.length && lines[i] && !isPureRef(lines[i]) && !isHead(lines[i]) && !(lines[i].endsWith('?')&&lines[i].length<=35)) { const tR=isRef(lines[i]); if(tR && lines[i].length>tR.length+12 && !isPureRef(lines[i])) break; top.push(lines[i]); i++; }
-                if(top.length>0) procBlk(top.join(' '), bR); else pushSld('...', bR, 'verse');
+        while(i < lines.length) {
+            let l = lines[i];
+            if (isHead(l)) {
+                pushSld(l.replace(/^[⸻\-_\s*#]+|[⸻\-_\s*#]+$/g, '').trim(), '', 'topic');
+                i++;
                 continue;
             }
-            const tR=isRef(l);
-            if(tR && l.length>tR.length+12 && !isPureRef(l)) { procBlk(l.replace(tR,'').trim(), tR); i++; continue; }
-            let refs=[];
-            while(i<lines.length && lines[i] && !isPureRef(lines[i]) && !isHead(lines[i]) && !(lines[i].endsWith('?')&&lines[i].length<=35)) { const txR=isRef(lines[i]); if(txR && lines[i].length>txR.length+12 && !isPureRef(lines[i])) break; refs.push(lines[i]); i++; }
-            if(refs.length>0) procBlk(refs.join(' '), '');
+            if (l.endsWith('?') && l.length <= 25 && !isRef(l)) {
+                pushSld(l, '', 'question_short');
+                i++;
+                continue;
+            }
+            if (isPureRef(l)) {
+                const rawRef = isRef(l);
+                const baseRef = normRef(rawRef);
+                i++;
+                const verseLines = [];
+                while (
+                    i < lines.length &&
+                    !isPureRef(lines[i]) &&
+                    !isHead(lines[i]) &&
+                    !(lines[i].endsWith('?') && lines[i].length <= 25)
+                ) {
+                    const emb = isRef(lines[i]);
+                    if (emb && lines[i].length > emb.length + 12) break;
+                    verseLines.push(lines[i]);
+                    i++;
+                }
+                const combined = verseLines.join('\n');
+                const numberedRegex = /(?:^|\n)\s*(\d{1,3})\s+([A-ZÀ-Ý“"a-z])/;
+                if (numberedRegex.test(combined)) {
+                    const chunks = combined.split(/(?=(?:^|\n)\s*\d{1,3}\s+[A-ZÀ-Ý“"])/).filter(s => s.trim().length > 0);
+                    const bookAndChap = baseRef.split(/[:.,]/)[0];
+                    chunks.forEach(chunk => {
+                        const m = chunk.trim().match(/^(\d{1,3})\s+(.*)$/s);
+                        if (m) {
+                            const vNum = m[1];
+                            let vText = m[2].replace(/\n+/g, ' ').trim();
+                            pushSld(vText, `${bookAndChap}:${vNum}`, 'verse');
+                        } else {
+                            let vText = chunk.replace(/\n+/g, ' ').trim();
+                            pushSld(vText, baseRef, 'verse');
+                        }
+                    });
+                } else {
+                    if (verseLines.length > 0) {
+                        verseLines.forEach(vL => {
+                            let vText = vL.trim();
+                            if (vText.length > 3) pushSld(vText, baseRef, 'verse');
+                        });
+                    }
+                }
+                continue;
+            }
+            const trailingRef = isRef(l);
+            if (trailingRef && l.length > trailingRef.length + 8) {
+                const vText = l.replace(trailingRef, '').replace(/[()]/g, '').trim();
+                pushSld(vText, normRef(trailingRef), 'verse');
+                i++;
+                continue;
+            }
+            pushSld(l, '', 'reflection');
+            i++;
         }
         return out;
     }
@@ -516,7 +580,7 @@
     }
 
     function highlightKW(txt) {
-        const kw = /(não temas,?\s*crê somente|quem me tocou\??|não o faria\??|não o confirmaria\??|angústia de espírito|tendo-os feito sair|teu coração|não se apóie|os teus bens|os teus celeiros|transbordarão|talitá cumi|prostrou-se|um dos principais da sinagoga|despendido tudo quanto tinha|não ajunteis tesouros|ajuntai tesouros|honra ao senhor|confia no senhor)/gi;
+        const kw = /(não temas,?\s*crê somente|quem me tocou\??|não o faria\??|não o confirmaria\??|angústia de espírito|tendo-os feito sair|teu coração|não se apóie|os teus bens|os teus celeiros|transbordarão|talitá cumi|prostrou-se|um dos principais da sinagoga|despendido tudo quanto tinha|não ajunteis tesouros|ajuntai tesouros|honra ao senhor|confia no senhor|obedecer é melhor|obedeça à palavra|palavra do senhor|casa do senhor|voluntariamente|transgressões|amor de mim|não me lembro|prosperarão|buscarei o teu bem|morar na casa do senhor|contemplar a formosura|inquirir no seu templo|senhor|jesus|deus)/gi;
         return txt.replace(kw, '<span style="color:#E8B859;">$1</span>');
     }
 
@@ -718,7 +782,7 @@
                         if(el.stroke && el.stroke !== 'none') opts.outline = { size: 1.5, color: el.stroke === 'white' ? 'FFFFFF' : '000000' };
                         
                         const ff = el.fontFace.includes('Oswald') || el.fontFace.includes('Bahnschrift') ? 'Bahnschrift SemiBold Condensed' : 'Bebas Neue';
-                        const kw = /(não temas,?\s*crê somente|quem me tocou\??|não o faria\??|não o confirmaria\??|angústia de espírito|tendo-os feito sair|teu coração|não se apóie|os teus bens|os teus celeiros|transbordarão|talitá cumi|prostrou-se|um dos principais da sinagoga|despendido tudo quanto tinha|não ajunteis tesouros|ajuntai tesouros|honra ao senhor|confia no senhor)/gi;
+                        const kw = /(não temas,?\s*crê somente|quem me tocou\??|não o faria\??|não o confirmaria\??|angústia de espírito|tendo-os feito sair|teu coração|não se apóie|os teus bens|os teus celeiros|transbordarão|talitá cumi|prostrou-se|um dos principais da sinagoga|despendido tudo quanto tinha|não ajunteis tesouros|ajuntai tesouros|honra ao senhor|confia no senhor|obedecer é melhor|obedeça à palavra|palavra do senhor|casa do senhor|voluntariamente|transgressões|amor de mim|não me lembro|prosperarão|buscarei o teu bem|morar na casa do senhor|contemplar a formosura|inquirir no seu templo|senhor|jesus|deus)/gi;
                         const runs = []; let lx=0; let m;
                         if(!el.isRef) { while((m = kw.exec(el.content)) !== null) { if(m.index>lx) runs.push({ text: el.content.substring(lx, m.index), highlight: false }); runs.push({ text: m[0], highlight: true }); lx = m.index + m[0].length; } }
                         if(lx < el.content.length) runs.push({ text: el.content.substring(lx), highlight: false });
