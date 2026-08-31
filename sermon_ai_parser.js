@@ -11,7 +11,7 @@ async function extractTextFromPdf(pdfBuffer) {
 /**
  * Parses sermon text into structured slide items using Gemini AI
  */
-async function parseSermonWithGemini(sermonText, apiKey, model = 'gemini-3.6-flash') {
+async function parseSermonWithGemini(sermonText, apiKey, model = 'gemini-3.7-flash') {
   const prompt = `Você é um especialista em design de slides de pregação e culto para projeção em igreja e telões de LED.
 Sua missão é transformar o texto/esboço de um sermão enviado pelo pastor em uma sequência de SLIDES INDIVIDUAIS estruturados em JSON, seguindo rigorosamente as seguintes REGRAS DE OURO:
 
