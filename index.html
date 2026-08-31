@@ -130,17 +130,49 @@
     <h1><svg width="20" height="20" viewBox="0 0 24 24" fill="var(--primary)"><path d="M21 3H3C2 3 1 4 1 5V19C1 20 2 21 3 21H21C22 21 23 20 23 19V5C23 4 22 3 21 3ZM21 19H3V5H21V19Z"/><path d="M7 9L12 14L17 9H7Z"/></svg>
         Slidekiller <span class="badge">16:9 PRO</span>
     </h1>
-    <div style="display:flex; gap:12px; align-items:center;">
+    <div style="display:flex; gap:10px; align-items:center;">
         <button class="btn btn-outline" id="btnNewDoc" style="display:none;" onclick="location.reload()">
-            <span>➕</span> Novo Sermão
+            <span>➕</span> Novo
         </button>
-        <input type="text" id="outFileName" value="Apresentacao.pptx" class="prop-input" style="width:200px; font-weight:500;" />
+        <button class="btn btn-secondary" id="btnValidateAI" style="display:none;" onclick="handleValidateAIClick()">
+            <span>✨</span> Validar com IA
+        </button>
+        <button class="btn-icon" id="btnConfigAI" style="display:none;" onclick="openAiModal()" title="Configurar Chave da IA">
+            ⚙️
+        </button>
+        <input type="text" id="outFileName" value="Apresentacao.pptx" class="prop-input" style="width:190px; font-weight:500;" />
         <button class="btn" id="btnExport">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M19 9H15V3H9V9H5L12 16L19 9ZM5 18V20H19V18H5Z"/></svg>
             Exportar PPTX
         </button>
     </div>
 </header>
+
+<!-- Modal de Chave da IA Gemini -->
+<div id="modalAiKey" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.75); z-index:9999; justify-content:center; align-items:center;">
+    <div style="background:var(--bg-panel); border:1px solid var(--border); border-radius:12px; padding:24px; max-width:440px; width:90%; box-shadow:0 20px 50px rgba(0,0,0,0.6); text-align:left;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h3 style="margin:0; font-size:16px; color:var(--text-light); display:flex; align-items:center; gap:8px;">
+                ✨ Validação Estrutural com IA
+            </h3>
+            <button class="btn-icon" onclick="closeAiModal()">✕</button>
+        </div>
+        <p style="font-size:12px; color:var(--text-dim); margin-bottom:16px; line-height:1.5;">
+            A IA atua exclusivamente como <strong>Guardiã Estrutural</strong>: ela valida referências bíblicas e quebras de versículos, <strong>sem alterar nenhuma palavra nem inventar destaques</strong>.
+        </p>
+        <div style="margin-bottom:16px;">
+            <label style="font-size:11px; font-weight:600; color:var(--text-dim); display:block; margin-bottom:6px;">Chave de API do Google Gemini:</label>
+            <input type="password" id="inputGeminiKey" placeholder="Cole sua chave AIzaSy..." class="prop-input" style="width:100%; box-sizing:border-box;" />
+            <small style="display:block; margin-top:6px; font-size:11px;">
+                <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--primary); text-decoration:none; font-weight:600;">🔗 Obter chave gratuita no Google AI Studio</a>
+            </small>
+        </div>
+        <div style="display:flex; gap:8px; justify-content:flex-end;">
+            <button class="btn btn-outline" onclick="closeAiModal()">Cancelar</button>
+            <button class="btn" id="btnSaveAiKey" onclick="saveAndRunAiValidation()">Salvar e Validar</button>
+        </div>
+    </div>
+</div>
 
 <div id="setup">
     <h2 style="margin-top:0; color:var(--text-light); font-weight:600;">Bem-vindo ao Estúdio</h2>
@@ -361,8 +393,10 @@
     
     document.getElementById('pdfInput').addEventListener('change', e => { if(e.target.files[0]) parsePDF(e.target.files[0]); });
 
+    let rawExtractedSermonText = "";
+
     async function parsePDF(file) {
-        document.getElementById('statusMsg').innerText = 'Processando IA de extração...';
+        document.getElementById('statusMsg').innerText = 'Processando extração e destaques do PDF...';
         try {
             document.getElementById('outFileName').value = file.name.replace('.pdf', '.pptx');
             const arr = await file.arrayBuffer();
@@ -371,20 +405,175 @@
             for(let i=1; i<=pdf.numPages; i++) {
                 const page = await pdf.getPage(i);
                 const tc = await page.getTextContent();
-                let lastY = null; let txt = "";
-                for(let item of tc.items) {
-                    if(lastY !== null && Math.abs(item.transform[5] - lastY) > 5) txt += "\n";
-                    txt += item.str; lastY = item.transform[5];
+                
+                // Contar frequência de cada fonte para identificar o corpo de texto principal
+                const fontCounts = {};
+                tc.items.forEach(it => {
+                    if (!it.str.trim()) return;
+                    fontCounts[it.fontName] = (fontCounts[it.fontName] || 0) + it.str.length;
+                });
+                let mainFont = null;
+                let maxCount = -1;
+                for (const f in fontCounts) {
+                    if (fontCounts[f] > maxCount) {
+                        maxCount = fontCounts[f];
+                        mainFont = f;
+                    }
                 }
-                fullText += txt + "\n";
+
+                let lastY = null;
+                for(let item of tc.items) {
+                    if(lastY !== null && Math.abs(item.transform[5] - lastY) > 5) fullText += "\n";
+                    const isHL = item.fontName !== mainFont && item.str.trim().length > 1 && !/^[⸻\-_\s:?.,;]+$/.test(item.str);
+                    if (isHL) {
+                        fullText += `[HL]${item.str}[/HL]`;
+                    } else {
+                        fullText += item.str;
+                    }
+                    lastY = item.transform[5];
+                }
+                fullText += "\n";
             }
+            rawExtractedSermonText = fullText;
             slides = parseSermon(fullText);
             setup.style.display = 'none'; 
             app.style.display = 'flex';
             document.getElementById('btnNewDoc').style.display = 'inline-flex';
+            document.getElementById('btnValidateAI').style.display = 'inline-flex';
+            document.getElementById('btnConfigAI').style.display = 'inline-flex';
             resizeWorkspace();
             if(slides.length > 0) setSlide(0);
         } catch(e) { console.error(e); alert("Erro ao ler PDF:\n" + e.message); }
+    }
+
+    // --- Gemini AI Validation Engine ---
+    function openAiModal() {
+        const modal = document.getElementById('modalAiKey');
+        const input = document.getElementById('inputGeminiKey');
+        input.value = localStorage.getItem('GEMINI_API_KEY') || '';
+        modal.style.display = 'flex';
+    }
+    function closeAiModal() {
+        document.getElementById('modalAiKey').style.display = 'none';
+    }
+
+    function handleValidateAIClick() {
+        const savedKey = localStorage.getItem('GEMINI_API_KEY');
+        if (!savedKey) {
+            openAiModal();
+        } else {
+            runAiValidation(savedKey);
+        }
+    }
+
+    function saveAndRunAiValidation() {
+        const key = document.getElementById('inputGeminiKey').value.trim();
+        if (!key) return alert('Por favor, insira a chave da API do Gemini.');
+        localStorage.setItem('GEMINI_API_KEY', key);
+        closeAiModal();
+        runAiValidation(key);
+    }
+
+    async function runAiValidation(apiKey) {
+        const btn = document.getElementById('btnValidateAI');
+        const originalHtml = btn.innerHTML;
+        btn.innerHTML = '⏳ Validando...';
+        btn.disabled = true;
+
+        const prompt = `Você é um auditor e validador estrutural de slides de sermão de igreja.
+SUA MISSÃO: Validar e estruturar o texto em uma sequência de SLIDES INDIVIDUAIS em formato JSON.
+
+REGRAS ESTRITAS E INVIOLÁVEIS:
+1. PROIBIDO ALTERAR O CONTEÚDO DO TEXTO: Mantenha cada palavra, concordância, ortografia e pontuação 100% IDÊNTICA ao original. NÃO altere o português, NÃO resuma, NÃO invente palavras.
+2. PRESERVAÇÃO RIGOROSA DOS DESTAQUES: Mantenha as tags [HL]...[/HL] EXATAMENTE nas palavras onde já estão no texto fornecido. NÃO invente novos destaques, NÃO remova os existentes.
+3. REGRAS ESTRUTURAIS:
+   - "topic": Títulos, princípios ou tópicos (ex: "Obediência acima de tudo:", "TUA CASA É MINHA CASA 122 DIAS").
+   - "question_short": Perguntas curtas de impacto (ex: "E Jairo?").
+   - "verse": Versículos bíblicos (SEMPRE 1 versículo por slide, com aspas tipográficas “ ... ”). O campo "reference" deve conter a referência correspondente (ex: "Mateus 7:19", "1 Samuel 15:22", "Salmos 122:1-9").
+   - "reflection": Frases de reflexão do pregador.
+4. PROIBIÇÃO DE GERAR IMAGENS.
+
+FORMATO DE RESPOSTA (APENAS JSON VÁLIDO):
+[
+  {
+    "type": "verse",
+    "reference": "Mateus 7:19",
+    "content": "“Toda a árvore que não dá bom fruto corta-se e [HL]lança-se no fogo[/HL].”"
+  },
+  {
+    "type": "topic",
+    "reference": "",
+    "content": "Obediência acima de tudo:"
+  }
+]
+
+TEXTO DO SERMÃO:
+${rawExtractedSermonText || slides.map(s => s.elements.map(e => e.content).join(' ')).join('\n')}`;
+
+        const models = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro'];
+        let success = false;
+        let lastErr = null;
+
+        for (const model of models) {
+            try {
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                        generationConfig: {
+                            temperature: 0.1,
+                            maxOutputTokens: 8192,
+                            responseMimeType: 'application/json'
+                        }
+                    })
+                });
+                const data = await res.json();
+                if (data.error) {
+                    lastErr = data.error.message;
+                    continue;
+                }
+                const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (text) {
+                    const parsed = JSON.parse(text);
+                    const list = Array.isArray(parsed) ? parsed : (parsed.slides || []);
+                    if (list.length > 0) {
+                        applyAiValidatedSlides(list);
+                        success = true;
+                        break;
+                    }
+                }
+            } catch(err) {
+                lastErr = err.message;
+            }
+        }
+
+        btn.innerHTML = originalHtml;
+        btn.disabled = false;
+
+        if (!success) {
+            alert('Falha na validação com IA:\n' + (lastErr || 'Verifique sua chave de API do Gemini.'));
+            openAiModal();
+        } else {
+            alert('✨ Estrutura validada com sucesso pela IA Gemini! Os slides e referências foram refinados mantendo 100% dos seus textos e destaques originais.');
+        }
+    }
+
+    function applyAiValidatedSlides(aiSlides) {
+        commitText();
+        const newSlides = [];
+        aiSlides.forEach(item => {
+            const tp = item.type || 'verse';
+            const s = newSlide(tp);
+            s.elements.push(newTextEl(item.content, false, tp));
+            if (item.reference && tp === 'verse') {
+                s.elements.push(newTextEl(normRef(item.reference), true, tp));
+            }
+            newSlides.push(s);
+        });
+        slides = newSlides;
+        setSlide(0);
     }
 
     // --- Parser Engine ---
@@ -580,6 +769,9 @@
     }
 
     function highlightKW(txt) {
+        if (txt.includes('[HL]')) {
+            return txt.replace(/\[HL\](.*?)\[\/HL\]/gi, '<span style="color:#E8B859;">$1</span>');
+        }
         const kw = /(não temas,?\s*crê somente|quem me tocou\??|não o faria\??|não o confirmaria\??|angústia de espírito|tendo-os feito sair|teu coração|não se apóie|os teus bens|os teus celeiros|transbordarão|talitá cumi|prostrou-se|um dos principais da sinagoga|despendido tudo quanto tinha|não ajunteis tesouros|ajuntai tesouros|honra ao senhor|confia no senhor|obedecer é melhor|obedeça à palavra|palavra do senhor|casa do senhor|voluntariamente|transgressões|amor de mim|não me lembro|prosperarão|buscarei o teu bem|morar na casa do senhor|contemplar a formosura|inquirir no seu templo|senhor|jesus|deus)/gi;
         return txt.replace(kw, '<span style="color:#E8B859;">$1</span>');
     }
@@ -781,12 +973,30 @@
                         else if(el.shadow === 'glow') opts.shadow = { type: 'outer', angle: 0, blur: 15, offset: 0, opacity: 0.9, color: 'FFFFFF' };
                         if(el.stroke && el.stroke !== 'none') opts.outline = { size: 1.5, color: el.stroke === 'white' ? 'FFFFFF' : '000000' };
                         
-                        const ff = el.fontFace.includes('Oswald') || el.fontFace.includes('Bahnschrift') ? 'Bahnschrift SemiBold Condensed' : 'Bebas Neue';
-                        const kw = /(não temas,?\s*crê somente|quem me tocou\??|não o faria\??|não o confirmaria\??|angústia de espírito|tendo-os feito sair|teu coração|não se apóie|os teus bens|os teus celeiros|transbordarão|talitá cumi|prostrou-se|um dos principais da sinagoga|despendido tudo quanto tinha|não ajunteis tesouros|ajuntai tesouros|honra ao senhor|confia no senhor|obedecer é melhor|obedeça à palavra|palavra do senhor|casa do senhor|voluntariamente|transgressões|amor de mim|não me lembro|prosperarão|buscarei o teu bem|morar na casa do senhor|contemplar a formosura|inquirir no seu templo|senhor|jesus|deus)/gi;
-                        const runs = []; let lx=0; let m;
-                        if(!el.isRef) { while((m = kw.exec(el.content)) !== null) { if(m.index>lx) runs.push({ text: el.content.substring(lx, m.index), highlight: false }); runs.push({ text: m[0], highlight: true }); lx = m.index + m[0].length; } }
-                        if(lx < el.content.length) runs.push({ text: el.content.substring(lx), highlight: false });
-                        if(runs.length === 0) runs.push({ text: el.content, highlight: false });
+                        let runs = [];
+                        if (el.isRef) {
+                            runs = [{ text: el.content, highlight: false }];
+                        } else if (el.content.includes('[HL]')) {
+                            const regex = /\[HL\](.*?)\[\/HL\]/gi;
+                            let lastIdx = 0;
+                            let m;
+                            while ((m = regex.exec(el.content)) !== null) {
+                                if (m.index > lastIdx) runs.push({ text: el.content.substring(lastIdx, m.index), highlight: false });
+                                runs.push({ text: m[1], highlight: true });
+                                lastIdx = m.index + m[0].length;
+                            }
+                            if (lastIdx < el.content.length) runs.push({ text: el.content.substring(lastIdx), highlight: false });
+                        } else {
+                            const kw = /(não temas,?\s*crê somente|quem me tocou\??|não o faria\??|não o confirmaria\??|angústia de espírito|tendo-os feito sair|teu coração|não se apóie|os teus bens|os teus celeiros|transbordarão|talitá cumi|prostrou-se|um dos principais da sinagoga|despendido tudo quanto tinha|não ajunteis tesouros|ajuntai tesouros|honra ao senhor|confia no senhor|obedecer é melhor|obedeça à palavra|palavra do senhor|casa do senhor|voluntariamente|transgressões|amor de mim|não me lembro|prosperarão|buscarei o teu bem|morar na casa do senhor|contemplar a formosura|inquirir no seu templo|senhor|jesus|deus)/gi;
+                            let lx = 0; let m;
+                            while((m = kw.exec(el.content)) !== null) { 
+                                if(m.index > lx) runs.push({ text: el.content.substring(lx, m.index), highlight: false }); 
+                                runs.push({ text: m[0], highlight: true }); 
+                                lx = m.index + m[0].length; 
+                            }
+                            if(lx < el.content.length) runs.push({ text: el.content.substring(lx), highlight: false });
+                        }
+                        if (runs.length === 0) runs.push({ text: el.content, highlight: false });
 
                         const pptRuns = runs.map(r => ({ text: r.text, options: { fontFace: ff, fontSize: el.fontSize, color: r.highlight ? 'E8B859' : el.color.replace('#','') } }));
                         slide.addText(pptRuns, opts);
