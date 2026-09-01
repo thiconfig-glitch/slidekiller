@@ -960,34 +960,49 @@ ${rawExtractedSermonText || slides.map(s => s.elements.map(e => e.content).join(
 
     // --- PPTX EXPORT ---
     document.getElementById('btnExport').addEventListener('click', async () => {
-        commitText(); const btn = document.getElementById('btnExport'); btn.innerText = "⏳ PROCESSANDO...";
+        commitText();
+        const btn = document.getElementById('btnExport');
+        const origHtml = btn.innerHTML;
+        btn.innerHTML = "⏳ Exportando...";
+        btn.disabled = true;
         try {
-            const pptx = new PptxGenJS(); pptx.layout = 'LAYOUT_16x9';
+            const pptx = new PptxGenJS();
+            pptx.layout = 'LAYOUT_16x9';
             for(const s of slides) {
                 const slide = pptx.addSlide();
                 if(s.bgImage) {
                     if(s.bgImage.startsWith('data:')) slide.background = { data: s.bgImage };
                     else slide.background = { path: s.bgImage };
-                } else slide.background = { color: s.bgColor.replace('#','') };
+                } else {
+                    slide.background = { color: (s.bgColor || '#000000').replace('#','') };
+                }
                 for(const el of s.elements) {
                     if(el.hidden) continue;
-                    const opts = { x: el.x/96, y: el.y/96, w: el.w/96, h: el.h/96, rotate: el.rotation || 0, transparency: (1 - el.opacity) * 100 };
-                    if(el.type === 'shape') { opts.fill = { color: el.color.replace('#','') }; slide.addShape(pptx.ShapeType.rect, opts); } 
+                    const opts = { x: el.x/96, y: el.y/96, w: el.w/96, h: el.h/96, rotate: el.rotation || 0, transparency: (1 - (el.opacity ?? 1)) * 100 };
+                    if(el.type === 'shape') {
+                        opts.fill = { color: (el.color || '#ffffff').replace('#','') };
+                        slide.addShape(pptx.ShapeType.rect, opts);
+                    } 
                     else if(el.type === 'image') {
                         if(el.content.startsWith('data:')) opts.data = el.content;
                         else opts.path = el.content;
                         slide.addImage(opts);
                     }
                     else if(el.type === 'text') {
-                        opts.valign = 'top'; opts.align = el.align; opts.margin = 0; opts.wrap = true;
+                        opts.valign = 'top';
+                        opts.align = el.align || 'left';
+                        opts.margin = 0;
+                        opts.wrap = true;
                         if(el.shadow === 'dark') opts.shadow = { type: 'outer', angle: 90, blur: 4, offset: 3, opacity: 0.8, color: '000000' };
                         else if(el.shadow === 'glow') opts.shadow = { type: 'outer', angle: 0, blur: 15, offset: 0, opacity: 0.9, color: 'FFFFFF' };
                         if(el.stroke && el.stroke !== 'none') opts.outline = { size: 1.5, color: el.stroke === 'white' ? 'FFFFFF' : '000000' };
                         
+                        const ff = el.fontFace && (el.fontFace.includes('Oswald') || el.fontFace.includes('Bahnschrift')) ? 'Bahnschrift SemiBold Condensed' : 'Bebas Neue';
+                        
                         let runs = [];
                         if (el.isRef) {
                             runs = [{ text: el.content, highlight: false }];
-                        } else if (el.content.includes('[HL]')) {
+                        } else if (el.content && el.content.includes('[HL]')) {
                             const regex = /\[HL\](.*?)\[\/HL\]/gi;
                             let lastIdx = 0;
                             let m;
@@ -1000,23 +1015,37 @@ ${rawExtractedSermonText || slides.map(s => s.elements.map(e => e.content).join(
                         } else {
                             const kw = /(não temas,?\s*crê somente|quem me tocou\??|não o faria\??|não o confirmaria\??|angústia de espírito|tendo-os feito sair|teu coração|não se apóie|os teus bens|os teus celeiros|transbordarão|talitá cumi|prostrou-se|um dos principais da sinagoga|despendido tudo quanto tinha|não ajunteis tesouros|ajuntai tesouros|honra ao senhor|confia no senhor|obedecer é melhor|obedeça à palavra|palavra do senhor|casa do senhor|voluntariamente|transgressões|amor de mim|não me lembro|prosperarão|buscarei o teu bem|morar na casa do senhor|contemplar a formosura|inquirir no seu templo|senhor|jesus|deus)/gi;
                             let lx = 0; let m;
-                            while((m = kw.exec(el.content)) !== null) { 
-                                if(m.index > lx) runs.push({ text: el.content.substring(lx, m.index), highlight: false }); 
+                            while((m = kw.exec(el.content || '')) !== null) { 
+                                if(m.index > lx) runs.push({ text: (el.content || '').substring(lx, m.index), highlight: false }); 
                                 runs.push({ text: m[0], highlight: true }); 
                                 lx = m.index + m[0].length; 
                             }
-                            if(lx < el.content.length) runs.push({ text: el.content.substring(lx), highlight: false });
+                            if(lx < (el.content || '').length) runs.push({ text: (el.content || '').substring(lx), highlight: false });
                         }
-                        if (runs.length === 0) runs.push({ text: el.content, highlight: false });
+                        if (runs.length === 0) runs.push({ text: el.content || '', highlight: false });
 
-                        const pptRuns = runs.map(r => ({ text: r.text, options: { fontFace: ff, fontSize: el.fontSize, color: r.highlight ? 'E8B859' : el.color.replace('#','') } }));
+                        const pptRuns = runs.map(r => ({
+                            text: r.text,
+                            options: {
+                                fontFace: ff,
+                                fontSize: el.fontSize || 44,
+                                color: r.highlight ? 'E8B859' : (el.color || '#ffffff').replace('#','')
+                            }
+                        }));
                         slide.addText(pptRuns, opts);
                     }
                 }
             }
-            await pptx.writeFile({ fileName: document.getElementById('outFileName').value });
-        } catch(e) { alert("Erro: "+e.message); }
-        btn.innerText = "💾 EXPORTAR PPTX";
+            let fName = document.getElementById('outFileName').value.trim() || 'Apresentacao.pptx';
+            if (!fName.toLowerCase().endsWith('.pptx')) fName += '.pptx';
+            await pptx.writeFile({ fileName: fName });
+        } catch(e) {
+            console.error("Erro na exportação PPTX:", e);
+            alert("Erro ao exportar PPTX:\n" + e.message);
+        } finally {
+            btn.innerHTML = origHtml;
+            btn.disabled = false;
+        }
     });
 </script>
 </body>
