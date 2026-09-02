@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Slidekiller — Gerador de Slides de Sermão (16:9 Full HD)</title>
+    <title>Central Multimídia Church — Hub de Mídia & Culto (v2.0.0)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/libs/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/dist/pptxgen.min.js"></script>
@@ -127,10 +127,31 @@
 <body>
 
 <header>
-    <h1><svg width="20" height="20" viewBox="0 0 24 24" fill="var(--primary)"><path d="M21 3H3C2 3 1 4 1 5V19C1 20 2 21 3 21H21C22 21 23 20 23 19V5C23 4 22 3 21 3ZM21 19H3V5H21V19Z"/><path d="M7 9L12 14L17 9H7Z"/></svg>
-        Slidekiller <span class="badge">16:9 PRO</span>
-    </h1>
-    <div style="display:flex; gap:10px; align-items:center;">
+    <div style="display:flex; align-items:center; gap:16px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:22px;">🏛️</span>
+            <div>
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <span style="font-weight:700; font-size:14px; color:#fff; letter-spacing:0.3px;">Central Multimídia Church</span>
+                    <span class="badge" style="background:#8b5cf6; font-size:10px;">v2.0.0</span>
+                </div>
+                <span style="font-size:10px; color:#a1a1aa; display:block;">Hub de Mídia & Culto</span>
+            </div>
+        </div>
+
+        <!-- Seletor de Módulos (Personalidades) -->
+        <nav id="hubNav" style="display:flex; gap:6px; background:#18181b; padding:4px; border-radius:8px; border:1px solid var(--border);">
+            <button class="btn" id="modSlidekillerBtn" onclick="switchHubModule('slidekiller')" style="padding:4px 10px; font-size:11px; border-radius:6px;">
+                ⚡ Slide Killer
+            </button>
+            <button class="btn btn-outline" id="modVideoBtn" onclick="switchHubModule('video-editor')" style="padding:4px 10px; font-size:11px; border-radius:6px;">
+                🎬 Editor de Vídeo (OpenCut)
+            </button>
+        </nav>
+    </div>
+
+    <!-- Ações Slide Killer -->
+    <div id="actionsSlidekiller" style="display:flex; gap:10px; align-items:center;">
         <button class="btn btn-outline" id="btnNewDoc" style="display:none;" onclick="location.reload()">
             <span>➕</span> Novo
         </button>
@@ -145,6 +166,16 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M19 9H15V3H9V9H5L12 16L19 9ZM5 18V20H19V18H5Z"/></svg>
             Exportar PPTX
         </button>
+    </div>
+
+    <!-- Ações Editor de Vídeo -->
+    <div id="actionsVideoEditor" style="display:none; gap:10px; align-items:center;">
+        <button class="btn btn-outline" onclick="toggleVideoFullscreenRoot()">
+            <span>⛶</span> Tela Cheia
+        </button>
+        <a href="https://opencut.app" target="_blank" rel="noopener noreferrer" class="btn" style="text-decoration:none;">
+            <span>↗</span> Abrir no Navegador
+        </a>
     </div>
 </header>
 
@@ -347,6 +378,11 @@
         </button>
         <div id="thumb-container" style="display:flex; gap:16px;"></div>
     </footer>
+</div>
+
+<!-- Módulo 2: Editor de Vídeo OpenCut -->
+<div id="hubModuleVideo" style="display:none; flex:1; width:100%; height:calc(100vh - 50px); position:relative; background:#000;">
+    <iframe id="opencutIframeRoot" src="https://opencut.app" style="width:100%; height:100%; border:none;" allow="camera; microphone; display-capture; autoplay; clipboard-read; clipboard-write; fullscreen" sandbox="allow-scripts allow-same-origin allow-forms allow-downloads allow-modals allow-popups"></iframe>
 </div>
 
 <script>
@@ -1047,6 +1083,39 @@ ${rawExtractedSermonText || slides.map(s => s.elements.map(e => e.content).join(
             btn.disabled = false;
         }
     });
+
+    // Controle do Hub Central Multimídia Church
+    function switchHubModule(mod) {
+        const isSlide = (mod === 'slidekiller');
+        document.getElementById('modSlidekillerBtn').className = isSlide ? 'btn' : 'btn btn-outline';
+        document.getElementById('modVideoBtn').className = !isSlide ? 'btn' : 'btn btn-outline';
+        document.getElementById('actionsSlidekiller').style.display = isSlide ? 'flex' : 'none';
+        document.getElementById('actionsVideoEditor').style.display = !isSlide ? 'flex' : 'none';
+        
+        if (isSlide) {
+            document.getElementById('hubModuleVideo').style.display = 'none';
+            if (slides.length > 0) {
+                document.getElementById('app').style.display = 'flex';
+                document.getElementById('setup').style.display = 'none';
+            } else {
+                document.getElementById('setup').style.display = 'block';
+                document.getElementById('app').style.display = 'none';
+            }
+        } else {
+            document.getElementById('setup').style.display = 'none';
+            document.getElementById('app').style.display = 'none';
+            document.getElementById('hubModuleVideo').style.display = 'flex';
+        }
+    }
+
+    function toggleVideoFullscreenRoot() {
+        const frame = document.getElementById('hubModuleVideo');
+        if (!document.fullscreenElement) {
+            frame.requestFullscreen().catch(() => {});
+        } else {
+            document.exitFullscreen().catch(() => {});
+        }
+    }
 </script>
 </body>
 </html>
