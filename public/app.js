@@ -1,5 +1,91 @@
 document.addEventListener('DOMContentLoaded', () => {
-  // Elements
+  // ==========================================
+  // NAVEGAÇÃO DE MÓDULOS (CENTRAL MULTIMÍDIA)
+  // ==========================================
+  const navModuleBtns = document.querySelectorAll('.nav-module-btn');
+  const moduleViews = {
+    'slidekiller': document.getElementById('view-slidekiller'),
+    'video-editor': document.getElementById('view-video-editor')
+  };
+  const moduleActions = {
+    'slidekiller': document.getElementById('actions-slidekiller'),
+    'video-editor': document.getElementById('actions-video-editor')
+  };
+
+  navModuleBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const targetModule = btn.dataset.module;
+      if (!targetModule || !moduleViews[targetModule]) return;
+
+      // Atualiza botões
+      navModuleBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      // Alterna visualização dos módulos
+      Object.keys(moduleViews).forEach(key => {
+        if (moduleViews[key]) {
+          moduleViews[key].classList.toggle('active', key === targetModule);
+        }
+        if (moduleActions[key]) {
+          moduleActions[key].style.display = (key === targetModule) ? 'flex' : 'none';
+        }
+      });
+    });
+  });
+
+  // ==========================================
+  // MÓDULO 2: EDITOR DE VÍDEO (OPENCUT)
+  // ==========================================
+  const opencutIframe = document.getElementById('opencut-iframe');
+  const iframeLoading = document.getElementById('iframe-loading');
+  const btnReloadVideo = document.getElementById('btn-reload-video');
+  const btnVideoFullscreen = document.getElementById('btn-video-fullscreen');
+  const btnExpandCanvas = document.getElementById('btn-expand-canvas');
+  const videoContainer = document.getElementById('video-container');
+
+  if (opencutIframe) {
+    opencutIframe.addEventListener('load', () => {
+      if (iframeLoading) iframeLoading.classList.add('hidden');
+    });
+
+    // Fallback de segurança para esconder o loading após 4s
+    setTimeout(() => {
+      if (iframeLoading) iframeLoading.classList.add('hidden');
+    }, 4000);
+  }
+
+  if (btnReloadVideo && opencutIframe) {
+    btnReloadVideo.addEventListener('click', () => {
+      if (iframeLoading) iframeLoading.classList.remove('hidden');
+      opencutIframe.src = opencutIframe.src;
+    });
+  }
+
+  function toggleVideoFullscreen() {
+    if (!videoContainer) return;
+    videoContainer.classList.toggle('fullscreen-focus');
+    const isFull = videoContainer.classList.contains('fullscreen-focus');
+    if (btnVideoFullscreen) {
+      btnVideoFullscreen.innerHTML = isFull ? '<span>✕</span> Fechar Foco' : '<span>⛶</span> Tela Cheia';
+    }
+    if (btnExpandCanvas) {
+      btnExpandCanvas.innerHTML = isFull ? '✕ Fechar' : '⛶ Maximizar';
+    }
+  }
+
+  if (btnVideoFullscreen) btnVideoFullscreen.addEventListener('click', toggleVideoFullscreen);
+  if (btnExpandCanvas) btnExpandCanvas.addEventListener('click', toggleVideoFullscreen);
+
+  // Tecla ESC para sair do modo foco no vídeo
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && videoContainer && videoContainer.classList.contains('fullscreen-focus')) {
+      toggleVideoFullscreen();
+    }
+  });
+
+  // ==========================================
+  // MÓDULO 1: SLIDE KILLER
+  // ==========================================
   const tabBtns = document.querySelectorAll('.tab-btn');
   const tabContents = document.querySelectorAll('.tab-content');
   const dropzone = document.getElementById('dropzone');
@@ -27,7 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentSlides = [];
   let currentDownloadUrl = null;
 
-  // Tabs
+  // Tabs internas do Slide Killer
   tabBtns.forEach(btn => {
     btn.addEventListener('click', () => {
       tabBtns.forEach(b => b.classList.remove('active'));
@@ -39,37 +125,43 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Dropzone events
-  dropzone.addEventListener('click', () => pdfFileInput.click());
+  if (dropzone) {
+    dropzone.addEventListener('click', () => pdfFileInput.click());
 
-  dropzone.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    dropzone.classList.add('dragover');
-  });
+    dropzone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropzone.classList.add('dragover');
+    });
 
-  dropzone.addEventListener('dragleave', () => {
-    dropzone.classList.remove('dragover');
-  });
+    dropzone.addEventListener('dragleave', () => {
+      dropzone.classList.remove('dragover');
+    });
 
-  dropzone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    dropzone.classList.remove('dragover');
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFileSelected(e.dataTransfer.files[0]);
-    }
-  });
+    dropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('dragover');
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+        handleFileSelected(e.dataTransfer.files[0]);
+      }
+    });
+  }
 
-  pdfFileInput.addEventListener('change', (e) => {
-    if (e.target.files && e.target.files[0]) {
-      handleFileSelected(e.target.files[0]);
-    }
-  });
+  if (pdfFileInput) {
+    pdfFileInput.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files[0]) {
+        handleFileSelected(e.target.files[0]);
+      }
+    });
+  }
 
-  btnClearFile.addEventListener('click', (e) => {
-    e.stopPropagation();
-    currentFile = null;
-    pdfFileInput.value = '';
-    selectedFileInfo.style.display = 'none';
-  });
+  if (btnClearFile) {
+    btnClearFile.addEventListener('click', (e) => {
+      e.stopPropagation();
+      currentFile = null;
+      pdfFileInput.value = '';
+      selectedFileInfo.style.display = 'none';
+    });
+  }
 
   function handleFileSelected(file) {
     if (!file.name.toLowerCase().endsWith('.pdf')) {
@@ -81,11 +173,11 @@ document.addEventListener('DOMContentLoaded', () => {
     selectedFileInfo.style.display = 'inline-flex';
   }
 
-  // Load Templates
+  // Carregar templates oficiais de fundo
   fetch('/api/slides/templates')
     .then(res => res.json())
     .then(data => {
-      if (data && data.templates) {
+      if (data && data.templates && templateSelect) {
         templateSelect.innerHTML = '';
         data.templates.forEach(t => {
           const opt = document.createElement('option');
@@ -97,57 +189,59 @@ document.addEventListener('DOMContentLoaded', () => {
     })
     .catch(() => {});
 
-  // Generate Action
-  btnGenerate.addEventListener('click', async () => {
-    const text = sermonTextInput.value.trim();
-    if (!currentFile && !text) {
-      showToast('Envie um arquivo PDF ou cole o texto do sermão.', 'error');
-      return;
-    }
-
-    const formData = new FormData();
-    if (currentFile) formData.append('pdfFile', currentFile);
-    if (text) formData.append('sermonText', text);
-    formData.append('useAi', checkUseAi.checked);
-
-    btnGenerate.disabled = true;
-    btnGenerate.innerHTML = '<span>⏳</span> Processando e montando slides...';
-
-    try {
-      const res = await fetch('/api/slides/upload-pdf', {
-        method: 'POST',
-        body: formData
-      });
-      const data = await res.json();
-
-      if (!res.ok || data.error) {
-        throw new Error(data.error || 'Falha ao processar arquivo.');
+  // Ação de Geração de Slides
+  if (btnGenerate) {
+    btnGenerate.addEventListener('click', async () => {
+      const text = sermonTextInput.value.trim();
+      if (!currentFile && !text) {
+        showToast('Envie um arquivo PDF ou cole o texto do sermão.', 'error');
+        return;
       }
 
-      currentSlides = data.slides || [];
-      currentDownloadUrl = data.downloadUrl;
+      const formData = new FormData();
+      if (currentFile) formData.append('pdfFile', currentFile);
+      if (text) formData.append('sermonText', text);
+      formData.append('useAi', checkUseAi.checked);
 
-      showToast(data.message || 'Slides gerados com sucesso!', 'success');
-      renderResults();
+      btnGenerate.disabled = true;
+      btnGenerate.innerHTML = '<span>⏳</span> Processando e montando slides...';
 
-    } catch (err) {
-      showToast(err.message, 'error');
-    } finally {
-      btnGenerate.disabled = false;
-      btnGenerate.innerHTML = '<span class="btn-icon">⚡</span> Gerar Slides Instantaneamente';
-    }
-  });
+      try {
+        const res = await fetch('/api/slides/upload-pdf', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
 
-  // Render results
+        if (!res.ok || data.error) {
+          throw new Error(data.error || 'Falha ao processar arquivo.');
+        }
+
+        currentSlides = data.slides || [];
+        currentDownloadUrl = data.downloadUrl;
+
+        showToast(data.message || 'Slides gerados com sucesso!', 'success');
+        renderResults();
+
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        btnGenerate.disabled = false;
+        btnGenerate.innerHTML = '<span class="btn-icon">⚡</span> Gerar Slides Instantaneamente';
+      }
+    });
+  }
+
+  // Renderizar resultados dos slides
   function renderResults() {
     inputSection.style.display = 'none';
     resultsSection.style.display = 'block';
-    btnDownloadTop.style.display = 'inline-flex';
+    if (btnDownloadTop) btnDownloadTop.style.display = 'inline-flex';
 
     slideCountBadge.textContent = `${currentSlides.length} slides`;
     slidesGrid.innerHTML = '';
 
-    const bgUrl = templateSelect.value || '/assets/church_sermon_bg.png';
+    const bgUrl = (templateSelect && templateSelect.value) ? templateSelect.value : '/assets/church_sermon_bg.png';
 
     currentSlides.forEach((slide, index) => {
       const card = document.createElement('div');
@@ -159,10 +253,15 @@ document.addEventListener('DOMContentLoaded', () => {
       }).join('');
 
       card.innerHTML = `
-        <div class="slide-preview" style="background-image: url('${bgUrl}');">
-          <span class="slide-card-badge">Slide ${index + 1} • ${slide.type || 'versículo'}</span>
-          <div class="slide-preview-text">${previewHtml}</div>
-          ${slide.reference ? `<div class="slide-preview-ref">${escapeHtml(slide.reference)}</div>` : ''}
+        <div class="slide-card-header">
+          <span>SLIDE ${index + 1}</span>
+          <span class="slide-type-tag">${slide.type || 'versículo'}</span>
+        </div>
+        <div class="slide-preview-container" style="background-image: url('${bgUrl}');">
+          <div class="slide-preview-content">
+            <div class="slide-preview-text">${previewHtml}</div>
+            ${slide.reference ? `<div class="slide-preview-ref">${escapeHtml(slide.reference)}</div>` : ''}
+          </div>
         </div>
         <div class="slide-editor">
           <textarea class="slide-text-edit" data-index="${index}" placeholder="Texto do slide...">${escapeHtml(fullText)}</textarea>
@@ -173,7 +272,7 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       `;
 
-      // Event listeners for editor
+      // Listeners do editor do card
       const textEdit = card.querySelector('.slide-text-edit');
       const refEdit = card.querySelector('.slide-ref-edit');
       const btnDelete = card.querySelector('.btn-delete-slide');
@@ -196,77 +295,84 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Add new slide
-  btnAddSlide.addEventListener('click', () => {
-    currentSlides.push({
-      type: 'verse',
-      reference: 'Referência Bíblica',
-      runs: [{ text: '“Insira o texto do versículo ou tópico aqui.”', highlight: false }]
-    });
-    renderResults();
-  });
-
-  // Rebuild & Save
-  btnRebuild.addEventListener('click', async () => {
-    if (currentSlides.length === 0) {
-      showToast('Nenhum slide para salvar.', 'error');
-      return;
-    }
-
-    btnRebuild.disabled = true;
-    btnRebuild.textContent = 'Salvando...';
-
-    try {
-      const res = await fetch('/api/slides/rebuild', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          slides: currentSlides,
-          selectedBg: templateSelect.value
-        })
+  // Adicionar novo slide manual
+  if (btnAddSlide) {
+    btnAddSlide.addEventListener('click', () => {
+      currentSlides.push({
+        type: 'verse',
+        reference: 'Referência Bíblica',
+        runs: [{ text: '“Insira o texto do versículo ou tópico aqui.”', highlight: false }]
       });
-      const data = await res.json();
-
-      if (!res.ok || data.error) throw new Error(data.error || 'Erro ao reconstruir.');
-
-      currentDownloadUrl = data.downloadUrl;
-      showToast('Apresentação atualizada com sucesso!', 'success');
       renderResults();
-    } catch (err) {
-      showToast(err.message, 'error');
-    } finally {
-      btnRebuild.disabled = false;
-      btnRebuild.textContent = '💾 Salvar Edições';
-    }
-  });
+    });
+  }
+
+  // Salvar e reconstruir PPTX
+  if (btnRebuild) {
+    btnRebuild.addEventListener('click', async () => {
+      if (currentSlides.length === 0) {
+        showToast('Nenhum slide para salvar.', 'error');
+        return;
+      }
+
+      btnRebuild.disabled = true;
+      btnRebuild.textContent = 'Salvando...';
+
+      try {
+        const res = await fetch('/api/slides/rebuild', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            slides: currentSlides,
+            selectedBg: templateSelect ? templateSelect.value : '/assets/church_sermon_bg.png'
+          })
+        });
+        const data = await res.json();
+
+        if (!res.ok || data.error) throw new Error(data.error || 'Erro ao reconstruir.');
+
+        currentDownloadUrl = data.downloadUrl;
+        showToast('Apresentação atualizada com sucesso!', 'success');
+        renderResults();
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        btnRebuild.disabled = false;
+        btnRebuild.textContent = '💾 Salvar Edições';
+      }
+    });
+  }
 
   // Download PPTX
   function triggerDownload() {
     if (currentDownloadUrl) {
       window.open(currentDownloadUrl, '_blank');
     } else {
-      showToast('Nenhum arquivo para baixar.', 'error');
+      showToast('Nenhum arquivo pronto para download.', 'error');
     }
   }
 
-  btnDownloadTop.addEventListener('click', triggerDownload);
-  btnDownloadMain.addEventListener('click', triggerDownload);
+  if (btnDownloadTop) btnDownloadTop.addEventListener('click', triggerDownload);
+  if (btnDownloadMain) btnDownloadMain.addEventListener('click', triggerDownload);
 
-  // New Presentation
-  btnNewPresentation.addEventListener('click', () => {
-    inputSection.style.display = 'block';
-    resultsSection.style.display = 'none';
-    btnDownloadTop.style.display = 'none';
-    currentFile = null;
-    currentSlides = [];
-    currentDownloadUrl = null;
-    pdfFileInput.value = '';
-    sermonTextInput.value = '';
-    selectedFileInfo.style.display = 'none';
-  });
+  // Novo Documento
+  if (btnNewPresentation) {
+    btnNewPresentation.addEventListener('click', () => {
+      inputSection.style.display = 'block';
+      resultsSection.style.display = 'none';
+      if (btnDownloadTop) btnDownloadTop.style.display = 'none';
+      currentFile = null;
+      currentSlides = [];
+      currentDownloadUrl = null;
+      if (pdfFileInput) pdfFileInput.value = '';
+      if (sermonTextInput) sermonTextInput.value = '';
+      if (selectedFileInfo) selectedFileInfo.style.display = 'none';
+    });
+  }
 
-  // Utility
+  // Toast utilitário
   function showToast(msg, type = 'info') {
+    if (!toast) return;
     toast.textContent = msg;
     toast.className = `toast ${type}`;
     toast.style.display = 'block';

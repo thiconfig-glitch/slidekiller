@@ -1,7 +1,7 @@
 {
-  "name": "sermon-slide-generator",
-  "version": "1.0.0",
-  "description": "Gerador Automatizado de Slides em PowerPoint (16:9 Full HD) a partir de PDFs de Sermões e Cultos",
+  "name": "central-multimidia-church",
+  "version": "2.0.0",
+  "description": "Central Multimídia Church — Plataforma Modular de Mídia, Slides PPTX, Vídeo OpenCut e Projeção",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
