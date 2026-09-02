@@ -42,8 +42,9 @@ app.use('/downloads', express.static(downloadsDir));
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'online',
-    service: 'Sermon Slide Generator',
-    version: '1.0.0',
+    service: 'Central Multimídia Church',
+    version: '2.0.0',
+    modules: ['slidekiller', 'video-editor'],
     timestamp: new Date().toISOString()
   });
 });
@@ -176,7 +177,9 @@ app.get('/api/slides/templates', (req, res) => {
 
 app.listen(PORT, () => {
   console.log('================================================================');
-  console.log(`🚀 SERVIDOR DO GERADOR DE SLIDES ONLINE NA PORTA ${PORT}`);
+  console.log(`🏛️  CENTRAL MULTIMÍDIA CHURCH ONLINE NA PORTA ${PORT}`);
   console.log(`🌐 Acesse no navegador: http://localhost:${PORT}`);
+  console.log('   • ⚡ Módulo 1: Slide Killer (PPTX 16:9 Full HD)');
+  console.log('   • 🎬 Módulo 2: Editor de Vídeo (OpenCut Studio OSS)');
   console.log('================================================================');
 });

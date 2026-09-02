@@ -3,106 +3,199 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gerador de Slides de Sermão & Culto (16:9 Full HD)</title>
+  <title>Central Multimídia Church — Hub de Produção e Mídia</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=2.0.0">
 </head>
 <body>
-  <!-- Cabeçalho -->
+  <!-- Cabeçalho Principal do Hub -->
   <header class="app-header">
     <div class="header-left">
-      <div class="logo-badge">📖 PPTX</div>
-      <h1>Gerador de Slides de Sermão</h1>
-      <span class="version-tag">16:9 Full HD</span>
+      <div class="church-brand">
+        <span class="brand-icon">🏛️</span>
+        <div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <h1 class="brand-title">Central Multimídia Church</h1>
+            <span class="version-tag">v2.0.0</span>
+          </div>
+          <span class="brand-subtitle">Plataforma Unificada de Mídia & Culto</span>
+        </div>
+      </div>
     </div>
-    <div class="header-right">
-      <button class="btn btn-secondary" id="btn-new-presentation">Novo Documento</button>
-      <button class="btn btn-primary" id="btn-download-top" style="display: none;">
-        <span>📥</span> Baixar PowerPoint (.pptx)
+
+    <!-- Seletor de Módulos (Personalidades) -->
+    <nav class="hub-nav">
+      <button class="nav-module-btn active" data-module="slidekiller">
+        <span class="module-icon">⚡</span>
+        <span class="module-label">Slide Killer</span>
+        <span class="module-pill">PPTX 16:9</span>
       </button>
+
+      <button class="nav-module-btn" data-module="video-editor">
+        <span class="module-icon">🎬</span>
+        <span class="module-label">Editor de Vídeo</span>
+        <span class="module-pill pill-cyan">OpenCut</span>
+      </button>
+    </nav>
+
+    <div class="header-right">
+      <!-- Ações do Módulo Slide Killer -->
+      <div class="module-actions" id="actions-slidekiller">
+        <button class="btn btn-secondary" id="btn-new-presentation">Novo Documento</button>
+        <button class="btn btn-primary" id="btn-download-top" style="display: none;">
+          <span>📥</span> Baixar PowerPoint (.pptx)
+        </button>
+      </div>
+
+      <!-- Ações do Módulo Editor de Vídeo -->
+      <div class="module-actions" id="actions-video-editor" style="display: none;">
+        <button class="btn btn-secondary" id="btn-video-fullscreen" title="Expandir editor para tela cheia">
+          <span>⛶</span> Tela Cheia
+        </button>
+        <a href="https://opencut.app" target="_blank" rel="noopener noreferrer" class="btn btn-primary" id="btn-open-video-external">
+          <span>↗</span> Abrir no Navegador
+        </a>
+      </div>
     </div>
   </header>
 
   <main class="app-main">
-    <!-- Tela Inicial de Entrada (Upload / Texto) -->
-    <section class="input-section" id="input-section">
-      <div class="card hero-card">
-        <h2>Transforme Esboços e PDFs em Slides Profissionais</h2>
-        <p>Extração automática de versículos, destaque de palavras-chave, quebra de múltiplos versículos e tipografia padronizada em 16:9.</p>
-        
-        <div class="tabs">
-          <button class="tab-btn active" data-tab="tab-pdf">📄 Enviar Arquivo PDF</button>
-          <button class="tab-btn" data-tab="tab-text">✍️ Colar Texto / Esboço</button>
-        </div>
+    <!-- ========================================== -->
+    <!-- MÓDULO 1: SLIDE KILLER                     -->
+    <!-- ========================================== -->
+    <div class="module-view active" id="view-slidekiller">
+      <!-- Tela Inicial de Entrada (Upload / Texto) -->
+      <section class="input-section" id="input-section">
+        <div class="card hero-card">
+          <div class="module-header-badge">
+            <span class="badge-dot"></span>
+            <span>MÓDULO SLIDE KILLER • GERADOR INTELIGENTE</span>
+          </div>
+          <h2>Transforme Esboços e PDFs em Slides Profissionais</h2>
+          <p>Extração automática de versículos, destaque de palavras-chave, quebra de múltiplos versículos e tipografia padronizada em 16:9 Full HD.</p>
+          
+          <div class="tabs">
+            <button class="tab-btn active" data-tab="tab-pdf">📄 Enviar Arquivo PDF</button>
+            <button class="tab-btn" data-tab="tab-text">✍️ Colar Texto / Esboço</button>
+          </div>
 
-        <!-- Aba 1: Upload PDF -->
-        <div class="tab-content active" id="tab-pdf">
-          <div class="dropzone" id="dropzone">
-            <input type="file" id="pdf-file-input" accept=".pdf" style="display: none;">
-            <div class="dropzone-icon">📁</div>
-            <div class="dropzone-text">
-              <strong>Arraste o arquivo PDF do pastor aqui</strong>
-              <span>ou clique para selecionar do computador</span>
+          <!-- Aba 1: Upload PDF -->
+          <div class="tab-content active" id="tab-pdf">
+            <div class="dropzone" id="dropzone">
+              <input type="file" id="pdf-file-input" accept=".pdf" style="display: none;">
+              <div class="dropzone-icon">📁</div>
+              <div class="dropzone-text">
+                <strong>Arraste o arquivo PDF do pastor aqui</strong>
+                <span>ou clique para selecionar do computador</span>
+              </div>
+              <div class="selected-file-info" id="selected-file-info" style="display: none;">
+                <span class="file-name" id="file-name-display"></span>
+                <button class="btn-clear" id="btn-clear-file">✕</button>
+              </div>
             </div>
-            <div class="selected-file-info" id="selected-file-info" style="display: none;">
-              <span class="file-name" id="file-name-display"></span>
-              <button class="btn-clear" id="btn-clear-file">✕</button>
+          </div>
+
+          <!-- Aba 2: Colar Texto -->
+          <div class="tab-content" id="tab-text">
+            <textarea id="sermon-text-input" placeholder="Cole aqui o texto ou anotações do pastor com as referências bíblicas (ex: Mateus 6:19-21)..." rows="9"></textarea>
+          </div>
+
+          <!-- Opções Extras -->
+          <div class="options-bar">
+            <div class="option-item">
+              <label for="template-select">Plano de Fundo:</label>
+              <select id="template-select" class="form-select">
+                <option value="/assets/church_sermon_bg.png">Fundo Oficial da Igreja</option>
+              </select>
+            </div>
+            <div class="option-item">
+              <label class="checkbox-container">
+                <input type="checkbox" id="check-use-ai">
+                <span class="checkmark"></span>
+                Usar IA Gemini (Opcional)
+              </label>
             </div>
           </div>
-        </div>
 
-        <!-- Aba 2: Colar Texto -->
-        <div class="tab-content" id="tab-text">
-          <textarea id="sermon-text-input" placeholder="Cole aqui o texto ou anotações do pastor com as referências bíblicas (ex: Mateus 6:19-21)..." rows="9"></textarea>
+          <button class="btn btn-action" id="btn-generate">
+            <span class="btn-icon">⚡</span> Gerar Slides Instantaneamente
+          </button>
         </div>
+      </section>
 
-        <!-- Opções Extras -->
-        <div class="options-bar">
-          <div class="option-item">
-            <label for="template-select">Plano de Fundo:</label>
-            <select id="template-select" class="form-select">
-              <option value="/assets/church_sermon_bg.png">Fundo Oficial da Igreja</option>
-            </select>
+      <!-- Tela de Resultados e Edição -->
+      <section class="results-section" id="results-section" style="display: none;">
+        <div class="results-header">
+          <div class="results-info">
+            <h2 id="results-title">Slides Gerados</h2>
+            <span class="badge" id="slide-count-badge">0 slides</span>
           </div>
-          <div class="option-item">
-            <label class="checkbox-container">
-              <input type="checkbox" id="check-use-ai">
-              <span class="checkmark"></span>
-              Usar IA Gemini (Opcional)
-            </label>
+          <div class="results-actions">
+            <button class="btn btn-secondary" id="btn-add-slide">+ Novo Slide</button>
+            <button class="btn btn-secondary" id="btn-rebuild">💾 Salvar Edições</button>
+            <button class="btn btn-primary" id="btn-download-main">📥 Baixar .pptx</button>
           </div>
         </div>
 
-        <button class="btn btn-action" id="btn-generate">
-          <span class="btn-icon">⚡</span> Gerar Slides Instantaneamente
-        </button>
-      </div>
-    </section>
+        <!-- Grid de Slides -->
+        <div class="slides-grid" id="slides-grid"></div>
+      </section>
+    </div>
 
-    <!-- Tela de Resultados e Edição -->
-    <section class="results-section" id="results-section" style="display: none;">
-      <div class="results-header">
-        <div class="results-info">
-          <h2 id="results-title">Slides Gerados</h2>
-          <span class="badge" id="slide-count-badge">0 slides</span>
+    <!-- ========================================== -->
+    <!-- MÓDULO 2: EDITOR DE VÍDEO (OPENCUT)         -->
+    <!-- ========================================== -->
+    <div class="module-view" id="view-video-editor">
+      <div class="video-module-container" id="video-container">
+        <!-- Barra de Status e Controles do Editor de Vídeo -->
+        <div class="video-toolbar">
+          <div class="toolbar-info">
+            <div class="video-brand-badge">
+              <span class="rec-dot"></span>
+              <strong>OpenCut Studio</strong>
+              <span class="oss-tag">CapCut Alternative OSS</span>
+            </div>
+            <div class="toolbar-tips">
+              <span>✂️ Edição com timeline</span>
+              <span>⚡ Sem marcas d'água</span>
+              <span>🎞️ Exportação Full HD</span>
+              <span>🔒 100% no seu navegador</span>
+            </div>
+          </div>
+          <div class="toolbar-controls">
+            <button class="btn-icon-control" id="btn-reload-video" title="Recarregar Editor">
+              🔄 Recarregar
+            </button>
+            <button class="btn-icon-control" id="btn-expand-canvas" title="Modo Foco / Maximizar">
+              ⛶ Maximizar
+            </button>
+          </div>
         </div>
-        <div class="results-actions">
-          <button class="btn btn-secondary" id="btn-add-slide">+ Novo Slide</button>
-          <button class="btn btn-secondary" id="btn-rebuild">💾 Salvar Edições</button>
-          <button class="btn btn-primary" id="btn-download-main">📥 Baixar .pptx</button>
+
+        <!-- Iframe do Editor OpenCut -->
+        <div class="video-frame-wrapper" id="video-frame-wrapper">
+          <iframe 
+            id="opencut-iframe" 
+            src="https://opencut.app" 
+            title="OpenCut Video Editor"
+            allow="camera; microphone; display-capture; autoplay; clipboard-read; clipboard-write; fullscreen"
+            sandbox="allow-scripts allow-same-origin allow-forms allow-downloads allow-modals allow-popups"
+            loading="lazy">
+          </iframe>
+          <div class="iframe-loading-overlay" id="iframe-loading">
+            <div class="spinner"></div>
+            <p>Carregando OpenCut Video Studio...</p>
+          </div>
         </div>
       </div>
-
-      <!-- Grid de Slides -->
-      <div class="slides-grid" id="slides-grid"></div>
-    </section>
+    </div>
 
     <!-- Modal / Toast de Notificação -->
     <div id="toast" class="toast"></div>
   </main>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=2.0.0"></script>
 </body>
 </html>
