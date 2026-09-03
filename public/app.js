@@ -76,6 +76,24 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnVideoFullscreen) btnVideoFullscreen.addEventListener('click', toggleVideoFullscreen);
   if (btnExpandCanvas) btnExpandCanvas.addEventListener('click', toggleVideoFullscreen);
 
+  // Alternância entre tela de boas-vindas da igreja e editor ativo
+  const videoWelcomeScreen = document.getElementById('video-welcome-screen');
+  const btnBackToVideoWelcome = document.getElementById('btn-back-to-video-welcome');
+
+  window.openPublicVideoEditor = function(preset) {
+    if (videoWelcomeScreen) videoWelcomeScreen.style.display = 'none';
+    if (videoContainer) videoContainer.style.display = 'flex';
+  };
+
+  window.closePublicVideoEditor = function() {
+    if (videoContainer) videoContainer.style.display = 'none';
+    if (videoWelcomeScreen) videoWelcomeScreen.style.display = 'flex';
+  };
+
+  if (btnBackToVideoWelcome) {
+    btnBackToVideoWelcome.addEventListener('click', window.closePublicVideoEditor);
+  }
+
   // Tecla ESC para sair do modo foco no vídeo
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && videoContainer && videoContainer.classList.contains('fullscreen-focus')) {

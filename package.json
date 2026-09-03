@@ -1,6 +1,6 @@
 {
   "name": "central-multimidia-church",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Central Multimídia Church — Plataforma Modular de Mídia, Slides PPTX, Vídeo OpenCut e Projeção",
   "main": "server.js",
   "scripts": {
