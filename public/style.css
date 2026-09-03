@@ -616,6 +616,79 @@ textarea:focus {
 /* ================================================= */
 /* MÓDULO 2: EDITOR DE VÍDEO (OPENCUT)               */
 /* ================================================= */
+.video-welcome-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  max-width: 960px;
+  margin: 0 auto;
+  width: 100%;
+  text-align: center;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.video-welcome-container h2 {
+  font-size: 32px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 12px;
+  letter-spacing: -0.5px;
+}
+
+.video-presets-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 18px;
+  width: 100%;
+  margin-top: 10px;
+  margin-bottom: 30px;
+}
+
+.preset-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.preset-card:hover {
+  border-color: var(--accent-cyan);
+  transform: translateY(-3px);
+  box-shadow: 0 10px 25px rgba(6, 182, 212, 0.15);
+}
+
+.preset-icon {
+  font-size: 28px;
+  margin-bottom: 12px;
+}
+
+.preset-card h3 {
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.preset-card p {
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.video-welcome-features {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  margin-top: 28px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
 .video-module-container {
   display: flex;
   flex-direction: column;

@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=2.0.0">
+  <link rel="stylesheet" href="style.css?v=2.1.0">
 </head>
 <body>
   <!-- Cabeçalho Principal do Hub -->
@@ -18,7 +18,7 @@
         <div>
           <div style="display: flex; align-items: center; gap: 8px;">
             <h1 class="brand-title">Central Multimídia Church</h1>
-            <span class="version-tag">v2.0.0</span>
+            <span class="version-tag">v2.1.0</span>
           </div>
           <span class="brand-subtitle">Plataforma Unificada de Mídia & Culto</span>
         </div>
@@ -148,20 +148,68 @@
     <!-- MÓDULO 2: EDITOR DE VÍDEO (OPENCUT)         -->
     <!-- ========================================== -->
     <div class="module-view" id="view-video-editor">
-      <div class="video-module-container" id="video-container">
+      <!-- Tela de Entrada com Identidade da Igreja -->
+      <div id="video-welcome-screen" class="video-welcome-container">
+        <div class="module-header-badge">
+          <span class="badge-dot" style="background-color: var(--accent-cyan); box-shadow: 0 0 8px var(--accent-cyan);"></span>
+          <span>CENTRAL MULTIMÍDIA CHURCH • VÍDEO STUDIO</span>
+        </div>
+        <h2>Estúdio de Edição & Cortes de Culto</h2>
+        <p class="section-desc">Crie cortes de pregações, reels para redes sociais e clipes de louvor direto no navegador, com timeline profissional, sem filas e sem marcas d'água.</p>
+
+        <!-- Cards de Presets da Igreja -->
+        <div class="video-presets-grid">
+          <div class="preset-card" onclick="openPublicVideoEditor('pregação')">
+            <div class="preset-icon">✂️</div>
+            <h3>Cortes de Pregação (16:9)</h3>
+            <p>Formato widescreen para YouTube, avisos e melhores momentos da mensagem pastoral.</p>
+          </div>
+
+          <div class="preset-card" onclick="openPublicVideoEditor('reels')">
+            <div class="preset-icon">📱</div>
+            <h3>Reels & Shorts (9:16)</h3>
+            <p>Formato vertical otimizado para Instagram, TikTok e stories com frases fortes de fé.</p>
+          </div>
+
+          <div class="preset-card" onclick="openPublicVideoEditor('louvor')">
+            <div class="preset-icon">🎵</div>
+            <h3>Música & Louvor</h3>
+            <p>Edição de solos, introduções de ministração, louvores e testemunhos.</p>
+          </div>
+        </div>
+
+        <!-- Botão Principal -->
+        <div style="margin-top: 24px;">
+          <button class="btn btn-action" onclick="openPublicVideoEditor('geral')" style="max-width: 360px; margin: 0 auto; display: flex;">
+            <span>🚀</span> Abrir Estúdio de Edição Completo
+          </button>
+        </div>
+
+        <div class="video-welcome-features">
+          <span>🔒 100% no seu Navegador</span>
+          <span>•</span>
+          <span>🎞️ Exportação Full HD</span>
+          <span>•</span>
+          <span>⚡ Sem Marcas d'água</span>
+        </div>
+      </div>
+
+      <!-- Workspace com Submenu e Editor OpenCut -->
+      <div class="video-module-container" id="video-container" style="display: none;">
         <!-- Barra de Status e Controles do Editor de Vídeo -->
         <div class="video-toolbar">
           <div class="toolbar-info">
+            <button class="btn btn-secondary" id="btn-back-to-video-welcome" style="padding: 4px 10px; font-size: 12px;">
+              <span>⬅</span> Voltar ao Painel
+            </button>
             <div class="video-brand-badge">
               <span class="rec-dot"></span>
-              <strong>OpenCut Studio</strong>
-              <span class="oss-tag">CapCut Alternative OSS</span>
+              <strong>Central Multimídia Church Studio</strong>
+              <span class="oss-tag">OpenCut OSS</span>
             </div>
             <div class="toolbar-tips">
-              <span>✂️ Edição com timeline</span>
+              <span>✂️ Timeline Multi-pistas</span>
               <span>⚡ Sem marcas d'água</span>
-              <span>🎞️ Exportação Full HD</span>
-              <span>🔒 100% no seu navegador</span>
             </div>
           </div>
           <div class="toolbar-controls">
@@ -196,6 +244,6 @@
     <div id="toast" class="toast"></div>
   </main>
 
-  <script src="app.js?v=2.0.0"></script>
+  <script src="app.js?v=2.1.0"></script>
 </body>
 </html>
