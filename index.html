@@ -144,6 +144,7 @@
         }
         .mini-drag-grip { color: #a1a1aa; font-size: 13px; cursor: move; padding: 2px 4px; display: flex; align-items: center; transition: color 0.15s; }
         .mini-drag-grip:hover { color: #ffffff; }
+        .mini-drag-grip svg { pointer-events: none; }
         .mini-group { display: flex; align-items: center; gap: 2px; }
         .mini-divider { width: 1px; height: 18px; background: rgba(255, 255, 255, 0.15); margin: 0 3px; }
         .mini-btn {
@@ -151,14 +152,16 @@
             padding: 3px 6px; font-size: 12px; line-height: 1; cursor: pointer; display: inline-flex;
             align-items: center; justify-content: center; transition: all 0.12s ease; min-width: 24px; height: 24px;
         }
+        .mini-btn svg { display: block; pointer-events: none; }
         .mini-btn:hover { background: rgba(255, 255, 255, 0.12); color: #ffffff; border-color: rgba(255, 255, 255, 0.2); }
         .mini-btn.active { background: var(--primary); color: #ffffff; border-color: var(--primary); }
         .mini-btn-gold {
-            color: #E8B859; font-weight: 700; font-size: 11px; background: rgba(232, 184, 89, 0.15);
-            border-color: rgba(232, 184, 89, 0.4); padding: 3px 8px;
+            color: #E8B859; font-weight: 600; font-size: 11px; background: rgba(232, 184, 89, 0.15);
+            border-color: rgba(232, 184, 89, 0.4); padding: 3px 8px; gap: 4px;
         }
         .mini-btn-gold:hover { background: #E8B859; color: #000000; border-color: #E8B859; box-shadow: 0 0 10px rgba(232, 184, 89, 0.4); }
-        .mini-btn-del:hover { background: rgba(239, 68, 68, 0.25); color: #f87171; border-color: rgba(239, 68, 68, 0.4); }
+        .mini-btn-gold:hover svg { fill: #000000; stroke: #000000; }
+        .mini-btn-del:hover { background: rgba(239, 68, 68, 0.22); color: #ef4444; border-color: rgba(239, 68, 68, 0.4); }
         .mini-select {
             background: #18181b; color: #f4f4f5; border: 1px solid rgba(255, 255, 255, 0.2);
             border-radius: 5px; padding: 2px 4px; font-size: 11px; height: 24px; outline: none; max-width: 105px;
@@ -322,8 +325,9 @@
                 </label>
                 <!-- Ações Rápidas de Formatação -->
                 <div style="display:flex; gap:6px; align-items:center;">
-                    <button type="button" class="btn btn-outline" style="padding:3px 8px; font-size:11px; color:#E8B859; border-color:#E8B859;" onclick="highlightSelectionInVerseModal()" title="Envolver palavra selecionada com destaque dourado">
-                        ⭐ Destaque Dourado
+                    <button type="button" class="btn btn-outline" style="padding:3px 8px; font-size:11px; color:#E8B859; border-color:#E8B859; display:flex; align-items:center; gap:4px;" onclick="highlightSelectionInVerseModal()" title="Envolver palavra selecionada com destaque (#E8B859)">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="#E8B859"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                        <span>Destacar</span>
                     </button>
                     <button type="button" class="btn btn-outline" style="padding:3px 8px; font-size:11px;" onclick="toggleQuotesInVerseModal()" title="Colocar ou tirar aspas">
                         “ ” Aspas
@@ -336,7 +340,7 @@
                 </div>
             </div>
 
-            <textarea id="verseTextInput" rows="5" class="prop-input" style="width:100%; box-sizing:border-box; font-family:'Inter', sans-serif; font-size:13px; line-height:1.4;" placeholder="Digite, cole ou busque o texto do versículo. Para destacar palavras em dourado, selecione a palavra e clique no botão '⭐ Destaque Dourado' acima."></textarea>
+            <textarea id="verseTextInput" rows="5" class="prop-input" style="width:100%; box-sizing:border-box; font-family:'Inter', sans-serif; font-size:13px; line-height:1.4;" placeholder="Digite, cole ou busque o texto do versículo. Para destacar palavras, selecione o trecho e clique no botão 'Destacar' acima."></textarea>
             
             <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
                 <div style="display:flex; align-items:center; gap:8px;">
@@ -447,7 +451,10 @@
                         </div>
                     </div>
                     <div class="action-row">
-                        <button class="btn btn-danger" style="flex:1;" onclick="deleteCurrentSlide()">🗑️ Excluir Slide</button>
+                        <button class="btn btn-danger" style="flex:1; display:flex; align-items:center; justify-content:center; gap:6px;" onclick="deleteCurrentSlide()">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                            <span>Excluir Slide</span>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -497,8 +504,9 @@
                             </div>
                         </div>
                         <div class="prop-group" style="margin-top:8px; margin-bottom:8px;">
-                            <button type="button" class="btn" style="width:100%; background:rgba(232,184,89,0.15); color:#e8b859; border:1px solid #e8b859; font-size:11px; padding:7px 10px; justify-content:center;" onclick="quickHighlightCurrentSelection()" title="Destacar trecho ou palavra selecionada em dourado">
-                                ⭐ Destacar em Dourado (#E8B859)
+                            <button type="button" class="btn" style="width:100%; background:rgba(232,184,89,0.15); color:#e8b859; border:1px solid #e8b859; font-size:11px; padding:7px 10px; justify-content:center; display:flex; align-items:center; gap:6px;" onclick="quickHighlightCurrentSelection()" title="Destacar trecho ou palavra selecionada (#E8B859)">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="#E8B859"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                                <span>Destacar Seleção (#E8B859)</span>
                             </button>
                         </div>
                         <div class="prop-grid">
@@ -670,7 +678,11 @@
     tfBox.id = 'transform-box';
     tfBox.innerHTML = `
         <div class="tf-drag-bar" data-action="move" title="Arraste para mover o texto">
-            <span class="tf-drag-icon">⠿</span>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" style="opacity:0.95;">
+                <circle cx="9" cy="6" r="2.5"/><circle cx="15" cy="6" r="2.5"/>
+                <circle cx="9" cy="12" r="2.5"/><circle cx="15" cy="12" r="2.5"/>
+                <circle cx="9" cy="18" r="2.5"/><circle cx="15" cy="18" r="2.5"/>
+            </svg>
             <span class="tf-drag-label">Mover</span>
         </div>
         <div class="tf-edge tf-edge-n" data-action="move" title="Arraste a borda para mover"></div>
@@ -685,13 +697,19 @@
     `;
     slideCanvas.appendChild(tfBox);
 
-    // Setup Barra Flutuante de Formatação (PowerPoint Mini Toolbar)
+    // Setup Barra Flutuante de Formatação (Canva / PowerPoint Mini Toolbar)
     const miniBar = document.createElement('div');
     miniBar.id = 'floating-mini-bar';
     miniBar.className = 'mini-toolbar';
     miniBar.style.display = 'none';
     miniBar.innerHTML = `
-        <div class="mini-drag-grip" id="miniDragGrip" title="Arraste para mover">⠿</div>
+        <div class="mini-drag-grip" id="miniDragGrip" title="Arraste para mover">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="9" cy="6" r="2"/><circle cx="15" cy="6" r="2"/>
+                <circle cx="9" cy="12" r="2"/><circle cx="15" cy="12" r="2"/>
+                <circle cx="9" cy="18" r="2"/><circle cx="15" cy="18" r="2"/>
+            </svg>
+        </div>
         <div class="mini-group mini-text-only">
             <select id="miniFont" class="mini-select" title="Fonte">
                 <option value="Bahnschrift SemiBold Condensed">Bahnschrift</option>
@@ -702,34 +720,57 @@
         </div>
         <div class="mini-divider mini-text-only"></div>
         <div class="mini-group mini-text-only">
-            <button type="button" class="mini-btn" id="miniDecSize" title="Diminuir Fonte (A-)">A⁻</button>
+            <button type="button" class="mini-btn" id="miniDecSize" title="Diminuir Fonte (A-)">
+                <span style="font-size:12px; font-weight:700; display:inline-flex; align-items:center;">A<span style="font-size:10px; margin-left:1px;">−</span></span>
+            </button>
             <input type="number" id="miniSizeInput" class="mini-input-size" min="12" max="180" step="2" title="Tamanho da Fonte (pt)">
-            <button type="button" class="mini-btn" id="miniIncSize" title="Aumentar Fonte (A+)">A⁺</button>
+            <button type="button" class="mini-btn" id="miniIncSize" title="Aumentar Fonte (A+)">
+                <span style="font-size:12px; font-weight:700; display:inline-flex; align-items:center;">A<span style="font-size:11px; margin-left:1px;">+</span></span>
+            </button>
         </div>
         <div class="mini-divider mini-text-only"></div>
         <div class="mini-group mini-text-only">
-            <button type="button" class="mini-btn" id="miniBold" title="Negrito (B)"><b>B</b></button>
-            <button type="button" class="mini-btn" id="miniItalic" title="Itálico (I)"><i>I</i></button>
-            <button type="button" class="mini-btn mini-btn-gold" id="miniGold" title="Destaque Dourado ⭐ (#E8B859)">⭐ Dourado</button>
+            <button type="button" class="mini-btn" id="miniBold" title="Negrito (B)" style="font-family:serif; font-weight:900; font-size:13px;">B</button>
+            <button type="button" class="mini-btn" id="miniItalic" title="Itálico (I)" style="font-family:serif; font-style:italic; font-weight:700; font-size:13px;">I</button>
+            <button type="button" class="mini-btn mini-btn-gold" id="miniGold" title="Destacar seleção (#E8B859)" style="display:flex; align-items:center; gap:5px;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="#E8B859" stroke="#E8B859" stroke-width="1"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <span>Destacar</span>
+            </button>
         </div>
         <div class="mini-divider mini-text-only"></div>
         <div class="mini-group mini-text-only">
             <label class="mini-color-btn" title="Cor do Texto">
-                <span>🎨</span>
+                <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; width:100%;">
+                    <span style="font-weight:900; font-size:12px; line-height:1; font-family:'Inter', sans-serif;">A</span>
+                    <div id="miniColorBar" style="width:13px; height:3px; background:#ffffff; border-radius:1.5px; box-shadow:0 0 2px rgba(0,0,0,0.5);"></div>
+                </div>
                 <input type="color" id="miniColor" style="position:absolute; opacity:0; width:0; height:0; pointer-events:none;">
             </label>
-            <button type="button" class="mini-btn" id="miniAlignL" title="Alinhar à Esquerda">⫷</button>
-            <button type="button" class="mini-btn" id="miniAlignC" title="Centralizar">≡</button>
-            <button type="button" class="mini-btn" id="miniAlignR" title="Alinhar à Direita">⫸</button>
+            <button type="button" class="mini-btn" id="miniAlignL" title="Alinhar à Esquerda">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="18" y2="18"/></svg>
+            </button>
+            <button type="button" class="mini-btn" id="miniAlignC" title="Centralizar">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="6" y1="12" x2="18" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+            </button>
+            <button type="button" class="mini-btn" id="miniAlignR" title="Alinhar à Direita">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="9" y1="12" x2="21" y2="12"/><line x1="6" y1="18" x2="21" y2="18"/></svg>
+            </button>
         </div>
         <div class="mini-divider mini-text-only"></div>
         <div class="mini-group mini-text-only">
-            <button type="button" class="mini-btn" id="miniSelectAll" title="Selecionar Todo o Texto (Ctrl+A)">🔤 Tudo</button>
+            <button type="button" class="mini-btn" id="miniSelectAll" title="Selecionar Todo o Texto (Ctrl+A)" style="display:flex; align-items:center; gap:4px; font-size:11px; font-weight:600; padding:3px 7px;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+                <span>Tudo</span>
+            </button>
         </div>
         <div class="mini-divider"></div>
         <div class="mini-group">
-            <button type="button" class="mini-btn" id="miniClone" title="Duplicar (Ctrl+D)">📑</button>
-            <button type="button" class="mini-btn mini-btn-del" id="miniDel" title="Excluir Elemento">🗑️</button>
+            <button type="button" class="mini-btn" id="miniClone" title="Duplicar (Ctrl+D)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            </button>
+            <button type="button" class="mini-btn mini-btn-del" id="miniDel" title="Excluir Elemento">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+            </button>
         </div>
     `;
     slideCanvas.appendChild(miniBar);
@@ -1174,7 +1215,7 @@
             if (el.content.includes('[HL]')) {
                 el.content = el.content.replace(/\[\/?HL\]/gi, '');
             } else {
-                const word = prompt('Digite a palavra ou frase que deseja destacar em dourado (#E8B859) (ou deixe em branco para destacar todo o texto):', '');
+                const word = prompt('Digite a palavra ou frase que deseja destacar (ou deixe em branco para destacar todo o texto):', '');
                 if (word !== null) {
                     if (word.trim()) {
                         const w = word.trim();
@@ -1234,6 +1275,8 @@
 
             const miniColor = document.getElementById('miniColor');
             if (miniColor) miniColor.value = el.color || '#ffffff';
+            const miniColorBar = document.getElementById('miniColorBar');
+            if (miniColorBar) miniColorBar.style.background = el.color || '#ffffff';
 
             const miniAlignL = document.getElementById('miniAlignL');
             const miniAlignC = document.getElementById('miniAlignC');
@@ -1287,6 +1330,8 @@
                 updateElProp('color', miniColor.value);
                 const sideColor = document.getElementById('elColor');
                 if (sideColor) sideColor.value = miniColor.value;
+                const miniColorBar = document.getElementById('miniColorBar');
+                if (miniColorBar) miniColorBar.style.background = miniColor.value;
             };
         }
 
