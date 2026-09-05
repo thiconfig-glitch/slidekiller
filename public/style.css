@@ -989,3 +989,135 @@ textarea:focus {
     display: none;
   }
 }
+
+/* ================================================= */
+/* MÓDULO CONVERSOR DIRETO PDF ➔ PPTX (1:1)          */
+/* ================================================= */
+.pill-gold {
+  background: rgba(232, 184, 89, 0.2) !important;
+  color: var(--primary) !important;
+  border: 1px solid rgba(232, 184, 89, 0.4) !important;
+}
+
+.direct-shortcut-banner {
+  background: rgba(232, 184, 89, 0.08);
+  border: 1px solid rgba(232, 184, 89, 0.25);
+  border-radius: 10px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  font-size: 13px;
+  color: #f1f5f9;
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: 6px;
+}
+
+.btn-outline-gold {
+  background: transparent;
+  border: 1px solid var(--primary);
+  color: var(--primary);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn-outline-gold:hover {
+  background: var(--primary);
+  color: #000;
+}
+
+.direct-progress-box {
+  background: rgba(19, 27, 46, 0.8);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 18px;
+  margin-top: 18px;
+}
+
+.progress-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  margin-bottom: 8px;
+  color: var(--text-muted);
+}
+
+.progress-info span:first-child {
+  color: #fff;
+  font-weight: 500;
+}
+
+.progress-bar-bg {
+  background: #090d16;
+  border-radius: 10px;
+  height: 10px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.progress-bar-fill {
+  background: linear-gradient(90deg, var(--primary), #ffd978);
+  height: 100%;
+  width: 0%;
+  border-radius: 10px;
+  transition: width 0.2s ease-in-out;
+  box-shadow: 0 0 10px rgba(232, 184, 89, 0.6);
+}
+
+.direct-page-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.2s, border-color 0.2s;
+}
+
+.direct-page-card:hover {
+  border-color: var(--primary);
+  transform: translateY(-2px);
+}
+
+.direct-page-preview {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.direct-page-preview img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.direct-page-meta {
+  padding: 10px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  border-top: 1px solid var(--border);
+  background: rgba(9, 13, 22, 0.4);
+}
+
+.direct-page-badge {
+  background: rgba(232, 184, 89, 0.15);
+  color: var(--primary);
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+}

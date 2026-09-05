@@ -43,8 +43,8 @@ app.get('/api/health', (req, res) => {
   res.json({
     status: 'online',
     service: 'Central Multimídia Church',
-    version: '2.1.0',
-    modules: ['slidekiller', 'video-editor'],
+    version: '2.2.0',
+    modules: ['slidekiller', 'pdf-to-pptx', 'video-editor'],
     timestamp: new Date().toISOString()
   });
 });
@@ -180,6 +180,7 @@ app.listen(PORT, () => {
   console.log(`🏛️  CENTRAL MULTIMÍDIA CHURCH ONLINE NA PORTA ${PORT}`);
   console.log(`🌐 Acesse no navegador: http://localhost:${PORT}`);
   console.log('   • ⚡ Módulo 1: Slide Killer (PPTX 16:9 Full HD)');
-  console.log('   • 🎬 Módulo 2: Editor de Vídeo (OpenCut Studio OSS)');
+  console.log('   • 📄 Módulo 2: PDF ➔ PPTX Direto (1 Pág = 1 Slide 100% Fiel)');
+  console.log('   • 🎬 Módulo 3: Editor de Vídeo (OpenCut Studio OSS)');
   console.log('================================================================');
 });

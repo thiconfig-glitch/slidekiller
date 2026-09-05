@@ -7,7 +7,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=2.1.0">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/libs/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/dist/pptxgen.min.js"></script>
+  <link rel="stylesheet" href="style.css?v=2.2.0">
 </head>
 <body>
   <!-- Cabeçalho Principal do Hub -->
@@ -18,7 +21,7 @@
         <div>
           <div style="display: flex; align-items: center; gap: 8px;">
             <h1 class="brand-title">Central Multimídia Church</h1>
-            <span class="version-tag">v2.1.0</span>
+            <span class="version-tag">v2.2.0</span>
           </div>
           <span class="brand-subtitle">Plataforma Unificada de Mídia & Culto</span>
         </div>
@@ -30,7 +33,13 @@
       <button class="nav-module-btn active" data-module="slidekiller">
         <span class="module-icon">⚡</span>
         <span class="module-label">Slide Killer</span>
-        <span class="module-pill">PPTX 16:9</span>
+        <span class="module-pill">Sermões</span>
+      </button>
+
+      <button class="nav-module-btn" data-module="pdf-to-pptx">
+        <span class="module-icon">📄</span>
+        <span class="module-label">PDF ➔ PPTX Direto</span>
+        <span class="module-pill pill-gold">1 Pág = 1 Slide</span>
       </button>
 
       <button class="nav-module-btn" data-module="video-editor">
@@ -45,6 +54,14 @@
       <div class="module-actions" id="actions-slidekiller">
         <button class="btn btn-secondary" id="btn-new-presentation">Novo Documento</button>
         <button class="btn btn-primary" id="btn-download-top" style="display: none;">
+          <span>📥</span> Baixar PowerPoint (.pptx)
+        </button>
+      </div>
+
+      <!-- Ações do Módulo PDF ➔ PPTX Direto -->
+      <div class="module-actions" id="actions-pdf-to-pptx" style="display: none;">
+        <button class="btn btn-secondary" id="btn-new-direct-top">Novo PDF</button>
+        <button class="btn btn-primary" id="btn-download-direct-top" style="display: none;">
           <span>📥</span> Baixar PowerPoint (.pptx)
         </button>
       </div>
@@ -76,6 +93,11 @@
           <h2>Transforme Esboços e PDFs em Slides Profissionais</h2>
           <p>Extração automática de versículos, destaque de palavras-chave, quebra de múltiplos versículos e tipografia padronizada em 16:9 Full HD.</p>
           
+          <div class="direct-shortcut-banner" id="banner-goto-direct">
+            <span>💡 <strong>Precisa de conversão 1:1?</strong> Transforme cada página do PDF diretamente em um slide do PowerPoint sem alterar nada.</span>
+            <button type="button" class="btn btn-sm btn-outline-gold" id="btn-switch-to-direct">Ir para Conversor Direto ➔</button>
+          </div>
+
           <div class="tabs">
             <button class="tab-btn active" data-tab="tab-pdf">📄 Enviar Arquivo PDF</button>
             <button class="tab-btn" data-tab="tab-text">✍️ Colar Texto / Esboço</button>
@@ -141,6 +163,85 @@
 
         <!-- Grid de Slides -->
         <div class="slides-grid" id="slides-grid"></div>
+      </section>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MÓDULO 2: PDF ➔ PPTX DIRETO (1:1)          -->
+    <!-- ========================================== -->
+    <div class="module-view" id="view-pdf-to-pptx">
+      <section class="input-section" id="section-direct-input">
+        <div class="card hero-card">
+          <div class="module-header-badge">
+            <span class="badge-dot" style="background-color: var(--primary); box-shadow: 0 0 8px var(--primary);"></span>
+            <span>MÓDULO CONVERSOR DIRETO • 1 PÁGINA = 1 SLIDE</span>
+          </div>
+          <h2>Conversão Direta de PDF para PowerPoint</h2>
+          <p>Anexe qualquer PDF e receba uma apresentação .pptx onde cada página do PDF se torna exatamente um slide em alta resolução Full HD, sem extração ou alteração de texto. Pronto para telões e softwares de projeção.</p>
+
+          <div class="dropzone" id="dropzone-direct">
+            <input type="file" id="pdf-direct-input" accept=".pdf" style="display: none;">
+            <div class="dropzone-icon">📄</div>
+            <div class="dropzone-text">
+              <strong>Arraste o arquivo PDF aqui</strong>
+              <span>ou clique para selecionar do computador</span>
+            </div>
+            <div class="selected-file-info" id="direct-file-info" style="display: none;">
+              <span class="file-name" id="direct-file-name"></span>
+              <button class="btn-clear" id="btn-clear-direct-file">✕</button>
+            </div>
+          </div>
+
+          <!-- Opções do Conversor Direto -->
+          <div class="options-bar" style="margin-top: 18px;">
+            <div class="option-item">
+              <label for="direct-aspect-select">Proporção dos Slides:</label>
+              <select id="direct-aspect-select" class="form-select">
+                <option value="16x9">Widescreen 16:9 Full HD (Padrão Telão)</option>
+                <option value="original">Proporção Original do PDF (Fiel às Páginas)</option>
+              </select>
+            </div>
+            <div class="option-item">
+              <label for="direct-fit-select">Ajuste da Página no Slide:</label>
+              <select id="direct-fit-select" class="form-select">
+                <option value="contain">Ajustar ao Slide com Fundo Escuro (Sem cortes)</option>
+                <option value="cover">Preencher Slide Completo (100% Full Cover)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Barra de Progresso da Conversão -->
+          <div id="direct-progress-container" class="direct-progress-box" style="display: none;">
+            <div class="progress-info">
+              <span id="direct-progress-status">Preparando conversão...</span>
+              <span id="direct-progress-percent">0%</span>
+            </div>
+            <div class="progress-bar-bg">
+              <div class="progress-bar-fill" id="direct-progress-bar" style="width: 0%;"></div>
+            </div>
+          </div>
+
+          <button class="btn btn-action" id="btn-convert-direct" style="margin-top: 18px;">
+            <span class="btn-icon">⚡</span> Converter para PPTX Instantaneamente
+          </button>
+        </div>
+      </section>
+
+      <!-- Seção de Resultados da Conversão Direta -->
+      <section class="results-section" id="section-direct-results" style="display: none;">
+        <div class="results-header">
+          <div class="results-info">
+            <h2 id="direct-results-title">Apresentação Convertida</h2>
+            <span class="badge" id="direct-slide-count-badge">0 slides</span>
+          </div>
+          <div class="results-actions">
+            <button class="btn btn-secondary" id="btn-new-direct-main">Converter Outro PDF</button>
+            <button class="btn btn-primary" id="btn-download-direct-main">📥 Baixar PowerPoint (.pptx)</button>
+          </div>
+        </div>
+
+        <!-- Grid de Miniaturas das Páginas -->
+        <div class="slides-grid" id="direct-slides-grid"></div>
       </section>
     </div>
 
@@ -244,6 +345,6 @@
     <div id="toast" class="toast"></div>
   </main>
 
-  <script src="app.js?v=2.1.0"></script>
+  <script src="app.js?v=2.2.0"></script>
 </body>
 </html>
