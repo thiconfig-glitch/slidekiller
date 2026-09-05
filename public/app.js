@@ -5,31 +5,38 @@ document.addEventListener('DOMContentLoaded', () => {
   const navModuleBtns = document.querySelectorAll('.nav-module-btn');
   const moduleViews = {
     'slidekiller': document.getElementById('view-slidekiller'),
+    'pdf-to-pptx': document.getElementById('view-pdf-to-pptx'),
     'video-editor': document.getElementById('view-video-editor')
   };
   const moduleActions = {
     'slidekiller': document.getElementById('actions-slidekiller'),
+    'pdf-to-pptx': document.getElementById('actions-pdf-to-pptx'),
     'video-editor': document.getElementById('actions-video-editor')
   };
+
+  function switchModule(targetModule) {
+    if (!targetModule || !moduleViews[targetModule]) return;
+
+    // Atualiza botões da navegação
+    navModuleBtns.forEach(b => {
+      b.classList.toggle('active', b.dataset.module === targetModule);
+    });
+
+    // Alterna visualização dos módulos
+    Object.keys(moduleViews).forEach(key => {
+      if (moduleViews[key]) {
+        moduleViews[key].classList.toggle('active', key === targetModule);
+      }
+      if (moduleActions[key]) {
+        moduleActions[key].style.display = (key === targetModule) ? 'flex' : 'none';
+      }
+    });
+  }
 
   navModuleBtns.forEach(btn => {
     btn.addEventListener('click', () => {
       const targetModule = btn.dataset.module;
-      if (!targetModule || !moduleViews[targetModule]) return;
-
-      // Atualiza botões
-      navModuleBtns.forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-
-      // Alterna visualização dos módulos
-      Object.keys(moduleViews).forEach(key => {
-        if (moduleViews[key]) {
-          moduleViews[key].classList.toggle('active', key === targetModule);
-        }
-        if (moduleActions[key]) {
-          moduleActions[key].style.display = (key === targetModule) ? 'flex' : 'none';
-        }
-      });
+      switchModule(targetModule);
     });
   });
 
@@ -387,6 +394,278 @@ document.addEventListener('DOMContentLoaded', () => {
       if (selectedFileInfo) selectedFileInfo.style.display = 'none';
     });
   }
+
+  // ==========================================
+  // MÓDULO 2: PDF ➔ PPTX DIRETO (1:1 PÁGINA)
+  // ==========================================
+  const dropzoneDirect = document.getElementById('dropzone-direct');
+  const pdfDirectInput = document.getElementById('pdf-direct-input');
+  const directFileInfo = document.getElementById('direct-file-info');
+  const directFileName = document.getElementById('direct-file-name');
+  const btnClearDirectFile = document.getElementById('btn-clear-direct-file');
+  const directAspectSelect = document.getElementById('direct-aspect-select');
+  const directFitSelect = document.getElementById('direct-fit-select');
+  const btnConvertDirect = document.getElementById('btn-convert-direct');
+  const directProgressContainer = document.getElementById('direct-progress-container');
+  const directProgressBar = document.getElementById('direct-progress-bar');
+  const directProgressStatus = document.getElementById('direct-progress-status');
+  const directProgressPercent = document.getElementById('direct-progress-percent');
+
+  const sectionDirectInput = document.getElementById('section-direct-input');
+  const sectionDirectResults = document.getElementById('section-direct-results');
+  const directSlidesGrid = document.getElementById('direct-slides-grid');
+  const directSlideCountBadge = document.getElementById('direct-slide-count-badge');
+  const btnDownloadDirectTop = document.getElementById('btn-download-direct-top');
+  const btnDownloadDirectMain = document.getElementById('btn-download-direct-main');
+  const btnNewDirectTop = document.getElementById('btn-new-direct-top');
+  const btnNewDirectMain = document.getElementById('btn-new-direct-main');
+  const btnSwitchToDirect = document.getElementById('btn-switch-to-direct');
+
+  let currentDirectFile = null;
+  let directGeneratedPptx = null;
+  let directPptxFileName = 'Apresentacao.pptx';
+  let directPagesData = [];
+
+  if (btnSwitchToDirect) {
+    btnSwitchToDirect.addEventListener('click', () => switchModule('pdf-to-pptx'));
+  }
+
+  if (dropzoneDirect && pdfDirectInput) {
+    dropzoneDirect.addEventListener('click', () => pdfDirectInput.click());
+
+    dropzoneDirect.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropzoneDirect.classList.add('dragover');
+    });
+
+    dropzoneDirect.addEventListener('dragleave', () => {
+      dropzoneDirect.classList.remove('dragover');
+    });
+
+    dropzoneDirect.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropzoneDirect.classList.remove('dragover');
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+        handleDirectFileSelected(e.dataTransfer.files[0]);
+      }
+    });
+
+    pdfDirectInput.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files[0]) {
+        handleDirectFileSelected(e.target.files[0]);
+      }
+    });
+  }
+
+  if (btnClearDirectFile) {
+    btnClearDirectFile.addEventListener('click', (e) => {
+      e.stopPropagation();
+      resetDirectInput();
+    });
+  }
+
+  function handleDirectFileSelected(file) {
+    if (!file.name.toLowerCase().endsWith('.pdf')) {
+      showToast('Por favor, selecione um arquivo .PDF válido.', 'error');
+      return;
+    }
+    currentDirectFile = file;
+    directFileName.textContent = file.name;
+    directFileInfo.style.display = 'inline-flex';
+  }
+
+  function resetDirectInput() {
+    currentDirectFile = null;
+    if (pdfDirectInput) pdfDirectInput.value = '';
+    if (directFileInfo) directFileInfo.style.display = 'none';
+    if (directProgressContainer) directProgressContainer.style.display = 'none';
+    if (directProgressBar) directProgressBar.style.width = '0%';
+    if (sectionDirectResults) sectionDirectResults.style.display = 'none';
+    if (sectionDirectInput) sectionDirectInput.style.display = 'block';
+    if (btnDownloadDirectTop) btnDownloadDirectTop.style.display = 'none';
+    directGeneratedPptx = null;
+    directPagesData = [];
+  }
+
+  if (btnNewDirectTop) btnNewDirectTop.addEventListener('click', resetDirectInput);
+  if (btnNewDirectMain) btnNewDirectMain.addEventListener('click', resetDirectInput);
+
+  if (btnConvertDirect) {
+    btnConvertDirect.addEventListener('click', async () => {
+      if (!currentDirectFile) {
+        showToast('Por favor, anexe um arquivo PDF para converter.', 'error');
+        return;
+      }
+
+      if (typeof pdfjsLib === 'undefined' || typeof PptxGenJS === 'undefined') {
+        showToast('Bibliotecas de conversão estão carregando. Tente novamente em instantes.', 'error');
+        return;
+      }
+
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+
+      btnConvertDirect.disabled = true;
+      btnConvertDirect.innerHTML = '<span>⏳</span> Convertendo páginas do PDF...';
+      directProgressContainer.style.display = 'block';
+      directProgressBar.style.width = '5%';
+      directProgressPercent.textContent = '5%';
+      directProgressStatus.textContent = 'Lendo arquivo PDF...';
+
+      try {
+        const arrayBuffer = await currentDirectFile.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        const totalPages = pdf.numPages;
+
+        if (totalPages === 0) {
+          throw new Error('O PDF não possui páginas legíveis.');
+        }
+
+        directPagesData = [];
+        const aspectChoice = directAspectSelect ? directAspectSelect.value : '16x9';
+        const fitChoice = directFitSelect ? directFitSelect.value : 'contain';
+
+        for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+          const pct = Math.round((pageNum / totalPages) * 85);
+          directProgressBar.style.width = `${pct}%`;
+          directProgressPercent.textContent = `${pct}%`;
+          directProgressStatus.textContent = `Processando página ${pageNum} de ${totalPages}...`;
+
+          const page = await pdf.getPage(pageNum);
+          const unscaledViewport = page.getViewport({ scale: 1.0 });
+
+          // Renderização Full HD (mínimo 1920px de largura para máxima nitidez no telão da igreja)
+          const targetWidth = 1920;
+          const scale = Math.max(targetWidth / unscaledViewport.width, 1.8);
+          const viewport = page.getViewport({ scale });
+
+          const canvas = document.createElement('canvas');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          const ctx = canvas.getContext('2d', { alpha: false });
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          await page.render({ canvasContext: ctx, viewport }).promise;
+
+          const imgData = canvas.toDataURL('image/jpeg', 0.92);
+          const pageRatio = viewport.width / viewport.height;
+
+          directPagesData.push({
+            pageNum,
+            imgData,
+            width: viewport.width,
+            height: viewport.height,
+            ratio: pageRatio
+          });
+        }
+
+        directProgressStatus.textContent = 'Montando apresentação em PowerPoint (.pptx)...';
+        directProgressBar.style.width = '92%';
+        directProgressPercent.textContent = '92%';
+
+        // Montar apresentação PPTX com PptxGenJS
+        const pptx = new PptxGenJS();
+
+        if (aspectChoice === 'original' && directPagesData.length > 0) {
+          const firstRatio = directPagesData[0].ratio || (16 / 9);
+          pptx.defineLayout({ name: 'CUSTOM_PDF', width: 10, height: 10 / firstRatio });
+          pptx.layout = 'CUSTOM_PDF';
+        } else {
+          pptx.layout = 'LAYOUT_16x9';
+        }
+
+        for (const p of directPagesData) {
+          const slide = pptx.addSlide();
+          slide.background = { color: '000000' };
+
+          if (fitChoice === 'cover') {
+            slide.addImage({
+              data: p.imgData,
+              x: 0,
+              y: 0,
+              w: '100%',
+              h: '100%'
+            });
+          } else {
+            slide.addImage({
+              data: p.imgData,
+              x: 0,
+              y: 0,
+              w: '100%',
+              h: '100%',
+              sizing: { type: 'contain', w: '100%', h: '100%' }
+            });
+          }
+        }
+
+        directProgressStatus.textContent = 'Concluindo exportação...';
+        directProgressBar.style.width = '100%';
+        directProgressPercent.textContent = '100%';
+
+        directPptxFileName = currentDirectFile.name.replace(/\.[^/.]+$/, '') + '_PAGINAS.pptx';
+        directGeneratedPptx = pptx;
+
+        // Dispara o download automático do PPTX gerado
+        await pptx.writeFile({ fileName: directPptxFileName });
+
+        // Renderiza visualização das páginas
+        renderDirectResults();
+
+        showToast(`Sucesso! ${totalPages} páginas convertidas em ${totalPages} slides no PPTX.`, 'success');
+
+      } catch (err) {
+        console.error('Erro na conversão direta de PDF para PPTX:', err);
+        showToast(err.message || 'Erro ao converter PDF em slides.', 'error');
+      } finally {
+        btnConvertDirect.disabled = false;
+        btnConvertDirect.innerHTML = '<span class="btn-icon">⚡</span> Converter para PPTX Instantaneamente';
+      }
+    });
+  }
+
+  function renderDirectResults() {
+    if (!sectionDirectInput || !sectionDirectResults) return;
+
+    sectionDirectInput.style.display = 'none';
+    sectionDirectResults.style.display = 'block';
+
+    if (btnDownloadDirectTop) btnDownloadDirectTop.style.display = 'inline-flex';
+    if (directSlideCountBadge) directSlideCountBadge.textContent = `${directPagesData.length} slides`;
+
+    if (directSlidesGrid) {
+      directSlidesGrid.innerHTML = '';
+      directPagesData.forEach((p) => {
+        const card = document.createElement('div');
+        card.className = 'direct-page-card';
+        card.innerHTML = `
+          <div class="direct-page-preview">
+            <img src="${p.imgData}" alt="Página ${p.pageNum}" loading="lazy">
+          </div>
+          <div class="direct-page-meta">
+            <span class="direct-page-badge">Slide ${p.pageNum}</span>
+            <span style="color: var(--text-muted);">Página ${p.pageNum} do PDF</span>
+          </div>
+        `;
+        directSlidesGrid.appendChild(card);
+      });
+    }
+  }
+
+  async function triggerDirectDownload() {
+    if (!directGeneratedPptx) {
+      showToast('Nenhuma apresentação gerada para baixar.', 'error');
+      return;
+    }
+    try {
+      await directGeneratedPptx.writeFile({ fileName: directPptxFileName });
+      showToast('Download do PPTX iniciado!', 'success');
+    } catch (err) {
+      showToast('Erro ao baixar arquivo PPTX: ' + err.message, 'error');
+    }
+  }
+
+  if (btnDownloadDirectTop) btnDownloadDirectTop.addEventListener('click', triggerDirectDownload);
+  if (btnDownloadDirectMain) btnDownloadDirectMain.addEventListener('click', triggerDirectDownload);
 
   // Toast utilitário
   function showToast(msg, type = 'info') {

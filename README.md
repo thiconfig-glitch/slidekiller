@@ -4,7 +4,8 @@ Plataforma unificada e modular de produção de mídia, projeção e apresentaç
 
 Reúne em uma única interface inteligente os principais módulos de apoio à equipe de multimídia:
 1. ⚡ **Slide Killer**: Gerador automatizado de slides em PowerPoint (.pptx 16:9 Full HD) a partir de PDFs ou anotações de sermões com quebra inteligente de versículos e destaque tipográfico.
-2. 🎬 **Editor de Vídeo (OpenCut)**: Estúdio de edição de vídeo open-source completo estilo CapCut, com timeline multi-pistas, cortes instantâneos e exportação Full HD direto no navegador.
+2. 📄 **PDF ➔ PPTX Direto (1 Página = 1 Slide)**: Conversor direto e fiel de qualquer arquivo PDF para PowerPoint (.pptx 16:9 Full HD) onde cada página do PDF vira exatamente uma página de slide em alta definição, sem alterar ou reformatar o conteúdo original (ideal para apresentações prontas do Canva, avisos e telões).
+3. 🎬 **Editor de Vídeo (OpenCut)**: Estúdio de edição de vídeo open-source completo estilo CapCut, com timeline multi-pistas, cortes instantâneos e exportação Full HD direto no navegador.
 
 ---
 
@@ -20,7 +21,13 @@ Reúne em uma única interface inteligente os principais módulos de apoio à eq
   - Formato: **16:9 Widescreen Full HD**.
 - **Suporte Opcional a IA**: Copilot com Gemini AI para validação semântica profunda.
 
-### 2. Editor de Vídeo (OpenCut Studio)
+### 2. PDF ➔ PPTX Direto (1 Página = 1 Slide)
+- **Conversão Fiel & Sem Alterações**: Transforma cada página de qualquer PDF em um slide independente no PowerPoint.
+- **Renderização em Alta Resolução (Full HD)**: Preserva 100% do layout, gráficos, vetores, imagens e fontes originais do documento.
+- **Pronto para Telões & Projeção**: Gere arquivos compatíveis com PowerPoint, Holyrics, ProPresenter, EasyWorship e sistemas de multimídia com 1 clique.
+- **Opções Flexíveis de Formato**: Escolha entre Proporção Widescreen 16:9 (com fundo escuro elegante) ou Proporção Original do PDF.
+
+### 3. Editor de Vídeo (OpenCut Studio)
 - **Alternativa Open-Source ao CapCut**: Interface profissional com timeline para edição ágil de reels, pregações, avisos e clipes de louvor.
 - **Processamento no Cliente**: Roda direto no navegador com WebCodecs e WASM, sem marca d'água e sem filas de renderização.
 - **Modo Tela Cheia & Foco**: Permite maximizar o editor para trabalhar com precisão milimétrica nos cortes.

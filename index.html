@@ -102,7 +102,7 @@
         /* Elements */
         .slide-el { position: absolute; box-sizing: border-box; }
         .el-text { width: 100%; height: 100%; outline: none; line-height: 1.1; white-space: pre-wrap; word-wrap: break-word; }
-        .el-img { width: 100%; height: 100%; object-fit: cover; }
+        .el-img { width: 100%; height: 100%; object-fit: contain; }
         
         /* Transform Controls */
         #transform-box { position: absolute; border: 1.5px solid var(--primary); pointer-events: none; display: none; z-index: 1000; box-shadow: 0 0 0 1px rgba(0,0,0,0.2); }
@@ -214,10 +214,19 @@
         <input type="file" id="globalBg" accept="image/*" class="prop-input" />
     </div>
     
+    <div style="margin:16px 0 8px 0; display:flex; gap:10px; justify-content:center;">
+        <button type="button" id="btnModeDirect" class="btn" style="background:var(--primary); font-size:12px; padding:8px 16px;">
+            📄 Modo Direto (1 Pág = 1 Slide)
+        </button>
+        <button type="button" id="btnModeSermon" class="btn btn-outline" style="font-size:12px; padding:8px 16px;">
+            ⚡ Modo Sermão (Versículos & Destaques)
+        </button>
+    </div>
+
     <div class="dropzone" id="dropZone">
         <svg width="48" height="48" viewBox="0 0 24 24" fill="var(--text-dim)" style="margin-bottom:12px;"><path d="M14 2H6C4.9 2 4.01 2.9 4.01 4L4 20C4 21.1 4.89 22 5.99 22H18C19.1 22 20 21.1 20 20V8L14 2ZM18 20H6V4H13V9H18V20Z"/></svg>
-        <h3 style="margin:0 0 4px 0; font-weight:500;">2. Importar Sermão em PDF</h3>
-        <p style="margin:0; color:var(--text-dim); font-size:12px;">Arraste o arquivo ou clique para buscar</p>
+        <h3 id="dropTitle" style="margin:0 0 4px 0; font-weight:500;">2. Importar PDF (1 Página = 1 Slide)</h3>
+        <p id="dropDesc" style="margin:0; color:var(--text-dim); font-size:12px;">Conversão direta sem alterar nada. Arraste o arquivo ou clique.</p>
     </div>
     <input type="file" id="pdfInput" accept="application/pdf" style="position:absolute; left:-9999px;" />
     <div id="statusMsg" style="margin-top:16px; color:var(--primary); font-size:13px; font-weight:500;"></div>
@@ -505,17 +514,99 @@
     dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--primary)'; dropZone.style.background = 'rgba(139,92,246,0.1)'; });
     dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--border)'; dropZone.style.background = 'var(--bg-base)'; });
     dropZone.addEventListener('drop', (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--border)'; dropZone.style.background = 'var(--bg-base)'; if(e.dataTransfer.files[0]) parsePDF(e.dataTransfer.files[0]); });
-    
     document.getElementById('pdfInput').addEventListener('change', e => { if(e.target.files[0]) parsePDF(e.target.files[0]); });
+    
+    let pdfConversionMode = 'direct';
+    const btnModeDirect = document.getElementById('btnModeDirect');
+    const btnModeSermon = document.getElementById('btnModeSermon');
+    const dropTitle = document.getElementById('dropTitle');
+    const dropDesc = document.getElementById('dropDesc');
+
+    if (btnModeDirect && btnModeSermon) {
+        btnModeDirect.addEventListener('click', () => {
+            pdfConversionMode = 'direct';
+            btnModeDirect.className = 'btn';
+            btnModeDirect.style.background = 'var(--primary)';
+            btnModeSermon.className = 'btn btn-outline';
+            btnModeSermon.style.background = 'transparent';
+            if (dropTitle) dropTitle.innerText = '2. Importar PDF (1 Página = 1 Slide)';
+            if (dropDesc) dropDesc.innerText = 'Conversão direta sem alterar nada. Arraste o arquivo ou clique.';
+        });
+
+        btnModeSermon.addEventListener('click', () => {
+            pdfConversionMode = 'sermon';
+            btnModeSermon.className = 'btn';
+            btnModeSermon.style.background = 'var(--primary)';
+            btnModeDirect.className = 'btn btn-outline';
+            btnModeDirect.style.background = 'transparent';
+            if (dropTitle) dropTitle.innerText = '2. Importar Sermão em PDF';
+            if (dropDesc) dropDesc.innerText = 'Extração automática de versículos e destaques. Arraste ou clique.';
+        });
+    }
 
     let rawExtractedSermonText = "";
 
     async function parsePDF(file) {
-        document.getElementById('statusMsg').innerText = 'Processando extração e destaques do PDF...';
+        document.getElementById('statusMsg').innerText = 'Processando PDF...';
         try {
             document.getElementById('outFileName').value = file.name.replace('.pdf', '.pptx');
             const arr = await file.arrayBuffer();
             const pdf = await pdfjsLib.getDocument({data: arr}).promise;
+
+            if (pdfConversionMode === 'direct') {
+                const newSlides = [];
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    document.getElementById('statusMsg').innerText = `Convertendo página ${i} de ${pdf.numPages}...`;
+                    const page = await pdf.getPage(i);
+                    const unscaled = page.getViewport({ scale: 1.0 });
+                    const scale = Math.max(1920 / unscaled.width, 1.8);
+                    const viewport = page.getViewport({ scale });
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = viewport.width;
+                    canvas.height = viewport.height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    await page.render({ canvasContext: ctx, viewport }).promise;
+
+                    const imgData = canvas.toDataURL('image/jpeg', 0.92);
+                    const s = {
+                        id: 's_' + genId(),
+                        bgImage: null,
+                        bgColor: '#000000',
+                        type: 'pdf_page',
+                        elements: [
+                            {
+                                id: genId(),
+                                type: 'image',
+                                name: `Página ${i}`,
+                                content: imgData,
+                                x: 0,
+                                y: 0,
+                                w: C_WIDTH,
+                                h: C_HEIGHT,
+                                rotation: 0,
+                                opacity: 1,
+                                locked: true,
+                                hidden: false
+                            }
+                        ]
+                    };
+                    newSlides.push(s);
+                }
+                slides = newSlides;
+                setup.style.display = 'none'; 
+                app.style.display = 'flex';
+                document.getElementById('btnNewDoc').style.display = 'inline-flex';
+                document.getElementById('btnValidateAI').style.display = 'none';
+                document.getElementById('btnConfigAI').style.display = 'none';
+                resizeWorkspace();
+                if (slides.length > 0) setSlide(0);
+                document.getElementById('statusMsg').innerText = '';
+                return;
+            }
+
             let fullText = "";
             for(let i=1; i<=pdf.numPages; i++) {
                 const page = await pdf.getPage(i);
@@ -1085,6 +1176,18 @@ ${rawExtractedSermonText || slides.map(s => s.elements.map(e => e.content).join(
             pptx.layout = 'LAYOUT_16x9';
             for(const s of slides) {
                 const slide = pptx.addSlide();
+                if (s.type === 'pdf_page' && s.elements && s.elements[0] && s.elements[0].type === 'image') {
+                    slide.background = { color: '000000' };
+                    slide.addImage({
+                        data: s.elements[0].content,
+                        x: 0,
+                        y: 0,
+                        w: '100%',
+                        h: '100%',
+                        sizing: { type: 'contain', w: '100%', h: '100%' }
+                    });
+                    continue;
+                }
                 if(s.bgImage) {
                     if(s.bgImage.startsWith('data:')) slide.background = { data: s.bgImage };
                     else slide.background = { path: s.bgImage };
