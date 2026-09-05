@@ -205,6 +205,96 @@
     </div>
 </div>
 
+<!-- Modal Inserir Versículo Bíblico -->
+<div id="modalVerse" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.75); z-index:9999; align-items:center; justify-content:center; backdrop-filter:blur(4px);">
+    <div style="background:var(--bg-panel); border:1px solid var(--border); border-radius:14px; padding:24px; max-width:620px; width:92%; box-shadow:0 20px 40px rgba(0,0,0,0.7); max-height:90vh; overflow-y:auto;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+            <h3 style="margin:0; font-size:17px; color:var(--text-light); display:flex; align-items:center; gap:8px;">
+                📖 Inserir Versículo Bíblico no Culto
+            </h3>
+            <button class="btn-icon" onclick="closeVerseModal()">✕</button>
+        </div>
+
+        <p style="font-size:12px; color:var(--text-dim); margin-bottom:16px;">
+            Busque passagens bíblicas instantaneamente ou dite/edite o texto. O slide será gerado no padrão oficial da igreja com destaque dourado e tipografia de telão.
+        </p>
+
+        <!-- Linha de Busca -->
+        <div style="display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap;">
+            <div style="flex:2; min-width:180px;">
+                <label style="font-size:11px; font-weight:600; color:var(--text-dim); display:block; margin-bottom:4px;">Referência (Livro Cap:Versículo):</label>
+                <input type="text" id="verseRefInput" placeholder="Ex: João 3:16, Sl 23:1-3, Rm 8:28" class="prop-input" style="width:100%; box-sizing:border-box; font-size:13px; font-weight:600;" onkeydown="if(event.key==='Enter') searchBibleVerse();" />
+            </div>
+            <div style="flex:1; min-width:130px;">
+                <label style="font-size:11px; font-weight:600; color:var(--text-dim); display:block; margin-bottom:4px;">Versão:</label>
+                <select id="verseVersionSelect" class="prop-input" style="width:100%; height:34px;">
+                    <option value="ACF">ACF (Almeida Corrigida Fiel)</option>
+                    <option value="ARA">ARA (Almeida Revista e Atualizada)</option>
+                    <option value="ARC">ARC (Revista e Corrigida)</option>
+                    <option value="NVI">NVI (Nova Versão Internacional)</option>
+                </select>
+            </div>
+            <div style="display:flex; align-items:flex-end;">
+                <button type="button" class="btn" id="btnSearchVerse" style="height:34px;" onclick="searchBibleVerse()">
+                    🔍 Buscar
+                </button>
+            </div>
+        </div>
+
+        <!-- Sugestões Rápidas -->
+        <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px;">
+            <span style="font-size:11px; color:var(--text-dim); align-self:center;">Exemplos rápidos:</span>
+            <button type="button" class="btn btn-outline" style="padding:2px 8px; font-size:10px;" onclick="quickFillVerse('João 3:16')">João 3:16</button>
+            <button type="button" class="btn btn-outline" style="padding:2px 8px; font-size:10px;" onclick="quickFillVerse('Salmos 23:1-3')">Salmos 23:1-3</button>
+            <button type="button" class="btn btn-outline" style="padding:2px 8px; font-size:10px;" onclick="quickFillVerse('Romanos 8:28')">Romanos 8:28</button>
+            <button type="button" class="btn btn-outline" style="padding:2px 8px; font-size:10px;" onclick="quickFillVerse('Filipenses 4:13')">Filipenses 4:13</button>
+        </div>
+
+        <!-- Área de Edição do Versículo -->
+        <div style="background:var(--bg-base); border:1px solid var(--border); border-radius:10px; padding:12px; margin-bottom:14px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:6px;">
+                <label style="font-size:11px; font-weight:600; color:var(--primary); margin:0;">
+                    Texto do Versículo (Edição Livre & Destaques):
+                </label>
+                <!-- Ações Rápidas de Formatação -->
+                <div style="display:flex; gap:6px; align-items:center;">
+                    <button type="button" class="btn btn-outline" style="padding:3px 8px; font-size:11px; color:#E8B859; border-color:#E8B859;" onclick="highlightSelectionInVerseModal()" title="Envolver palavra selecionada com destaque dourado">
+                        ⭐ Destaque Dourado
+                    </button>
+                    <button type="button" class="btn btn-outline" style="padding:3px 8px; font-size:11px;" onclick="toggleQuotesInVerseModal()" title="Colocar ou tirar aspas">
+                        “ ” Aspas
+                    </button>
+                    <div style="display:flex; align-items:center; gap:2px; margin-left:4px;">
+                        <button type="button" class="btn btn-outline" style="padding:2px 6px; font-size:10px;" onclick="changeVerseModalFontSize(-4)">A-</button>
+                        <span id="verseFontSizeBadge" style="font-size:11px; font-weight:600; min-width:26px; text-align:center;">52</span>
+                        <button type="button" class="btn btn-outline" style="padding:2px 6px; font-size:10px;" onclick="changeVerseModalFontSize(4)">A+</button>
+                    </div>
+                </div>
+            </div>
+
+            <textarea id="verseTextInput" rows="5" class="prop-input" style="width:100%; box-sizing:border-box; font-family:'Inter', sans-serif; font-size:13px; line-height:1.4;" placeholder="Digite, cole ou busque o texto do versículo. Para destacar palavras em dourado, selecione a palavra e clique no botão '⭐ Destaque Dourado' acima."></textarea>
+            
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <label style="font-size:11px; color:var(--text-dim); display:flex; align-items:center; gap:4px; cursor:pointer;">
+                        <input type="checkbox" id="checkSplitMultiVerses" checked />
+                        Dividir passagens longas em múltiplos slides
+                    </label>
+                </div>
+                <div id="verseSearchStatus" style="font-size:11px; color:var(--primary); font-weight:500;"></div>
+            </div>
+        </div>
+
+        <!-- Rodapé do Modal -->
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <button class="btn btn-outline" onclick="closeVerseModal()">Cancelar</button>
+            <button class="btn" style="background:var(--primary); color:#000; font-weight:600;" onclick="confirmInsertVerseSlide()">
+                ➕ Inserir Slide no Culto
+            </button>
+        </div>
+    </div>
+</div>
+
 <div id="setup">
     <h2 style="margin-top:0; color:var(--text-light); font-weight:600;">Bem-vindo à Central Multimídia Church</h2>
     <p style="color:var(--text-dim); font-size:13px; margin-bottom:24px;">Transforme seus sermões em apresentações incríveis com ferramentas profissionais.</p>
@@ -236,6 +326,10 @@
     <div id="main-row">
         <!-- Left Toolbar -->
         <aside id="left-bar">
+            <div class="tool-btn" title="Inserir Versículo Bíblico no Culto" onclick="openVerseModal()" style="color:#e8b859;">
+                <svg viewBox="0 0 24 24"><path d="M18 2H6C4.9 2 4 2.9 4 4V20C4 21.1 4.9 22 6 22H18C19.1 22 20 21.1 20 20V4C20 2.9 19.1 2 18 2ZM9 4H11V9L10 8.25L9 9V4ZM18 20H6V4H7V11L10 8.75L13 11V4H18V20Z"/></svg>
+                Versículo
+            </div>
             <div class="tool-btn" title="Texto Padrão" onclick="addElement('text')">
                 <svg viewBox="0 0 24 24"><path d="M5 4V7H10.5V19H13.5V7H19V4H5Z"/></svg>
                 Texto
@@ -321,15 +415,22 @@
 
                     <div id="text-props">
                         <div class="prop-group">
-                            <label>Tipografia</label>
-                            <div style="display:flex; gap:4px;">
+                            <label>Tipografia & Tamanho</label>
+                            <div style="display:flex; gap:4px; align-items:center;">
                                 <select class="prop-input" id="elFont" style="flex:1;" onchange="updateElProp('fontFace', this.value)">
                                     <option value="Bahnschrift SemiBold Condensed">Bahnschrift</option>
                                     <option value="Bebas Neue">Bebas Neue</option>
                                     <option value="Arial">Arial</option>
                                 </select>
-                                <input type="number" class="prop-input" style="width:50px;" id="elFontSize" oninput="updateElProp('fontSize', this.value)" title="Tamanho (pt)" />
+                                <button type="button" class="btn btn-outline" style="padding:4px 8px; font-size:11px;" onclick="adjustCurrentFontSize(-4)" title="Diminuir tamanho da fonte">A-</button>
+                                <input type="number" class="prop-input" style="width:48px;" id="elFontSize" oninput="updateElProp('fontSize', this.value)" title="Tamanho (pt)" />
+                                <button type="button" class="btn btn-outline" style="padding:4px 8px; font-size:11px;" onclick="adjustCurrentFontSize(4)" title="Aumentar tamanho da fonte">A+</button>
                             </div>
+                        </div>
+                        <div class="prop-group" style="margin-top:8px; margin-bottom:8px;">
+                            <button type="button" class="btn" style="width:100%; background:rgba(232,184,89,0.15); color:#e8b859; border:1px solid #e8b859; font-size:11px; padding:7px 10px; justify-content:center;" onclick="quickHighlightCurrentSelection()" title="Destacar trecho ou palavra selecionada em dourado">
+                                ⭐ Destacar em Dourado (#E8B859)
+                            </button>
                         </div>
                         <div class="prop-grid">
                             <div class="prop-group">
@@ -381,6 +482,10 @@
 
     <!-- Filmstrip -->
     <footer id="filmstrip">
+        <button class="btn btn-outline" style="height:76px; width:76px; flex-direction:column; justify-content:center; color:#e8b859; border-color:rgba(232,184,89,0.4);" onclick="openVerseModal()" title="Adicionar Versículo Bíblico ao Culto">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2H6C4.9 2 4 2.9 4 4V20C4 21.1 4.9 22 6 22H18C19.1 22 20 21.1 20 20V4C20 2.9 19.1 2 18 2ZM9 4H11V9L10 8.25L9 9V4ZM18 20H6V4H7V11L10 8.75L13 11V4H18V20Z"/></svg>
+            + Bíblia
+        </button>
         <button class="btn btn-outline" style="height:76px; width:76px; flex-direction:column; justify-content:center;" onclick="addBlankSlide()">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13H13V19H11V13H5V11H11V5H13V11H19V13Z"/></svg>
             Novo
@@ -650,6 +755,263 @@
             resizeWorkspace();
             if(slides.length > 0) setSlide(0);
         } catch(e) { console.error(e); alert("Erro ao ler PDF:\n" + e.message); }
+    }
+
+    // ==========================================
+    // MÓDULO DE INSERÇÃO DE VERSÍCULOS BÍBLICOS
+    // ==========================================
+    let verseModalFontSize = 52;
+
+    function openVerseModal() {
+        const modal = document.getElementById('modalVerse');
+        if (modal) {
+            modal.style.display = 'flex';
+            setTimeout(() => {
+                const input = document.getElementById('verseRefInput');
+                if (input) input.focus();
+            }, 50);
+        }
+    }
+
+    function closeVerseModal() {
+        const modal = document.getElementById('modalVerse');
+        if (modal) modal.style.display = 'none';
+    }
+
+    function quickFillVerse(ref) {
+        const input = document.getElementById('verseRefInput');
+        if (input) {
+            input.value = ref;
+            searchBibleVerse();
+        }
+    }
+
+    function changeVerseModalFontSize(delta) {
+        verseModalFontSize = Math.max(24, Math.min(120, verseModalFontSize + delta));
+        const badge = document.getElementById('verseFontSizeBadge');
+        if (badge) badge.innerText = verseModalFontSize;
+    }
+
+    function highlightSelectionInVerseModal() {
+        const textarea = document.getElementById('verseTextInput');
+        if (!textarea) return;
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const val = textarea.value;
+        if (start !== end) {
+            const selected = val.substring(start, end).replace(/\[\/?HL\]/gi, '');
+            const replacement = `[HL]${selected}[/HL]`;
+            textarea.value = val.substring(0, start) + replacement + val.substring(end);
+            textarea.selectionStart = start;
+            textarea.selectionEnd = start + replacement.length;
+        } else {
+            alert('Selecione uma palavra ou trecho no texto para aplicar o destaque dourado.');
+        }
+        textarea.focus();
+    }
+
+    function toggleQuotesInVerseModal() {
+        const textarea = document.getElementById('verseTextInput');
+        if (!textarea) return;
+        let val = textarea.value.trim();
+        if ((val.startsWith('“') && val.endsWith('”')) || (val.startsWith('"') && val.endsWith('"'))) {
+            val = val.replace(/^[“”"]|[“”"]$/g, '').trim();
+        } else {
+            val = fmtQuote(val);
+        }
+        textarea.value = val;
+    }
+
+    async function searchBibleVerse() {
+        const refInput = document.getElementById('verseRefInput');
+        const versionSelect = document.getElementById('verseVersionSelect');
+        const status = document.getElementById('verseSearchStatus');
+        const textInput = document.getElementById('verseTextInput');
+
+        const ref = refInput.value.trim();
+        const version = versionSelect.value;
+        if (!ref) {
+            alert('Por favor, digite a referência bíblica (ex: João 3:16 ou Sl 23:1-3).');
+            return;
+        }
+
+        const btn = document.getElementById('btnSearchVerse');
+        const origText = btn.innerHTML;
+        btn.innerHTML = '⏳ Buscando...';
+        btn.disabled = true;
+        status.innerText = `Consultando passagem na versão ${version}...`;
+
+        try {
+            let foundText = null;
+            let finalRef = ref;
+
+            // 1. Consulta rápida na API pública bíblica em português (Almeida)
+            try {
+                const cleanQuery = ref
+                    .replace(/\s+/g, '+')
+                    .replace(/salmo\b/i, 'salmos')
+                    .replace(/cântico\b/i, 'cantares');
+                const apiUrl = `https://bible-api.com/${encodeURIComponent(cleanQuery)}?translation=almeida`;
+                const apiRes = await fetch(apiUrl);
+                if (apiRes.ok) {
+                    const apiData = await apiRes.json();
+                    if (apiData && apiData.text) {
+                        foundText = apiData.text.replace(/\s+/g, ' ').trim();
+                        if (apiData.reference) finalRef = apiData.reference;
+                    }
+                }
+            } catch(e) {
+                console.warn('API pública offline, tentando fallback:', e.message);
+            }
+
+            // 2. Refinamento de versão específica (ACF, ARA, NVI) via IA Gemini se disponível
+            const apiKey = localStorage.getItem('GEMINI_API_KEY') || DEFAULT_GEMINI_KEY;
+            if (apiKey && (!foundText || version !== 'ACF')) {
+                try {
+                    const models = ['gemini-3.7-flash', 'gemini-3.5-flash-lite', 'gemini-3.6-flash', 'gemini-flash-latest'];
+                    const prompt = `Retorne o texto exato de "${ref}" na versão "${version}" da Bíblia Sagrada em português. Mantenha a pontuação bíblica fiel. Responda exclusivamente um objeto JSON: {"reference": "${ref}", "version": "${version}", "text": "texto completo aqui"}`;
+
+                    for (const model of models) {
+                        try {
+                            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+                            const aiRes = await fetch(url, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                                    generationConfig: { temperature: 0.1, responseMimeType: 'application/json' }
+                                })
+                            });
+                            if (aiRes.ok) {
+                                const aiData = await aiRes.json();
+                                const raw = aiData.candidates?.[0]?.content?.parts?.[0]?.text;
+                                if (raw) {
+                                    const parsed = JSON.parse(raw);
+                                    if (parsed && parsed.text) {
+                                        foundText = parsed.text.trim();
+                                        if (parsed.reference) finalRef = parsed.reference;
+                                        break;
+                                    }
+                                }
+                            }
+                        } catch(err) {}
+                    }
+                } catch(aiErr) {}
+            }
+
+            if (foundText) {
+                textInput.value = fmtQuote(foundText);
+                refInput.value = `${normRef(finalRef)} (${version})`;
+                status.innerText = `✅ Versículo carregado na versão ${version}!`;
+            } else {
+                status.innerText = `ℹ️ Digite ou cole o texto do versículo diretamente na caixa de texto.`;
+                if (!textInput.value.trim()) textInput.placeholder = `Digite ou dite aqui o texto de ${ref} (${version})...`;
+            }
+        } catch(err) {
+            status.innerText = `Pronto para digitação manual ou ditado.`;
+        } finally {
+            btn.innerHTML = origText;
+            btn.disabled = false;
+        }
+    }
+
+    function confirmInsertVerseSlide() {
+        const textInput = document.getElementById('verseTextInput');
+        const refInput = document.getElementById('verseRefInput');
+        const checkSplit = document.getElementById('checkSplitMultiVerses');
+
+        const rawText = textInput.value.trim();
+        const reference = refInput.value.trim() || 'Referência Bíblica';
+
+        if (!rawText) {
+            alert('Por favor, informe ou busque o texto do versículo antes de inserir.');
+            return;
+        }
+
+        commitText();
+
+        const doSplit = checkSplit ? checkSplit.checked : false;
+        // Identificar versículos múltiplos (ex: "19 Não ajunteis... 20 Mas ajuntai... 21 Porque...")
+        const verseSplit = doSplit ? rawText.split(/(?=\b\d{1,3}\s+[A-ZÀ-Ý“"])/g).filter(s => s.trim().length > 0) : [rawText];
+
+        const baseBookAndChap = reference.includes(':') ? reference.split(':')[0] : reference;
+
+        verseSplit.forEach(vChunk => {
+            let cleanText = vChunk.trim();
+            let currentRef = reference;
+
+            const numMatch = cleanText.match(/^“?\s*(\d{1,3})\s+(.*)$/);
+            if (numMatch && baseBookAndChap) {
+                const vNum = numMatch[1];
+                cleanText = numMatch[2].trim();
+                const versionMatch = reference.match(/\((.*?)\)/);
+                const verStr = versionMatch ? ` ${versionMatch[0]}` : '';
+                currentRef = `${baseBookAndChap}:${vNum}${verStr}`;
+            }
+
+            cleanText = fmtQuote(cleanText);
+
+            const s = newSlide('verse');
+            const textEl = newTextEl(cleanText, false, 'verse');
+            textEl.fontSize = verseModalFontSize || 52;
+            s.elements.push(textEl);
+
+            const refEl = newTextEl(normRef(currentRef), true, 'verse');
+            s.elements.push(refEl);
+
+            slides.push(s);
+        });
+
+        closeVerseModal();
+        setSlide(slides.length - 1);
+        renderCanvas();
+        renderFilmstrip();
+
+        const statusMsg = document.getElementById('statusMsg');
+        if (statusMsg) statusMsg.innerText = `Slide de ${reference} adicionado ao culto!`;
+    }
+
+    // --- Melhorias Rápidas de Edição (Tamanho e Destaque Dourado) ---
+    function adjustCurrentFontSize(delta) {
+        if (curSlideIdx < 0 || !selElId) return;
+        const el = slides[curSlideIdx].elements.find(x => x.id === selElId);
+        if (!el || el.type !== 'text') return;
+        const newSize = Math.max(16, Math.min(180, (parseInt(el.fontSize) || 44) + delta));
+        el.fontSize = newSize;
+        const input = document.getElementById('elFontSize');
+        if (input) input.value = newSize;
+        renderCanvas();
+        renderFilmstrip();
+    }
+
+    function quickHighlightCurrentSelection() {
+        if (curSlideIdx < 0 || !selElId) {
+            alert('Selecione uma caixa de texto primeiro.');
+            return;
+        }
+        const el = slides[curSlideIdx].elements.find(x => x.id === selElId);
+        if (!el || el.type !== 'text') return;
+
+        const sel = window.getSelection();
+        const selectedText = sel ? sel.toString().trim() : '';
+
+        if (selectedText && selectedText.length > 0) {
+            const cleanSelected = selectedText.replace(/\[\/?HL\]/gi, '');
+            if (el.content.includes(selectedText)) {
+                el.content = el.content.replace(selectedText, `[HL]${cleanSelected}[/HL]`);
+            } else {
+                el.content = `[HL]${el.content}[/HL]`;
+            }
+        } else {
+            const word = prompt('Digite a palavra ou frase que deseja destacar em dourado (#E8B859):', '');
+            if (word && word.trim()) {
+                const w = word.trim();
+                const regex = new RegExp(`(${w})`, 'gi');
+                el.content = el.content.replace(regex, '[HL]$1[/HL]');
+            }
+        }
+        renderCanvas();
+        renderFilmstrip();
     }
 
     // --- Gemini AI Validation Engine ---
