@@ -104,14 +104,78 @@
         .el-text { width: 100%; height: 100%; outline: none; line-height: 1.1; white-space: pre-wrap; word-wrap: break-word; }
         .el-img { width: 100%; height: 100%; object-fit: contain; }
         
-        /* Transform Controls */
-        #transform-box { position: absolute; border: 1.5px solid var(--primary); pointer-events: none; display: none; z-index: 1000; box-shadow: 0 0 0 1px rgba(0,0,0,0.2); }
-        .handle { position: absolute; width: 10px; height: 10px; background: white; border: 1.5px solid var(--primary); pointer-events: auto; border-radius: 50%; transform: translate(-50%, -50%); box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+        .slide-el:hover:not(.locked) { outline: 1px dashed rgba(139, 92, 246, 0.45); cursor: default; }
+        
+        /* Transform Controls (Estilo PowerPoint) */
+        #transform-box { position: absolute; border: 1.5px dashed var(--primary); pointer-events: none; display: none; z-index: 1000; box-shadow: 0 0 0 1px rgba(0,0,0,0.3); }
+        .tf-edge { position: absolute; pointer-events: auto; cursor: move; }
+        .tf-edge-n { top: -6px; left: 0; right: 0; height: 12px; }
+        .tf-edge-s { bottom: -6px; left: 0; right: 0; height: 12px; }
+        .tf-edge-w { top: 0; bottom: 0; left: -6px; width: 12px; }
+        .tf-edge-e { top: 0; bottom: 0; right: -6px; width: 12px; }
+        .tf-drag-bar {
+            position: absolute; top: -24px; left: 0; background: var(--primary); color: white;
+            font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 4px 4px 0 0;
+            display: flex; align-items: center; gap: 4px; cursor: move; pointer-events: auto;
+            user-select: none; box-shadow: 0 -2px 6px rgba(0,0,0,0.3);
+        }
+        .tf-drag-icon { font-size: 11px; opacity: 0.95; }
+        .tf-drag-label { letter-spacing: 0.3px; }
+
+        .handle { position: absolute; width: 10px; height: 10px; background: white; border: 1.5px solid var(--primary); pointer-events: auto; border-radius: 50%; transform: translate(-50%, -50%); box-shadow: 0 1px 3px rgba(0,0,0,0.3); transition: transform 0.1s; }
+        .handle:hover { transform: translate(-50%, -50%) scale(1.3); }
         .h-nw { top: 0; left: 0; cursor: nwse-resize; } .h-n { top: 0; left: 50%; cursor: ns-resize; } .h-ne { top: 0; left: 100%; cursor: nesw-resize; }
         .h-e { top: 50%; left: 100%; cursor: ew-resize; } .h-se { top: 100%; left: 100%; cursor: nwse-resize; } .h-s { top: 100%; left: 50%; cursor: ns-resize; }
         .h-sw { top: 100%; left: 0; cursor: nesw-resize; } .h-w { top: 50%; left: 0; cursor: ew-resize; }
         .h-rot { top: -30px; left: 50%; cursor: crosshair; background: white; }
         .rot-line { position: absolute; width: 1.5px; height: 30px; background: var(--primary); top: -30px; left: 50%; transform: translateX(-50%); pointer-events: none; }
+
+        /* Barra Flutuante de Formatação Rápida (Mini Toolbar estilo PowerPoint) */
+        .mini-toolbar {
+            position: absolute; display: flex; align-items: center; gap: 4px;
+            background: rgba(24, 24, 27, 0.96); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.18); box-shadow: 0 12px 30px rgba(0, 0, 0, 0.7), 0 0 1px rgba(255, 255, 255, 0.25);
+            border-radius: 8px; padding: 4px 6px; z-index: 1005; user-select: none; pointer-events: auto;
+            animation: miniToolbarPop 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes miniToolbarPop {
+            from { opacity: 0; transform: translateY(4px) scale(0.97); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .mini-drag-grip { color: #a1a1aa; font-size: 13px; cursor: move; padding: 2px 4px; display: flex; align-items: center; transition: color 0.15s; }
+        .mini-drag-grip:hover { color: #ffffff; }
+        .mini-group { display: flex; align-items: center; gap: 2px; }
+        .mini-divider { width: 1px; height: 18px; background: rgba(255, 255, 255, 0.15); margin: 0 3px; }
+        .mini-btn {
+            background: transparent; color: #e4e4e7; border: 1px solid transparent; border-radius: 5px;
+            padding: 3px 6px; font-size: 12px; line-height: 1; cursor: pointer; display: inline-flex;
+            align-items: center; justify-content: center; transition: all 0.12s ease; min-width: 24px; height: 24px;
+        }
+        .mini-btn:hover { background: rgba(255, 255, 255, 0.12); color: #ffffff; border-color: rgba(255, 255, 255, 0.2); }
+        .mini-btn.active { background: var(--primary); color: #ffffff; border-color: var(--primary); }
+        .mini-btn-gold {
+            color: #E8B859; font-weight: 700; font-size: 11px; background: rgba(232, 184, 89, 0.15);
+            border-color: rgba(232, 184, 89, 0.4); padding: 3px 8px;
+        }
+        .mini-btn-gold:hover { background: #E8B859; color: #000000; border-color: #E8B859; box-shadow: 0 0 10px rgba(232, 184, 89, 0.4); }
+        .mini-btn-del:hover { background: rgba(239, 68, 68, 0.25); color: #f87171; border-color: rgba(239, 68, 68, 0.4); }
+        .mini-select {
+            background: #18181b; color: #f4f4f5; border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 5px; padding: 2px 4px; font-size: 11px; height: 24px; outline: none; max-width: 105px;
+        }
+        .mini-select:focus { border-color: var(--primary); }
+        .mini-input-size {
+            width: 40px; background: #18181b; color: #f4f4f5; border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 5px; padding: 2px 2px; font-size: 12px; font-weight: 600; text-align: center; height: 24px; outline: none;
+        }
+        .mini-input-size:focus { border-color: var(--primary); }
+        .mini-input-size::-webkit-inner-spin-button, .mini-input-size::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        .mini-color-btn {
+            display: inline-flex; align-items: center; justify-content: center; position: relative;
+            cursor: pointer; background: transparent; border: 1px solid transparent; border-radius: 5px;
+            padding: 2px 4px; font-size: 13px; height: 24px; width: 24px;
+        }
+        .mini-color-btn:hover { background: rgba(255, 255, 255, 0.12); }
 
         /* Snapping Guides */
         .snap-guide { position: absolute; background: #ec4899; pointer-events: none; z-index: 999; display: none; }
@@ -415,15 +479,20 @@
 
                     <div id="text-props">
                         <div class="prop-group">
-                            <label>Tipografia & Tamanho</label>
-                            <div style="display:flex; gap:4px; align-items:center;">
+                            <label>Tipografia & Formatação</label>
+                            <div style="display:flex; gap:4px; align-items:center; margin-bottom:6px;">
                                 <select class="prop-input" id="elFont" style="flex:1;" onchange="updateElProp('fontFace', this.value)">
                                     <option value="Bahnschrift SemiBold Condensed">Bahnschrift</option>
                                     <option value="Bebas Neue">Bebas Neue</option>
+                                    <option value="Oswald">Oswald</option>
                                     <option value="Arial">Arial</option>
                                 </select>
+                                <button type="button" class="btn btn-outline" id="btnSideBold" style="padding:4px 8px; font-size:11px; font-weight:bold; min-width:28px;" onclick="toggleCurrentBold()" title="Negrito (B)">B</button>
+                                <button type="button" class="btn btn-outline" id="btnSideItalic" style="padding:4px 8px; font-size:11px; font-style:italic; min-width:28px;" onclick="toggleCurrentItalic()" title="Itálico (I)">I</button>
+                            </div>
+                            <div style="display:flex; gap:4px; align-items:center;">
                                 <button type="button" class="btn btn-outline" style="padding:4px 8px; font-size:11px;" onclick="adjustCurrentFontSize(-4)" title="Diminuir tamanho da fonte">A-</button>
-                                <input type="number" class="prop-input" style="width:48px;" id="elFontSize" oninput="updateElProp('fontSize', this.value)" title="Tamanho (pt)" />
+                                <input type="number" class="prop-input" style="flex:1; text-align:center;" id="elFontSize" oninput="updateElProp('fontSize', this.value)" title="Tamanho da fonte (pt)" />
                                 <button type="button" class="btn btn-outline" style="padding:4px 8px; font-size:11px;" onclick="adjustCurrentFontSize(4)" title="Aumentar tamanho da fonte">A+</button>
                             </div>
                         </div>
@@ -600,6 +669,14 @@
     const tfBox = document.createElement('div');
     tfBox.id = 'transform-box';
     tfBox.innerHTML = `
+        <div class="tf-drag-bar" data-action="move" title="Arraste para mover o texto">
+            <span class="tf-drag-icon">⠿</span>
+            <span class="tf-drag-label">Mover</span>
+        </div>
+        <div class="tf-edge tf-edge-n" data-action="move" title="Arraste a borda para mover"></div>
+        <div class="tf-edge tf-edge-s" data-action="move" title="Arraste a borda para mover"></div>
+        <div class="tf-edge tf-edge-w" data-action="move" title="Arraste a borda para mover"></div>
+        <div class="tf-edge tf-edge-e" data-action="move" title="Arraste a borda para mover"></div>
         <div class="rot-line"></div>
         <div class="handle h-nw" data-dir="nw"></div><div class="handle h-n" data-dir="n"></div><div class="handle h-ne" data-dir="ne"></div>
         <div class="handle h-e" data-dir="e"></div><div class="handle h-se" data-dir="se"></div><div class="handle h-s" data-dir="s"></div>
@@ -607,6 +684,55 @@
         <div class="handle h-rot" data-dir="rot"></div>
     `;
     slideCanvas.appendChild(tfBox);
+
+    // Setup Barra Flutuante de Formatação (PowerPoint Mini Toolbar)
+    const miniBar = document.createElement('div');
+    miniBar.id = 'floating-mini-bar';
+    miniBar.className = 'mini-toolbar';
+    miniBar.style.display = 'none';
+    miniBar.innerHTML = `
+        <div class="mini-drag-grip" id="miniDragGrip" title="Arraste para mover">⠿</div>
+        <div class="mini-group mini-text-only">
+            <select id="miniFont" class="mini-select" title="Fonte">
+                <option value="Bahnschrift SemiBold Condensed">Bahnschrift</option>
+                <option value="Bebas Neue">Bebas Neue</option>
+                <option value="Oswald">Oswald</option>
+                <option value="Arial">Arial</option>
+            </select>
+        </div>
+        <div class="mini-divider mini-text-only"></div>
+        <div class="mini-group mini-text-only">
+            <button type="button" class="mini-btn" id="miniDecSize" title="Diminuir Fonte (A-)">A⁻</button>
+            <input type="number" id="miniSizeInput" class="mini-input-size" min="12" max="180" step="2" title="Tamanho da Fonte (pt)">
+            <button type="button" class="mini-btn" id="miniIncSize" title="Aumentar Fonte (A+)">A⁺</button>
+        </div>
+        <div class="mini-divider mini-text-only"></div>
+        <div class="mini-group mini-text-only">
+            <button type="button" class="mini-btn" id="miniBold" title="Negrito (B)"><b>B</b></button>
+            <button type="button" class="mini-btn" id="miniItalic" title="Itálico (I)"><i>I</i></button>
+            <button type="button" class="mini-btn mini-btn-gold" id="miniGold" title="Destaque Dourado ⭐ (#E8B859)">⭐ Dourado</button>
+        </div>
+        <div class="mini-divider mini-text-only"></div>
+        <div class="mini-group mini-text-only">
+            <label class="mini-color-btn" title="Cor do Texto">
+                <span>🎨</span>
+                <input type="color" id="miniColor" style="position:absolute; opacity:0; width:0; height:0; pointer-events:none;">
+            </label>
+            <button type="button" class="mini-btn" id="miniAlignL" title="Alinhar à Esquerda">⫷</button>
+            <button type="button" class="mini-btn" id="miniAlignC" title="Centralizar">≡</button>
+            <button type="button" class="mini-btn" id="miniAlignR" title="Alinhar à Direita">⫸</button>
+        </div>
+        <div class="mini-divider mini-text-only"></div>
+        <div class="mini-group mini-text-only">
+            <button type="button" class="mini-btn" id="miniSelectAll" title="Selecionar Todo o Texto (Ctrl+A)">🔤 Tudo</button>
+        </div>
+        <div class="mini-divider"></div>
+        <div class="mini-group">
+            <button type="button" class="mini-btn" id="miniClone" title="Duplicar (Ctrl+D)">📑</button>
+            <button type="button" class="mini-btn mini-btn-del" id="miniDel" title="Excluir Elemento">🗑️</button>
+        </div>
+    `;
+    slideCanvas.appendChild(miniBar);
     const snapV = document.getElementById('snap-v');
     const snapH = document.getElementById('snap-h');
 
@@ -971,16 +1097,56 @@
         if (statusMsg) statusMsg.innerText = `Slide de ${reference} adicionado ao culto!`;
     }
 
-    // --- Melhorias Rápidas de Edição (Tamanho e Destaque Dourado) ---
+    // --- Melhorias Rápidas de Edição (Estilo PowerPoint: Mini Toolbar, Destaque Dourado & Formatação) ---
     function adjustCurrentFontSize(delta) {
         if (curSlideIdx < 0 || !selElId) return;
         const el = slides[curSlideIdx].elements.find(x => x.id === selElId);
         if (!el || el.type !== 'text') return;
-        const newSize = Math.max(16, Math.min(180, (parseInt(el.fontSize) || 44) + delta));
+        const newSize = Math.max(12, Math.min(200, (parseInt(el.fontSize) || 44) + delta));
         el.fontSize = newSize;
         const input = document.getElementById('elFontSize');
         if (input) input.value = newSize;
-        renderCanvas();
+        const miniInput = document.getElementById('miniSizeInput');
+        if (miniInput) miniInput.value = newSize;
+        const dom = document.getElementById(`ui_${el.id}`);
+        if (dom) {
+            const txtEl = dom.querySelector('.el-text');
+            if (txtEl) txtEl.style.fontSize = (newSize * PT_TO_PX) + 'px';
+        }
+        renderFilmstrip();
+    }
+
+    function toggleCurrentBold() {
+        if (curSlideIdx < 0 || !selElId) return;
+        const el = slides[curSlideIdx].elements.find(x => x.id === selElId);
+        if (!el || el.type !== 'text') return;
+        el.bold = !el.bold;
+        const miniBold = document.getElementById('miniBold');
+        if (miniBold) miniBold.classList.toggle('active', !!el.bold);
+        const sideBold = document.getElementById('btnSideBold');
+        if (sideBold) sideBold.classList.toggle('active', !!el.bold);
+        const dom = document.getElementById(`ui_${el.id}`);
+        if (dom) {
+            const txtEl = dom.querySelector('.el-text');
+            if (txtEl) txtEl.style.fontWeight = el.bold ? 'bold' : 'normal';
+        }
+        renderFilmstrip();
+    }
+
+    function toggleCurrentItalic() {
+        if (curSlideIdx < 0 || !selElId) return;
+        const el = slides[curSlideIdx].elements.find(x => x.id === selElId);
+        if (!el || el.type !== 'text') return;
+        el.italic = !el.italic;
+        const miniItalic = document.getElementById('miniItalic');
+        if (miniItalic) miniItalic.classList.toggle('active', !!el.italic);
+        const sideItalic = document.getElementById('btnSideItalic');
+        if (sideItalic) sideItalic.classList.toggle('active', !!el.italic);
+        const dom = document.getElementById(`ui_${el.id}`);
+        if (dom) {
+            const txtEl = dom.querySelector('.el-text');
+            if (txtEl) txtEl.style.fontStyle = el.italic ? 'italic' : 'normal';
+        }
         renderFilmstrip();
     }
 
@@ -997,22 +1163,205 @@
 
         if (selectedText && selectedText.length > 0) {
             const cleanSelected = selectedText.replace(/\[\/?HL\]/gi, '');
-            if (el.content.includes(selectedText)) {
+            if (el.content.includes(`[HL]${cleanSelected}[/HL]`)) {
+                el.content = el.content.replace(`[HL]${cleanSelected}[/HL]`, cleanSelected);
+            } else if (el.content.includes(selectedText)) {
                 el.content = el.content.replace(selectedText, `[HL]${cleanSelected}[/HL]`);
             } else {
                 el.content = `[HL]${el.content}[/HL]`;
             }
         } else {
-            const word = prompt('Digite a palavra ou frase que deseja destacar em dourado (#E8B859):', '');
-            if (word && word.trim()) {
-                const w = word.trim();
-                const regex = new RegExp(`(${w})`, 'gi');
-                el.content = el.content.replace(regex, '[HL]$1[/HL]');
+            if (el.content.includes('[HL]')) {
+                el.content = el.content.replace(/\[\/?HL\]/gi, '');
+            } else {
+                const word = prompt('Digite a palavra ou frase que deseja destacar em dourado (#E8B859) (ou deixe em branco para destacar todo o texto):', '');
+                if (word !== null) {
+                    if (word.trim()) {
+                        const w = word.trim();
+                        const regex = new RegExp(`(${w})`, 'gi');
+                        el.content = el.content.replace(regex, '[HL]$1[/HL]');
+                    } else {
+                        el.content = `[HL]${el.content}[/HL]`;
+                    }
+                }
             }
         }
         renderCanvas();
         renderFilmstrip();
     }
+
+    function syncMiniBar(el) {
+        const miniBar = document.getElementById('floating-mini-bar');
+        if (!miniBar) return;
+        if (!el || el.hidden || el.locked || curSlideIdx < 0) {
+            miniBar.style.display = 'none';
+            return;
+        }
+
+        miniBar.style.display = 'flex';
+
+        const barW = 460;
+        let left = el.x + (el.w / 2) - (barW / 2);
+        if (left < 8) left = 8;
+        if (left + barW > C_WIDTH - 8) left = Math.max(8, C_WIDTH - barW - 8);
+
+        let top = el.y - 48;
+        if (top < 10) {
+            top = el.y + el.h + 12;
+            if (top + 40 > C_HEIGHT) top = 10;
+        }
+
+        miniBar.style.left = Math.round(left) + 'px';
+        miniBar.style.top = Math.round(top) + 'px';
+
+        const isText = (el.type === 'text');
+        miniBar.querySelectorAll('.mini-text-only').forEach(n => {
+            n.style.display = isText ? '' : 'none';
+        });
+
+        if (isText) {
+            const miniFont = document.getElementById('miniFont');
+            if (miniFont) miniFont.value = el.fontFace || 'Bahnschrift SemiBold Condensed';
+
+            const miniSize = document.getElementById('miniSizeInput');
+            if (miniSize) miniSize.value = Math.round(el.fontSize || 44);
+
+            const miniBold = document.getElementById('miniBold');
+            if (miniBold) miniBold.classList.toggle('active', !!el.bold);
+
+            const miniItalic = document.getElementById('miniItalic');
+            if (miniItalic) miniItalic.classList.toggle('active', !!el.italic);
+
+            const miniColor = document.getElementById('miniColor');
+            if (miniColor) miniColor.value = el.color || '#ffffff';
+
+            const miniAlignL = document.getElementById('miniAlignL');
+            const miniAlignC = document.getElementById('miniAlignC');
+            const miniAlignR = document.getElementById('miniAlignR');
+            if (miniAlignL) miniAlignL.classList.toggle('active', el.align === 'left');
+            if (miniAlignC) miniAlignC.classList.toggle('active', el.align === 'center');
+            if (miniAlignR) miniAlignR.classList.toggle('active', el.align === 'right');
+        }
+    }
+
+    function setupMiniToolbarListeners() {
+        const miniFont = document.getElementById('miniFont');
+        if (miniFont) {
+            miniFont.onchange = () => {
+                updateElProp('fontFace', miniFont.value);
+                const sideFont = document.getElementById('elFont');
+                if (sideFont) sideFont.value = miniFont.value;
+            };
+        }
+
+        const miniDec = document.getElementById('miniDecSize');
+        if (miniDec) miniDec.onclick = (e) => { e.preventDefault(); adjustCurrentFontSize(-2); };
+
+        const miniInc = document.getElementById('miniIncSize');
+        if (miniInc) miniInc.onclick = (e) => { e.preventDefault(); adjustCurrentFontSize(2); };
+
+        const miniSize = document.getElementById('miniSizeInput');
+        if (miniSize) {
+            miniSize.oninput = () => {
+                const v = parseInt(miniSize.value, 10);
+                if (!isNaN(v) && v >= 10 && v <= 200) {
+                    updateElProp('fontSize', v);
+                    const sideSize = document.getElementById('elFontSize');
+                    if (sideSize) sideSize.value = v;
+                }
+            };
+        }
+
+        const miniBold = document.getElementById('miniBold');
+        if (miniBold) miniBold.onclick = (e) => { e.preventDefault(); toggleCurrentBold(); };
+
+        const miniItalic = document.getElementById('miniItalic');
+        if (miniItalic) miniItalic.onclick = (e) => { e.preventDefault(); toggleCurrentItalic(); };
+
+        const miniGold = document.getElementById('miniGold');
+        if (miniGold) miniGold.onclick = (e) => { e.preventDefault(); quickHighlightCurrentSelection(); };
+
+        const miniColor = document.getElementById('miniColor');
+        if (miniColor) {
+            miniColor.oninput = () => {
+                updateElProp('color', miniColor.value);
+                const sideColor = document.getElementById('elColor');
+                if (sideColor) sideColor.value = miniColor.value;
+            };
+        }
+
+        const miniAlignL = document.getElementById('miniAlignL');
+        if (miniAlignL) {
+            miniAlignL.onclick = (e) => {
+                e.preventDefault();
+                updateElProp('align', 'left');
+                if(miniAlignL) miniAlignL.classList.add('active');
+                if(miniAlignC) miniAlignC.classList.remove('active');
+                if(miniAlignR) miniAlignR.classList.remove('active');
+            };
+        }
+        const miniAlignC = document.getElementById('miniAlignC');
+        if (miniAlignC) {
+            miniAlignC.onclick = (e) => {
+                e.preventDefault();
+                updateElProp('align', 'center');
+                if(miniAlignC) miniAlignC.classList.add('active');
+                if(miniAlignL) miniAlignL.classList.remove('active');
+                if(miniAlignR) miniAlignR.classList.remove('active');
+            };
+        }
+        const miniAlignR = document.getElementById('miniAlignR');
+        if (miniAlignR) {
+            miniAlignR.onclick = (e) => {
+                e.preventDefault();
+                updateElProp('align', 'right');
+                if(miniAlignR) miniAlignR.classList.add('active');
+                if(miniAlignL) miniAlignL.classList.remove('active');
+                if(miniAlignC) miniAlignC.classList.remove('active');
+            };
+        }
+
+        const miniSelectAll = document.getElementById('miniSelectAll');
+        if (miniSelectAll) {
+            miniSelectAll.onclick = (e) => {
+                e.preventDefault();
+                if (!selElId || curSlideIdx < 0) return;
+                const dom = document.getElementById(`ui_${selElId}`);
+                if (dom) {
+                    const txt = dom.querySelector('.el-text');
+                    if (txt) {
+                        txt.focus();
+                        const range = document.createRange();
+                        range.selectNodeContents(txt);
+                        const sel = window.getSelection();
+                        sel.removeAllRanges();
+                        sel.addRange(range);
+                    }
+                }
+            };
+        }
+
+        const miniClone = document.getElementById('miniClone');
+        if (miniClone) miniClone.onclick = (e) => { e.preventDefault(); cloneSelectedElement(); };
+
+        const miniDel = document.getElementById('miniDel');
+        if (miniDel) miniDel.onclick = (e) => { e.preventDefault(); deleteSelectedElement(); };
+
+        const miniGrip = document.getElementById('miniDragGrip');
+        if (miniGrip) {
+            miniGrip.onmousedown = (e) => {
+                dragAct = 'move';
+                isDrag = true; stX = e.clientX; stY = e.clientY;
+                const el = slides[curSlideIdx].elements.find(x=>x.id===selElId);
+                if (!el) return;
+                oX = el.x; oY = el.y; oW = el.w; oH = el.h;
+                e.preventDefault();
+                document.addEventListener('mousemove', onDrag);
+                document.addEventListener('mouseup', endDrag);
+            };
+        }
+    }
+    setupMiniToolbarListeners();
 
     // --- Gemini AI Validation Engine ---
     const DEFAULT_GEMINI_KEY = atob('QVEuQWI4Uk42Si1lTWMtdVdvWVlpMWpsVGw4WXVvZ3RTajhuTXE2VzdSdVl1Zk8zbi1LcXc=');
@@ -1206,7 +1555,8 @@ ${rawExtractedSermonText || slides.map(s => s.elements.map(e => e.content).join(
         return {
             id: genId(), type: 'text', name: isR ? 'Referência Bíblica' : (type==='topic' ? 'Título do Tópico' : 'Texto Principal'), content: txt,
             x:48, y:y, w:864, h:h, rotation:0, opacity:1, locked:false, hidden:false,
-            fontFace:ff, fontSize:fz, color:col, align:al, shadow:sh, stroke:strk, isRef:isR
+            fontFace:ff, fontSize:fz, color:col, align:al, shadow:sh, stroke:strk, isRef:isR,
+            bold:false, italic:false
         };
     }
 
@@ -1341,9 +1691,13 @@ ${rawExtractedSermonText || slides.map(s => s.elements.map(e => e.content).join(
 
     function getStyleString(el) {
         if(el.type !== 'text') return '';
-        let s = `font-family:${el.fontFace.includes('Bebas')?"'Bebas Neue', sans-serif":"'Oswald', sans-serif"}; font-size:${el.fontSize*PT_TO_PX}px; color:${el.color}; text-align:${el.align};`;
+        let ff = el.fontFace || 'Bahnschrift SemiBold Condensed';
+        let fontCss = ff.includes('Bebas') ? "'Bebas Neue', sans-serif" : (ff.includes('Arial') ? "Arial, sans-serif" : `'${ff}', 'Oswald', sans-serif`);
+        let s = `font-family:${fontCss}; font-size:${el.fontSize*PT_TO_PX}px; color:${el.color}; text-align:${el.align};`;
         if(el.stroke === 'black') s += ` -webkit-text-stroke: 1px black;`;
         if(el.stroke === 'white') s += ` -webkit-text-stroke: 1px white;`;
+        if(el.bold) s += ` font-weight: bold;`; else s += ` font-weight: normal;`;
+        if(el.italic) s += ` font-style: italic;`; else s += ` font-style: normal;`;
         return s;
     }
 
@@ -1358,7 +1712,7 @@ ${rawExtractedSermonText || slides.map(s => s.elements.map(e => e.content).join(
     function renderCanvas() {
         if(curSlideIdx < 0) return; const s = slides[curSlideIdx];
         slideCanvas.style.backgroundImage = s.bgImage ? `url(${s.bgImage})` : 'none'; slideCanvas.style.backgroundColor = s.bgColor;
-        Array.from(slideCanvas.children).forEach(c => { if(c.id !== 'transform-box' && !c.classList.contains('snap-guide')) c.remove(); });
+        Array.from(slideCanvas.children).forEach(c => { if(c.id !== 'transform-box' && c.id !== 'floating-mini-bar' && !c.classList.contains('snap-guide')) c.remove(); });
 
         s.elements.forEach(el => {
             if(el.hidden) return;
@@ -1432,6 +1786,10 @@ ${rawExtractedSermonText || slides.map(s => s.elements.map(e => e.content).join(
             if(el.type === 'text') {
                 document.getElementById('text-props').style.display = 'flex'; document.getElementById('text-props').style.flexDirection = 'column'; document.getElementById('text-props').style.gap = '12px';
                 document.getElementById('elFont').value = el.fontFace; document.getElementById('elFontSize').value = el.fontSize;
+                const sideBold = document.getElementById('btnSideBold');
+                if (sideBold) sideBold.classList.toggle('active', !!el.bold);
+                const sideItalic = document.getElementById('btnSideItalic');
+                if (sideItalic) sideItalic.classList.toggle('active', !!el.italic);
                 document.getElementById('elColor').value = el.color; document.getElementById('elAlign').value = el.align;
                 document.getElementById('elShadow').value = el.shadow; document.getElementById('elStroke').value = el.stroke || 'none';
             } else { document.getElementById('text-props').style.display = 'none'; }
@@ -1468,29 +1826,53 @@ ${rawExtractedSermonText || slides.map(s => s.elements.map(e => e.content).join(
         }
     }
 
-    // --- Transform ---
-    slideCanvas.onmousedown = (e) => { if(e.target === slideCanvas || e.target === tfBox) { commitText(); selElId = null; updateSelection(); } };
+    // --- Transform (Estilo PowerPoint: Bordas Arrastáveis & Mini Toolbar) ---
+    slideCanvas.onmousedown = (e) => { 
+        if(e.target.closest('#floating-mini-bar')) return;
+        if(e.target === slideCanvas) { commitText(); selElId = null; updateSelection(); } 
+    };
+
     function updateSelection() {
-        renderProps(); renderLayers(); if(!selElId) { tfBox.style.display = 'none'; return; }
+        renderProps(); renderLayers(); 
+        const miniBar = document.getElementById('floating-mini-bar');
+        if(!selElId) { 
+            tfBox.style.display = 'none'; 
+            if(miniBar) miniBar.style.display = 'none';
+            return; 
+        }
         const el = slides[curSlideIdx].elements.find(x=>x.id===selElId);
-        if(!el || el.hidden || el.locked) { tfBox.style.display = 'none'; return; }
-        tfBox.style.display = 'block'; syncTfBox(el);
+        if(!el || el.hidden || el.locked) { 
+            tfBox.style.display = 'none'; 
+            if(miniBar) miniBar.style.display = 'none';
+            return; 
+        }
+        tfBox.style.display = 'block'; 
+        syncTfBox(el);
+        syncMiniBar(el);
     }
+
     function syncTfBox(el) { tfBox.style.left = el.x+'px'; tfBox.style.top = el.y+'px'; tfBox.style.width = el.w+'px'; tfBox.style.height = el.h+'px'; tfBox.style.transform = `rotate(${el.rotation||0}deg)`; }
 
     let isDrag=false, dragAct=null, stX, stY, oX, oY, oW, oH;
     tfBox.onmousedown = (e) => {
-        if(e.target.classList.contains('handle')) dragAct = e.target.dataset.dir; else dragAct = 'move';
+        if(e.target.classList.contains('handle')) {
+            dragAct = e.target.dataset.dir;
+        } else {
+            dragAct = 'move';
+        }
         isDrag = true; stX = e.clientX; stY = e.clientY;
         const el = slides[curSlideIdx].elements.find(x=>x.id===selElId);
+        if (!el) return;
         oX = el.x; oY = el.y; oW = el.w; oH = el.h;
         e.preventDefault(); document.addEventListener('mousemove', onDrag); document.addEventListener('mouseup', endDrag);
     };
+
     function onDrag(e) {
         if(!isDrag || !selElId) return;
         const scale = slideCanvas.getBoundingClientRect().width / C_WIDTH;
         const dx = (e.clientX - stX)/scale; const dy = (e.clientY - stY)/scale;
         const el = slides[curSlideIdx].elements.find(x=>x.id===selElId);
+        if (!el) return;
         if(dragAct === 'move') {
             el.x = oX + dx; el.y = oY + dy; snapV.style.display = 'none'; snapH.style.display = 'none';
             const cx = el.x + el.w/2; const cy = el.y + el.h/2;
@@ -1505,11 +1887,55 @@ ${rawExtractedSermonText || slides.map(s => s.elements.map(e => e.content).join(
             if(dragAct.includes('w')) { const nw = Math.max(20, oW - dx); el.x = oX + (oW - nw); el.w = nw; }
             if(dragAct.includes('n')) { const nh = Math.max(20, oH - dy); el.y = oY + (oH - nh); el.h = nh; }
         }
-        syncTfBox(el); const dom = document.getElementById(`ui_${el.id}`);
+        syncTfBox(el); 
+        syncMiniBar(el);
+        const dom = document.getElementById(`ui_${el.id}`);
         if(dom) { dom.style.left = el.x+'px'; dom.style.top = el.y+'px'; dom.style.width = el.w+'px'; dom.style.height = el.h+'px'; dom.style.transform = `rotate(${el.rotation||0}deg)`; }
         renderProps();
     }
-    function endDrag() { isDrag = false; dragAct = null; snapV.style.display = 'none'; snapH.style.display = 'none'; document.removeEventListener('mousemove', onDrag); document.removeEventListener('mouseup', endDrag); renderFilmstrip(); }
+
+    function endDrag() { 
+        isDrag = false; 
+        dragAct = null; 
+        snapV.style.display = 'none'; 
+        snapH.style.display = 'none'; 
+        document.removeEventListener('mousemove', onDrag); 
+        document.removeEventListener('mouseup', endDrag); 
+        renderFilmstrip(); 
+    }
+
+    // Monitorar seleção de texto com mouse (comportamento nativo PowerPoint mini-toolbar)
+    document.addEventListener('selectionchange', () => {
+        if (!selElId || curSlideIdx < 0) return;
+        const sel = window.getSelection();
+        if (sel && !sel.isCollapsed && sel.toString().trim().length > 0) {
+            const dom = document.getElementById(`ui_${selElId}`);
+            if (dom && dom.contains(sel.anchorNode)) {
+                const el = slides[curSlideIdx].elements.find(x => x.id === selElId);
+                if (el && el.type === 'text') {
+                    syncMiniBar(el);
+                }
+            }
+        }
+    });
+
+    // Atalhos de teclado úteis (Ctrl+D para duplicar, Delete para excluir)
+    document.addEventListener('keydown', (e) => {
+        const tag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+        const isEditing = tag === 'input' || tag === 'textarea' || (document.activeElement && document.activeElement.isContentEditable);
+
+        if (e.key === 'Escape') {
+            commitText();
+            selElId = null;
+            updateSelection();
+        } else if ((e.ctrlKey || e.metaKey) && (e.key === 'd' || e.key === 'D')) {
+            e.preventDefault();
+            cloneSelectedElement();
+        } else if ((e.key === 'Delete' || e.key === 'Backspace') && !isEditing && selElId) {
+            e.preventDefault();
+            deleteSelectedElement();
+        }
+    });
 
     window.addElement = (type) => {
         if(curSlideIdx<0) return; let el;
@@ -1577,7 +2003,7 @@ ${rawExtractedSermonText || slides.map(s => s.elements.map(e => e.content).join(
                         else if(el.shadow === 'glow') opts.shadow = { type: 'outer', angle: 0, blur: 15, offset: 0, opacity: 0.9, color: 'FFFFFF' };
                         if(el.stroke && el.stroke !== 'none') opts.outline = { size: 1.5, color: el.stroke === 'white' ? 'FFFFFF' : '000000' };
                         
-                        const ff = el.fontFace && (el.fontFace.includes('Oswald') || el.fontFace.includes('Bahnschrift')) ? 'Bahnschrift SemiBold Condensed' : 'Bebas Neue';
+                        const ff = el.fontFace && (el.fontFace.includes('Oswald') || el.fontFace.includes('Bahnschrift')) ? 'Bahnschrift SemiBold Condensed' : (el.fontFace && el.fontFace.includes('Arial') ? 'Arial' : 'Bebas Neue');
                         
                         let runs = [];
                         if (el.isRef) {
@@ -1609,7 +2035,9 @@ ${rawExtractedSermonText || slides.map(s => s.elements.map(e => e.content).join(
                             options: {
                                 fontFace: ff,
                                 fontSize: el.fontSize || 44,
-                                color: r.highlight ? 'E8B859' : (el.color || '#ffffff').replace('#','')
+                                color: r.highlight ? 'E8B859' : (el.color || '#ffffff').replace('#',''),
+                                bold: !!el.bold,
+                                italic: !!el.italic
                             }
                         }));
                         slide.addText(pptRuns, opts);
