@@ -667,6 +667,189 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnDownloadDirectTop) btnDownloadDirectTop.addEventListener('click', triggerDirectDownload);
   if (btnDownloadDirectMain) btnDownloadDirectMain.addEventListener('click', triggerDirectDownload);
 
+  // ==========================================
+  // INSERÇÃO RÁPIDA DE VERSÍCULOS BÍBLICOS
+  // ==========================================
+  const modalVerse = document.getElementById('modalVerse');
+  const btnOpenVerseModal = document.getElementById('btn-open-verse-modal');
+  const btnCloseVerseModal = document.getElementById('btn-close-verse-modal');
+  const btnCancelVerseModal = document.getElementById('btn-cancel-verse-modal');
+  const btnSearchVerse = document.getElementById('btnSearchVerse');
+  const btnConfirmInsertVerse = document.getElementById('btn-confirm-insert-verse');
+  const verseRefInput = document.getElementById('verseRefInput');
+  const verseVersionSelect = document.getElementById('verseVersionSelect');
+  const verseTextInput = document.getElementById('verseTextInput');
+  const verseSearchStatus = document.getElementById('verseSearchStatus');
+  const checkSplitMultiVersesPublic = document.getElementById('checkSplitMultiVersesPublic');
+  const btnHighlightVerseModal = document.getElementById('btn-highlight-verse-modal');
+  const btnQuotesVerseModal = document.getElementById('btn-quotes-verse-modal');
+
+  function openVerseModalPublic() {
+    if (modalVerse) {
+      modalVerse.style.display = 'flex';
+      setTimeout(() => { if (verseRefInput) verseRefInput.focus(); }, 50);
+    }
+  }
+
+  function closeVerseModalPublic() {
+    if (modalVerse) modalVerse.style.display = 'none';
+  }
+
+  window.quickFillVersePublic = function(ref) {
+    if (verseRefInput) {
+      verseRefInput.value = ref;
+      searchVersePublic();
+    }
+  };
+
+  if (btnOpenVerseModal) btnOpenVerseModal.addEventListener('click', openVerseModalPublic);
+  if (btnCloseVerseModal) btnCloseVerseModal.addEventListener('click', closeVerseModalPublic);
+  if (btnCancelVerseModal) btnCancelVerseModal.addEventListener('click', closeVerseModalPublic);
+
+  if (btnHighlightVerseModal) {
+    btnHighlightVerseModal.addEventListener('click', () => {
+      if (!verseTextInput) return;
+      const start = verseTextInput.selectionStart;
+      const end = verseTextInput.selectionEnd;
+      const val = verseTextInput.value;
+      if (start !== end) {
+        const selected = val.substring(start, end).replace(/\[\/?HL\]/gi, '');
+        const replacement = `[HL]${selected}[/HL]`;
+        verseTextInput.value = val.substring(0, start) + replacement + val.substring(end);
+        verseTextInput.selectionStart = start;
+        verseTextInput.selectionEnd = start + replacement.length;
+      } else {
+        showToast('Selecione uma palavra ou trecho para destacar em dourado.', 'info');
+      }
+      verseTextInput.focus();
+    });
+  }
+
+  if (btnQuotesVerseModal) {
+    btnQuotesVerseModal.addEventListener('click', () => {
+      if (!verseTextInput) return;
+      let val = verseTextInput.value.trim();
+      if ((val.startsWith('“') && val.endsWith('”')) || (val.startsWith('"') && val.endsWith('"'))) {
+        val = val.replace(/^[“”"]|[“”"]$/g, '').trim();
+      } else {
+        val = `“${val}”`;
+      }
+      verseTextInput.value = val;
+    });
+  }
+
+  async function searchVersePublic() {
+    if (!verseRefInput || !verseVersionSelect) return;
+    const ref = verseRefInput.value.trim();
+    const version = verseVersionSelect.value;
+    if (!ref) {
+      showToast('Digite a referência bíblica (ex: João 3:16, Sl 23:1-3).', 'error');
+      return;
+    }
+
+    if (btnSearchVerse) {
+      btnSearchVerse.disabled = true;
+      btnSearchVerse.innerHTML = '⏳ Buscando...';
+    }
+    if (verseSearchStatus) verseSearchStatus.innerText = `Consultando versão ${version}...`;
+
+    try {
+      let foundText = null;
+      let finalRef = ref;
+
+      try {
+        const cleanQuery = ref.replace(/\s+/g, '+').replace(/salmo\b/i, 'salmos').replace(/cântico\b/i, 'cantares');
+        const apiUrl = `https://bible-api.com/${encodeURIComponent(cleanQuery)}?translation=almeida`;
+        const res = await fetch(apiUrl);
+        if (res.ok) {
+          const d = await res.json();
+          if (d && d.text) {
+            foundText = d.text.replace(/\s+/g, ' ').trim();
+            if (d.reference) finalRef = d.reference;
+          }
+        }
+      } catch(e) {}
+
+      if (foundText) {
+        if (!foundText.startsWith('“') && !foundText.startsWith('"')) foundText = `“${foundText}”`;
+        verseTextInput.value = foundText;
+        verseRefInput.value = `${finalRef} (${version})`;
+        if (verseSearchStatus) verseSearchStatus.innerText = `✅ Versículo carregado na versão ${version}!`;
+      } else {
+        if (verseSearchStatus) verseSearchStatus.innerText = `Digite ou cole o texto do versículo diretamente na caixa de texto.`;
+      }
+    } catch(err) {
+      if (verseSearchStatus) verseSearchStatus.innerText = `Digite o texto manualmente.`;
+    } finally {
+      if (btnSearchVerse) {
+        btnSearchVerse.disabled = false;
+        btnSearchVerse.innerHTML = '🔍 Buscar';
+      }
+    }
+  }
+
+  if (btnSearchVerse) btnSearchVerse.addEventListener('click', searchVersePublic);
+  if (verseRefInput) {
+    verseRefInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') searchVersePublic();
+    });
+  }
+
+  if (btnConfirmInsertVerse) {
+    btnConfirmInsertVerse.addEventListener('click', () => {
+      const rawText = verseTextInput ? verseTextInput.value.trim() : '';
+      const reference = verseRefInput ? verseRefInput.value.trim() : 'Referência Bíblica';
+
+      if (!rawText) {
+        showToast('Informe ou busque o texto do versículo antes de inserir.', 'error');
+        return;
+      }
+
+      const doSplit = checkSplitMultiVersesPublic ? checkSplitMultiVersesPublic.checked : false;
+      const verseSplit = doSplit ? rawText.split(/(?=\b\d{1,3}\s+[A-ZÀ-Ý“"])/g).filter(s => s.trim().length > 0) : [rawText];
+      const baseBookAndChap = reference.includes(':') ? reference.split(':')[0] : reference;
+
+      verseSplit.forEach(vChunk => {
+        let cleanText = vChunk.trim();
+        let currentRef = reference;
+
+        const numMatch = cleanText.match(/^“?\s*(\d{1,3})\s+(.*)$/);
+        if (numMatch && baseBookAndChap) {
+          const vNum = numMatch[1];
+          cleanText = numMatch[2].trim();
+          const versionMatch = reference.match(/\((.*?)\)/);
+          const verStr = versionMatch ? ` ${versionMatch[0]}` : '';
+          currentRef = `${baseBookAndChap}:${vNum}${verStr}`;
+        }
+
+        if (!cleanText.startsWith('“') && !cleanText.startsWith('"')) cleanText = `“${cleanText}”`;
+
+        // Parse runs with highlight
+        const runs = [];
+        const regex = /\[HL\](.*?)\[\/HL\]/gi;
+        let lastIdx = 0;
+        let m;
+        while ((m = regex.exec(cleanText)) !== null) {
+          if (m.index > lastIdx) runs.push({ text: cleanText.substring(lastIdx, m.index), highlight: false });
+          runs.push({ text: m[1], highlight: true });
+          lastIdx = m.index + m[0].length;
+        }
+        if (lastIdx < cleanText.length) runs.push({ text: cleanText.substring(lastIdx), highlight: false });
+        if (runs.length === 0) runs.push({ text: cleanText, highlight: false });
+
+        currentSlides.push({
+          type: 'verse',
+          reference: currentRef,
+          runs: runs
+        });
+      });
+
+      closeVerseModalPublic();
+      renderResults();
+      showToast(`Slide de ${reference} inserido com sucesso!`, 'success');
+    });
+  }
+
   // Toast utilitário
   function showToast(msg, type = 'info') {
     if (!toast) return;
