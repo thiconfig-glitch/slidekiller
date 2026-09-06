@@ -271,7 +271,7 @@ document.addEventListener('DOMContentLoaded', () => {
     slideCountBadge.textContent = `${currentSlides.length} slides`;
     slidesGrid.innerHTML = '';
 
-    const bgUrl = (templateSelect && templateSelect.value) ? templateSelect.value : '/assets/church_sermon_bg.png';
+    const bgUrl = (templateSelect && templateSelect.value) ? templateSelect.value : 'assets/church_sermon_bg.png';
 
     currentSlides.forEach((slide, index) => {
       const card = document.createElement('div');
@@ -354,7 +354,7 @@ document.addEventListener('DOMContentLoaded', () => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             slides: currentSlides,
-            selectedBg: templateSelect ? templateSelect.value : '/assets/church_sermon_bg.png'
+            selectedBg: templateSelect ? templateSelect.value : 'assets/church_sermon_bg.png'
           })
         });
         const data = await res.json();
