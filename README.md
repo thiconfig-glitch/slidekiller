@@ -5,7 +5,8 @@ Plataforma unificada e modular de produção de mídia, projeção e apresentaç
 Reúne em uma única interface inteligente os principais módulos de apoio à equipe de multimídia:
 1. ⚡ **Slide Killer**: Gerador automatizado de slides em PowerPoint (.pptx 16:9 Full HD) a partir de PDFs ou anotações de sermões com quebra inteligente de versículos e destaque tipográfico.
 2. 📄 **PDF ➔ PPTX Direto (1 Página = 1 Slide)**: Conversor direto e fiel de qualquer arquivo PDF para PowerPoint (.pptx 16:9 Full HD) onde cada página do PDF vira exatamente uma página de slide em alta definição, sem alterar ou reformatar o conteúdo original (ideal para apresentações prontas do Canva, avisos e telões).
-3. 🎬 **Editor de Vídeo (OpenCut)**: Estúdio de edição de vídeo open-source completo estilo CapCut, com timeline multi-pistas, cortes instantâneos e exportação Full HD direto no navegador.
+3. 🖼️ **Imagens / ZIP ➔ PPTX (Organizador Visual)**: Anexe fotos avulsas ou um arquivo .ZIP com dezenas de imagens, reorganize visualmente a ordem de cada slide (arrastando com o mouse ou usando botões de posição ⬅ / ➡) e exporte para PowerPoint (.pptx 16:9 Full HD) com ajuste de proporção e fundo personalizável.
+4. 🎬 **Editor de Vídeo (OpenCut)**: Estúdio de edição de vídeo open-source completo estilo CapCut, com timeline multi-pistas, cortes instantâneos e exportação Full HD direto no navegador.
 
 ---
 
@@ -27,7 +28,20 @@ Reúne em uma única interface inteligente os principais módulos de apoio à eq
 - **Pronto para Telões & Projeção**: Gere arquivos compatíveis com PowerPoint, Holyrics, ProPresenter, EasyWorship e sistemas de multimídia com 1 clique.
 - **Opções Flexíveis de Formato**: Escolha entre Proporção Widescreen 16:9 (com fundo escuro elegante) ou Proporção Original do PDF.
 
-### 3. Editor de Vídeo (OpenCut Studio)
+### 3. Imagens / ZIP ➔ PPTX (Organizador Visual de Slides)
+- **Upload Flexível**: Anexe imagens avulsas (`PNG`, `JPG`, `WEBP`, etc.) ou envie um arquivo `.ZIP` completo com dezenas de fotos.
+- **Extração Automática de ZIPs**: Descompacta o arquivo ZIP instantaneamente no navegador preservando a ordem natural dos nomes.
+- **Organização Visual da Ordem dos Slides**:
+  - Arraste e solte (*Drag & Drop*) os cards para posicionar os slides na sequência exata que preferir.
+  - Botões de ajuste fino `⬅` (Mover para trás) e `➡` (Mover para frente) em cada slide.
+  - Ferramentas em lote: Ordenação alfabética natural (`A-Z`), inversão de ordem (`🔀 Inverter`) e exclusão individual de slides (`🗑️`).
+- **Exportação para Telão**:
+  - Formato Widescreen 16:9 Full HD ou 4:3.
+  - Ajuste de imagem (*Contain* sem cortes com fundo escuro ou *Cover* 100% da tela).
+  - Fundo customizável (Preto, Escuro Church ou Branco).
+  - Download imediato do arquivo `.pptx`.
+
+### 4. Editor de Vídeo (OpenCut Studio)
 - **Alternativa Open-Source ao CapCut**: Interface profissional com timeline para edição ágil de reels, pregações, avisos e clipes de louvor.
 - **Processamento no Cliente**: Roda direto no navegador com WebCodecs e WASM, sem marca d'água e sem filas de renderização.
 - **Modo Tela Cheia & Foco**: Permite maximizar o editor para trabalhar com precisão milimétrica nos cortes.

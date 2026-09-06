@@ -10,7 +10,10 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/libs/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/dist/pptxgen.min.js"></script>
-  <link rel="stylesheet" href="style.css?v=2.2.0">
+  <!-- Firebase SDKs para sincronização Celular ➔ PC -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+  <link rel="stylesheet" href="style.css?v=2.3.0">
 </head>
 <body>
   <!-- Cabeçalho Principal do Hub -->
@@ -21,7 +24,7 @@
         <div>
           <div style="display: flex; align-items: center; gap: 8px;">
             <h1 class="brand-title">Central Multimídia Church</h1>
-            <span class="version-tag">v2.2.0</span>
+            <span class="version-tag">v2.3.0</span>
           </div>
           <span class="brand-subtitle">Plataforma Unificada de Mídia & Culto</span>
         </div>
@@ -40,6 +43,12 @@
         <span class="module-icon">📄</span>
         <span class="module-label">PDF ➔ PPTX Direto</span>
         <span class="module-pill pill-gold">1 Pág = 1 Slide</span>
+      </button>
+
+      <button class="nav-module-btn" data-module="images-to-pptx">
+        <span class="module-icon">🖼️</span>
+        <span class="module-label">Imagens / ZIP ➔ PPTX</span>
+        <span class="module-pill pill-purple">Organizador</span>
       </button>
 
       <button class="nav-module-btn" data-module="video-editor">
@@ -66,6 +75,14 @@
         </button>
       </div>
 
+      <!-- Ações do Módulo Imagens / ZIP ➔ PPTX -->
+      <div class="module-actions" id="actions-images-to-pptx" style="display: none;">
+        <button class="btn btn-secondary" id="btn-new-images-top">Novo Lote</button>
+        <button class="btn btn-primary" id="btn-download-images-top" style="display: none;">
+          <span>📥</span> Baixar PowerPoint (.pptx)
+        </button>
+      </div>
+
       <!-- Ações do Módulo Editor de Vídeo -->
       <div class="module-actions" id="actions-video-editor" style="display: none;">
         <button class="btn btn-secondary" id="btn-video-fullscreen" title="Expandir editor para tela cheia">
@@ -75,6 +92,12 @@
           <span>↗</span> Abrir no Navegador
         </a>
       </div>
+
+      <!-- Botão Global: Tarefas em Andamento (Celular / PC) -->
+      <button class="btn btn-tasks-toggle" id="btn-open-tasks-panel" title="Tarefas em Andamento (Sincronizadas na Nuvem)">
+        <span>📌</span> <span class="btn-tasks-text">Tarefas</span>
+        <span class="tasks-counter-badge" id="tasks-counter-badge">0/3</span>
+      </button>
     </div>
   </header>
 
@@ -247,7 +270,119 @@
     </div>
 
     <!-- ========================================== -->
-    <!-- MÓDULO 2: EDITOR DE VÍDEO (OPENCUT)         -->
+    <!-- MÓDULO 3: IMAGENS / ZIP ➔ PPTX             -->
+    <!-- ========================================== -->
+    <div class="module-view" id="view-images-to-pptx">
+      <section class="input-section" id="section-images-input">
+        <div class="card hero-card">
+          <div class="module-header-badge">
+            <span class="badge-dot" style="background-color: var(--accent-purple); box-shadow: 0 0 8px var(--accent-purple);"></span>
+            <span>MÓDULO IMAGENS & ZIP • ORGANIZADOR VISUAL DE SLIDES</span>
+          </div>
+          <h2>Transforme Imagens Avulsas ou Arquivos ZIP em PowerPoint</h2>
+          <p>Selecione fotos avulsas ou anexe um arquivo ZIP com imagens. Ajuste a ordem de cada slide arrastando com o mouse ou usando os botões de posição, e exporte sua apresentação .pptx 16:9 Full HD pronta para telões.</p>
+
+          <div class="dropzone" id="dropzone-images">
+            <input type="file" id="images-files-input" accept="image/*,.zip" multiple style="display: none;">
+            <input type="file" id="zip-files-input" accept=".zip" style="display: none;">
+            <div class="dropzone-icon">🖼️</div>
+            <div class="dropzone-text">
+              <strong>Arraste suas imagens ou arquivo ZIP aqui</strong>
+              <span>ou clique para selecionar fotos avulsas ou pacote .ZIP</span>
+            </div>
+          </div>
+
+          <!-- Dicas e Ações Rápidas de Upload -->
+          <div style="display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; justify-content: center;">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('images-files-input').click()">
+              <span>📁</span> Selecionar Imagens Avulsas (Fotos)
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('zip-files-input').click()">
+              <span>📦</span> Selecionar Arquivo .ZIP
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Seção do Organizador de Slides e Exportação -->
+      <section class="results-section" id="section-images-organizer" style="display: none;">
+        <div class="results-header" style="flex-wrap: wrap; gap: 16px;">
+          <div class="results-info">
+            <h2>Organizador de Slides</h2>
+            <span class="badge" id="images-slide-count-badge" style="background: rgba(168,85,247,0.2); color: var(--accent-purple); border-color: rgba(168,85,247,0.4);">0 imagens</span>
+            <span style="font-size: 12px; color: var(--text-muted); margin-left: 8px;">💡 Arraste os cards para reorganizar a ordem</span>
+          </div>
+
+          <div class="results-actions" style="flex-wrap: wrap; gap: 8px;">
+            <button class="btn btn-secondary btn-sm" id="btn-add-more-images" onclick="document.getElementById('images-files-input').click()">
+              <span>＋</span> Mais Fotos
+            </button>
+            <button class="btn btn-secondary btn-sm" id="btn-add-more-zip" onclick="document.getElementById('zip-files-input').click()">
+              <span>📦</span> Mais um ZIP
+            </button>
+            <button class="btn btn-secondary btn-sm" id="btn-sort-images-az" title="Ordenar slides por nome do arquivo">
+              <span>🔤</span> A-Z
+            </button>
+            <button class="btn btn-secondary btn-sm" id="btn-reverse-images" title="Inverter a ordem atual dos slides">
+              <span>🔀</span> Inverter
+            </button>
+            <button class="btn btn-danger btn-sm" id="btn-clear-all-images" title="Remover todas as imagens">
+              <span>🗑️</span> Limpar
+            </button>
+          </div>
+        </div>
+
+        <!-- Barra de Configurações de Exportação PPTX -->
+        <div class="card" style="margin-bottom: 20px; padding: 16px 20px;">
+          <div class="options-bar" style="margin: 0; display: flex; flex-wrap: wrap; gap: 18px; align-items: center;">
+            <div class="option-item">
+              <label for="images-aspect-select">Proporção dos Slides:</label>
+              <select id="images-aspect-select" class="form-select">
+                <option value="16x9">Widescreen 16:9 Full HD (Padrão Telão)</option>
+                <option value="4x3">Proporção 4:3 Tradicional</option>
+              </select>
+            </div>
+            <div class="option-item">
+              <label for="images-fit-select">Ajuste da Imagem:</label>
+              <select id="images-fit-select" class="form-select">
+                <option value="contain">Ajustar ao Slide com Fundo Escuro (Sem cortes)</option>
+                <option value="cover">Preencher Slide Completo (100% Full Cover)</option>
+              </select>
+            </div>
+            <div class="option-item">
+              <label for="images-bg-select">Cor de Fundo:</label>
+              <select id="images-bg-select" class="form-select">
+                <option value="000000">Preto Puro (#000000)</option>
+                <option value="0b0f19">Escuro Church (#0b0f19)</option>
+                <option value="FFFFFF">Branco (#FFFFFF)</option>
+              </select>
+            </div>
+            <div style="margin-left: auto; display: flex; align-items: flex-end;">
+              <button class="btn btn-primary" id="btn-generate-images-pptx" style="padding: 10px 22px; font-weight: 700; background: linear-gradient(135deg, var(--primary), #ffd978); color: #000; box-shadow: 0 4px 15px rgba(232, 184, 89, 0.4);">
+                <span>⚡</span> Gerar e Baixar PowerPoint (.pptx)
+              </button>
+            </div>
+          </div>
+
+          <!-- Barra de Progresso da Geração de Slides -->
+          <div id="images-progress-container" class="direct-progress-box" style="display: none; margin-top: 14px;">
+            <div class="progress-info">
+              <span id="images-progress-status">Preparando slides...</span>
+              <span id="images-progress-percent">0%</span>
+            </div>
+            <div class="progress-bar-bg">
+              <div class="progress-bar-fill" id="images-progress-bar" style="width: 0%;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Grid de Cards de Imagens Reordenáveis (Drag and Drop + Botões) -->
+        <div class="images-reorder-grid" id="images-reorder-grid"></div>
+      </section>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MÓDULO 4: EDITOR DE VÍDEO (OPENCUT)         -->
     <!-- ========================================== -->
     <div class="module-view" id="view-video-editor">
       <!-- Tela de Entrada com Identidade da Igreja -->
@@ -422,6 +557,46 @@
           <button class="btn btn-primary" id="btn-confirm-insert-verse">
             ➕ Inserir Slide no Culto
           </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Drawer de Tarefas em Andamento (Sincronização Celular / PC - Máx 3) -->
+    <div id="tasks-drawer-overlay" class="tasks-drawer-overlay" onclick="window.toggleTasksDrawer(false)">
+      <div class="tasks-drawer" onclick="event.stopPropagation()">
+        <div class="tasks-drawer-header">
+          <div>
+            <h3 style="margin: 0; font-size: 1.15rem; color: #fff; display: flex; align-items: center; gap: 8px;">
+              <span>📌 Tarefas em Andamento</span>
+              <span class="tasks-counter-badge" id="drawer-tasks-counter-badge">0/3</span>
+            </h3>
+            <span style="font-size: 12px; color: var(--text-muted); display: block; margin-top: 4px;">
+              Edite no celular e conclua no PC (Limite: até 3 tarefas)
+            </span>
+          </div>
+          <button class="btn-clear" onclick="window.toggleTasksDrawer(false)">✕</button>
+        </div>
+
+        <!-- Botão Salvar Tarefa Atual -->
+        <div style="padding: 14px 20px; border-bottom: 1px solid var(--border); background: rgba(0,0,0,0.2);">
+          <button class="btn btn-primary" id="btn-save-current-task" style="width: 100%; justify-content: center; font-size: 13px;">
+            <span>💾</span> Salvar Trabalho Atual na Nuvem
+          </button>
+        </div>
+
+        <!-- Lista de até 3 Tarefas -->
+        <div class="tasks-list" id="tasks-list-container">
+          <div class="empty-tasks-msg">
+            Nenhuma tarefa salva no momento.<br>
+            Clique em <strong>Salvar Trabalho Atual</strong> para guardar seu progresso na nuvem.
+          </div>
+        </div>
+
+        <!-- Rodapé Informativo -->
+        <div class="tasks-drawer-footer">
+          <span style="font-size: 11px; color: var(--text-muted); line-height: 1.4; display: block;">
+            ⚡ <strong>Liberdade Total:</strong> Comece a montar no celular e baixe o PowerPoint no computador, ou vice-versa! Limite máximo de 3 tarefas para manter tudo ágil e leve.
+          </span>
         </div>
       </div>
     </div>
