@@ -216,26 +216,8 @@
             </div>
           </div>
 
-          <!-- Opções do Conversor Direto -->
-          <div class="options-bar" style="margin-top: 18px;">
-            <div class="option-item">
-              <label for="direct-aspect-select">Proporção dos Slides:</label>
-              <select id="direct-aspect-select" class="form-select">
-                <option value="16x9">Widescreen 16:9 Full HD (Padrão Telão)</option>
-                <option value="original">Proporção Original do PDF (Fiel às Páginas)</option>
-              </select>
-            </div>
-            <div class="option-item">
-              <label for="direct-fit-select">Ajuste da Página no Slide:</label>
-              <select id="direct-fit-select" class="form-select">
-                <option value="contain">Ajustar ao Slide com Fundo Escuro (Sem cortes)</option>
-                <option value="cover">Preencher Slide Completo (100% Full Cover)</option>
-              </select>
-            </div>
-          </div>
-
           <!-- Barra de Progresso da Conversão -->
-          <div id="direct-progress-container" class="direct-progress-box" style="display: none;">
+          <div id="direct-progress-container" class="direct-progress-box" style="display: none; margin-top: 18px;">
             <div class="progress-info">
               <span id="direct-progress-status">Preparando conversão...</span>
               <span id="direct-progress-percent">0%</span>
@@ -246,26 +228,90 @@
           </div>
 
           <button class="btn btn-action" id="btn-convert-direct" style="margin-top: 18px;">
-            <span class="btn-icon">⚡</span> Converter para PPTX Instantaneamente
+            <span class="btn-icon">⚡</span> Processar PDF e Abrir no Organizador
           </button>
         </div>
       </section>
 
-      <!-- Seção de Resultados da Conversão Direta -->
+      <!-- Seção do Organizador de Slides do PDF e Exportação -->
       <section class="results-section" id="section-direct-results" style="display: none;">
-        <div class="results-header">
+        <!-- Inputs ocultos para adicionar mais mídias ao projeto do PDF -->
+        <input type="file" id="pdf-extra-images-input" accept="image/*" multiple style="display: none;">
+        <input type="file" id="pdf-append-input" accept=".pdf" style="display: none;">
+
+        <div class="results-header" style="flex-wrap: wrap; gap: 16px;">
           <div class="results-info">
-            <h2 id="direct-results-title">Apresentação Convertida</h2>
-            <span class="badge" id="direct-slide-count-badge">0 slides</span>
+            <h2>Organizador de Slides do PDF</h2>
+            <span class="badge" id="direct-slide-count-badge" style="background: rgba(232, 184, 89, 0.2); color: var(--primary); border-color: rgba(232, 184, 89, 0.4);">0 slides</span>
+            <span style="font-size: 12px; color: var(--text-muted); margin-left: 8px;">💡 Arraste os cards para reorganizar a ordem dos slides</span>
           </div>
-          <div class="results-actions">
-            <button class="btn btn-secondary" id="btn-new-direct-main">Converter Outro PDF</button>
-            <button class="btn btn-primary" id="btn-download-direct-main">📥 Baixar PowerPoint (.pptx)</button>
+
+          <div class="results-actions" style="flex-wrap: wrap; gap: 8px;">
+            <button class="btn btn-secondary btn-sm" id="btn-add-pdf-images" onclick="document.getElementById('pdf-extra-images-input').click()">
+              <span>📷 ＋</span> Adicionar Fotos / Avisos
+            </button>
+            <button class="btn btn-secondary btn-sm" id="btn-add-another-pdf" onclick="document.getElementById('pdf-append-input').click()">
+              <span>📄 ＋</span> Mais um PDF
+            </button>
+            <button class="btn btn-secondary btn-sm" id="btn-reverse-direct" title="Inverter a ordem atual dos slides">
+              <span>🔀</span> Inverter
+            </button>
+            <button class="btn btn-secondary btn-sm" id="btn-new-direct-main" title="Converter outro PDF do zero">
+              <span>🔄</span> Novo PDF
+            </button>
+            <button class="btn btn-danger btn-sm" id="btn-clear-all-direct" title="Remover todos os slides">
+              <span>🗑️</span> Limpar
+            </button>
           </div>
         </div>
 
-        <!-- Grid de Miniaturas das Páginas -->
-        <div class="slides-grid" id="direct-slides-grid"></div>
+        <!-- Barra de Configurações de Exportação PPTX -->
+        <div class="card" style="margin-bottom: 20px; padding: 16px 20px;">
+          <div class="options-bar" style="margin: 0; display: flex; flex-wrap: wrap; gap: 18px; align-items: center;">
+            <div class="option-item">
+              <label for="direct-aspect-select">Proporção dos Slides:</label>
+              <select id="direct-aspect-select" class="form-select">
+                <option value="16x9">Widescreen 16:9 Full HD (Padrão Telão)</option>
+                <option value="4x3">Proporção 4:3 Tradicional</option>
+                <option value="original">Proporção Original do PDF</option>
+              </select>
+            </div>
+            <div class="option-item">
+              <label for="direct-fit-select">Ajuste da Página / Imagem:</label>
+              <select id="direct-fit-select" class="form-select">
+                <option value="contain">Ajustar ao Slide com Fundo (Sem cortes)</option>
+                <option value="cover">Preencher Slide Completo (100% Full Cover)</option>
+              </select>
+            </div>
+            <div class="option-item">
+              <label for="direct-bg-select">Cor de Fundo:</label>
+              <select id="direct-bg-select" class="form-select">
+                <option value="000000">Preto Puro (#000000)</option>
+                <option value="0b0f19">Escuro Church (#0b0f19)</option>
+                <option value="FFFFFF">Branco (#FFFFFF)</option>
+              </select>
+            </div>
+            <div style="margin-left: auto; display: flex; align-items: flex-end;">
+              <button class="btn btn-primary" id="btn-download-direct-main" style="padding: 10px 22px; font-weight: 700; background: linear-gradient(135deg, var(--primary), #ffd978); color: #000; box-shadow: 0 4px 15px rgba(232, 184, 89, 0.4);">
+                <span>⚡</span> Gerar e Baixar PowerPoint (.pptx)
+              </button>
+            </div>
+          </div>
+
+          <!-- Barra de Progresso da Geração de Slides PPTX -->
+          <div id="direct-export-progress-container" class="direct-progress-box" style="display: none; margin-top: 14px;">
+            <div class="progress-info">
+              <span id="direct-export-progress-status">Preparando slides...</span>
+              <span id="direct-export-progress-percent">0%</span>
+            </div>
+            <div class="progress-bar-bg">
+              <div class="progress-bar-fill" id="direct-export-progress-bar" style="width: 0%;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Grid de Cards dos Slides (Reordenáveis via Drag & Drop) -->
+        <div class="images-reorder-grid" id="direct-slides-grid"></div>
       </section>
     </div>
 
