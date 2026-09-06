@@ -1585,4 +1585,78 @@ textarea:focus {
   }
 }
 
+/* ================================================= */
+/* SLIDE KILLER: FOTOS DE SLIDES / VERSÍCULOS (IA)   */
+/* ================================================= */
+.verse-images-thumbnails-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.verse-image-thumb-card {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: #000;
+  aspect-ratio: 16 / 9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  transition: transform 0.2s, border-color 0.2s;
+}
+
+.verse-image-thumb-card:hover {
+  border-color: var(--primary);
+  transform: translateY(-2px);
+}
+
+.verse-image-thumb-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.verse-image-thumb-card .btn-remove-thumb {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  background: rgba(239, 68, 68, 0.85);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+  transition: background 0.15s, transform 0.15s;
+}
+
+.verse-image-thumb-card .btn-remove-thumb:hover {
+  background: var(--danger);
+  transform: scale(1.1);
+}
+
+.verse-image-thumb-badge {
+  position: absolute;
+  bottom: 4px;
+  left: 4px;
+  background: rgba(11, 15, 25, 0.8);
+  backdrop-filter: blur(4px);
+  color: var(--primary);
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 4px;
+  border: 1px solid rgba(232, 184, 89, 0.3);
+}
+
 
