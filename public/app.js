@@ -684,14 +684,18 @@ Retorne ESTRITAMENTE em formato JSON puro, sem crases ou markdown adicional:
       const textEdit = card.querySelector('.slide-text-edit');
       const refEdit = card.querySelector('.slide-ref-edit');
       const btnDelete = card.querySelector('.btn-delete-slide');
+      const previewText = card.querySelector('.slide-preview-text');
+      const previewRef = card.querySelector('.slide-preview-ref');
 
       textEdit.addEventListener('input', (e) => {
         const val = e.target.value;
         currentSlides[index].runs = [{ text: val, highlight: false }];
+        if (previewText) previewText.textContent = val;
       });
 
       refEdit.addEventListener('input', (e) => {
         currentSlides[index].reference = e.target.value;
+        if (previewRef) previewRef.textContent = e.target.value;
       });
 
       btnDelete.addEventListener('click', () => {
