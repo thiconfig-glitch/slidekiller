@@ -127,6 +127,25 @@ document.addEventListener('DOMContentLoaded', () => {
   const templateSelect = document.getElementById('template-select');
   const checkUseAi = document.getElementById('check-use-ai');
   const btnGenerate = document.getElementById('btn-generate');
+
+  // Elementos do novo modo IA Vision (Fotos de Slides / Versículos)
+  const dropzoneOcr = document.getElementById('dropzone-ocr');
+  const verseImagesInput = document.getElementById('verse-images-input');
+  const verseImagesContainer = document.getElementById('verse-images-container');
+  const verseImagesThumbnailsGrid = document.getElementById('verse-images-thumbnails-grid');
+  const btnAddMoreVerseImages = document.getElementById('btn-add-more-verse-images');
+  const btnClearVerseImages = document.getElementById('btn-clear-verse-images');
+  const optionBibleVersion = document.getElementById('option-bible-version');
+  const bibleVersionSelect = document.getElementById('bible-version-select');
+  const optionUseAiCheck = document.getElementById('option-use-ai-check');
+
+  const aiOcrProgressContainer = document.getElementById('ai-ocr-progress-container');
+  const aiOcrProgressBar = document.getElementById('ai-ocr-progress-bar');
+  const aiOcrProgressPercent = document.getElementById('ai-ocr-progress-percent');
+  const aiOcrProgressStatus = document.getElementById('ai-ocr-progress-status');
+
+  const btnDownloadPdfSk = document.getElementById('btn-download-pdf-sk');
+  const btnDownloadBothSk = document.getElementById('btn-download-both-sk');
   
   const inputSection = document.getElementById('input-section');
   const resultsSection = document.getElementById('results-section');
@@ -142,6 +161,8 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentFile = null;
   let currentSlides = [];
   let currentDownloadUrl = null;
+  let sermonImageFiles = [];
+  let activeSlideKillerTab = 'tab-pdf';
 
   // Tabs internas do Slide Killer
   tabBtns.forEach(btn => {
@@ -149,12 +170,27 @@ document.addEventListener('DOMContentLoaded', () => {
       tabBtns.forEach(b => b.classList.remove('active'));
       tabContents.forEach(c => c.classList.remove('active'));
       btn.classList.add('active');
+      activeSlideKillerTab = btn.dataset.tab;
       const target = document.getElementById(btn.dataset.tab);
       if (target) target.classList.add('active');
+
+      if (activeSlideKillerTab === 'tab-images-ocr') {
+        if (optionBibleVersion) optionBibleVersion.style.display = 'flex';
+        if (optionUseAiCheck) optionUseAiCheck.style.display = 'none';
+        if (btnGenerate) {
+          btnGenerate.innerHTML = '<span class="btn-icon">⚡</span> Extrair Versículos e Gerar Slides com IA';
+        }
+      } else {
+        if (optionBibleVersion) optionBibleVersion.style.display = 'none';
+        if (optionUseAiCheck) optionUseAiCheck.style.display = 'flex';
+        if (btnGenerate) {
+          btnGenerate.innerHTML = '<span class="btn-icon">⚡</span> Gerar Slides Instantaneamente';
+        }
+      }
     });
   });
 
-  // Dropzone events
+  // Dropzone events (PDF Original)
   if (dropzone) {
     dropzone.addEventListener('click', () => pdfFileInput.click());
 
@@ -203,6 +239,322 @@ document.addEventListener('DOMContentLoaded', () => {
     selectedFileInfo.style.display = 'inline-flex';
   }
 
+  // Dropzone & Manipulação de Fotos de Versículos / Slides com IA
+  if (dropzoneOcr && verseImagesInput) {
+    dropzoneOcr.addEventListener('click', () => verseImagesInput.click());
+
+    dropzoneOcr.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropzoneOcr.classList.add('dragover');
+    });
+
+    dropzoneOcr.addEventListener('dragleave', () => {
+      dropzoneOcr.classList.remove('dragover');
+    });
+
+    dropzoneOcr.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropzoneOcr.classList.remove('dragover');
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        handleVerseImagesAdded(Array.from(e.dataTransfer.files));
+      }
+    });
+
+    verseImagesInput.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files.length > 0) {
+        handleVerseImagesAdded(Array.from(e.target.files));
+        verseImagesInput.value = '';
+      }
+    });
+  }
+
+  if (btnAddMoreVerseImages && verseImagesInput) {
+    btnAddMoreVerseImages.addEventListener('click', (e) => {
+      e.stopPropagation();
+      verseImagesInput.click();
+    });
+  }
+
+  if (btnClearVerseImages) {
+    btnClearVerseImages.addEventListener('click', (e) => {
+      e.stopPropagation();
+      sermonImageFiles = [];
+      renderVerseImageThumbnails();
+      showToast('Fotos removidas.', 'info');
+    });
+  }
+
+  // Compressão inteligente para tráfego rápido e seguro na API do Gemini Vision
+  async function compressImageForAi(file, maxDimension = 1600) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          let width = img.width;
+          let height = img.height;
+          if (width > maxDimension || height > maxDimension) {
+            if (width > height) {
+              height = Math.round((height * maxDimension) / width);
+              width = maxDimension;
+            } else {
+              width = Math.round((width * maxDimension) / height);
+              height = maxDimension;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+          const base64 = dataUrl.split(',')[1];
+          resolve({ dataUrl, base64, mimeType: 'image/jpeg' });
+        };
+        img.onerror = reject;
+        img.src = e.target.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function handleVerseImagesAdded(files) {
+    const validFiles = files.filter(f => f.type.startsWith('image/'));
+    if (validFiles.length === 0) {
+      showToast('Por favor, selecione arquivos de imagem válidos (JPG, PNG, WebP).', 'error');
+      return;
+    }
+
+    showToast(`Carregando e otimizando ${validFiles.length} imagem(ns)...`, 'info');
+
+    for (const file of validFiles) {
+      try {
+        const compressed = await compressImageForAi(file, 1600);
+        sermonImageFiles.push({
+          id: 'vimg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+          name: file.name,
+          dataUrl: compressed.dataUrl,
+          base64: compressed.base64,
+          mimeType: compressed.mimeType
+        });
+      } catch (err) {
+        console.error('Erro ao ler imagem:', err);
+      }
+    }
+
+    renderVerseImageThumbnails();
+    showToast(`✅ ${validFiles.length} foto(s) de slide/versículo adicionada(s)!`, 'success');
+  }
+
+  function renderVerseImageThumbnails() {
+    if (!verseImagesThumbnailsGrid) return;
+    verseImagesThumbnailsGrid.innerHTML = '';
+
+    if (sermonImageFiles.length === 0) {
+      verseImagesThumbnailsGrid.style.display = 'none';
+      return;
+    }
+
+    verseImagesThumbnailsGrid.style.display = 'grid';
+
+    sermonImageFiles.forEach((imgObj, idx) => {
+      const card = document.createElement('div');
+      card.className = 'verse-image-thumb-card';
+      card.innerHTML = `
+        <span class="verse-image-thumb-badge">#${idx + 1}</span>
+        <button type="button" class="btn-remove-thumb" title="Remover foto">✕</button>
+        <img src="${imgObj.dataUrl}" alt="Slide ${idx + 1}" loading="lazy">
+        <div class="verse-image-thumb-name" title="${escapeHtml(imgObj.name)}">${escapeHtml(imgObj.name)}</div>
+      `;
+
+      const btnRemove = card.querySelector('.btn-remove-thumb');
+      btnRemove.addEventListener('click', (e) => {
+        e.stopPropagation();
+        sermonImageFiles.splice(idx, 1);
+        renderVerseImageThumbnails();
+      });
+
+      verseImagesThumbnailsGrid.appendChild(card);
+    });
+  }
+
+  // Quebra o texto bíblico com destaques visuais (amarelo/dourado) preservando a exatidão
+  function buildRunsFromHighlights(text, highlights = []) {
+    if (!text) return [];
+    if (!highlights || !Array.isArray(highlights) || highlights.length === 0) {
+      return [{ text, highlight: false }];
+    }
+
+    const validTerms = highlights
+      .filter(h => typeof h === 'string' && h.trim().length > 0)
+      .map(h => h.trim());
+
+    if (validTerms.length === 0) {
+      return [{ text, highlight: false }];
+    }
+
+    validTerms.sort((a, b) => b.length - a.length);
+    const escaped = validTerms.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    const regex = new RegExp(`(${escaped.join('|')})`, 'gi');
+
+    const parts = text.split(regex);
+    const runs = [];
+
+    for (const part of parts) {
+      if (!part) continue;
+      const isHigh = validTerms.some(t => t.toLowerCase() === part.toLowerCase());
+      runs.push({
+        text: part,
+        highlight: isHigh
+      });
+    }
+
+    return runs.length > 0 ? runs : [{ text, highlight: false }];
+  }
+
+  // Extração Multimodal de Versículos via IA Gemini Vision com Fallback resiliente
+  async function extractVersesFromImagesWithGemini(imageItems, bibleVersionChoice = 'exact') {
+    if (!imageItems || imageItems.length === 0) {
+      showToast('Nenhuma imagem fornecida.', 'error');
+      return;
+    }
+
+    const defaultKey = atob('QVEuQWI4Uk42Si1lTWMtdVdvWVlpMWpsVGw4WXVvZ3RTajhuTXE2VzdSdVl1Zk8zbi1LcXc=');
+    const apiKey = localStorage.getItem('GEMINI_API_KEY') || defaultKey;
+
+    if (btnGenerate) {
+      btnGenerate.disabled = true;
+      btnGenerate.innerHTML = '<span>🤖</span> Analisando fotos com IA Gemini Vision...';
+    }
+    if (aiOcrProgressContainer) {
+      aiOcrProgressContainer.style.display = 'block';
+      aiOcrProgressBar.style.width = '15%';
+      aiOcrProgressPercent.textContent = '15%';
+      aiOcrProgressStatus.textContent = 'Preparando fotos para leitura da IA...';
+    }
+
+    try {
+      let versionInstruction = 'Mantenha fielmente e com exatidão o texto bíblico visível nas fotos do slide/telão.';
+      if (bibleVersionChoice === 'ACF') {
+        versionInstruction = 'Identifique a referência bíblica da imagem e utilize a tradução fiel Almeida Corrigida Fiel (ACF).';
+      } else if (bibleVersionChoice === 'ARA') {
+        versionInstruction = 'Identifique a referência bíblica da imagem e utilize a tradução fiel Almeida Revista e Atualizada (ARA).';
+      } else if (bibleVersionChoice === 'NVI') {
+        versionInstruction = 'Identifique a referência bíblica da imagem e utilize a tradução fiel Nova Versão Internacional (NVI).';
+      }
+
+      const prompt = `Você é um assistente teológico especialista em produção de slides de cultos e sermões da igreja.
+Analise com máxima atenção a(s) foto(s) anexada(s) (fotos de telas de projeção da igreja, slides de culto, telões ou fotos de versículos).
+Extraia TODOS os versículos, referências bíblicas e mensagens presentes nas imagens.
+Para cada versículo ou texto bíblico encontrado:
+1. "type": "versículo" (ou "tópico" ou "impacto")
+2. "reference": Referência bíblica canônica exata (ex: 'Lucas 13:22-29', 'João 3:16', 'Mateus 6:19')
+3. "text": Texto bíblico correspondente. ${versionInstruction}
+4. "highlights": Array com termos ou palavras-chave de maior ênfase para destaque visual na projeção da igreja (ex: ["SENHOR", "SALVAM"]).
+
+Retorne ESTRITAMENTE em formato JSON puro, sem crases ou markdown adicional:
+{
+  "slides": [
+    {
+      "type": "versículo",
+      "reference": "Lucas 13:22-29",
+      "text": "E disse-lhe um: Senhor, são poucos os que se salvam? E ele lhe respondeu:",
+      "highlights": ["Senhor", "poucos os que se salvam"]
+    }
+  ]
+}`;
+
+      // Montar partes para API Gemini: imagens em base64 + texto com instruções
+      const parts = [];
+      for (let i = 0; i < imageItems.length; i++) {
+        parts.push({
+          inline_data: {
+            mime_type: imageItems[i].mimeType || 'image/jpeg',
+            data: imageItems[i].base64
+          }
+        });
+      }
+      parts.push({ text: prompt });
+
+      if (aiOcrProgressBar) aiOcrProgressBar.style.width = '40%';
+      if (aiOcrProgressPercent) aiOcrProgressPercent.textContent = '40%';
+      if (aiOcrProgressStatus) aiOcrProgressStatus.textContent = 'IA Gemini Vision interpretando fotos e versículos...';
+
+      const models = ['gemini-3.7-flash', 'gemini-3.5-flash-lite', 'gemini-3.6-flash', 'gemini-flash-latest'];
+      let responseJson = null;
+      let lastError = null;
+
+      for (const model of models) {
+        try {
+          if (aiOcrProgressStatus) aiOcrProgressStatus.textContent = `Consultando modelo de IA (${model})...`;
+          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts }],
+              generationConfig: {
+                temperature: 0.1,
+                responseMimeType: 'application/json'
+              }
+            })
+          });
+
+          const data = await res.json();
+          if (data.error) {
+            console.warn(`Modelo ${model} retornou aviso:`, data.error.message);
+            lastError = data.error.message;
+            continue;
+          }
+
+          const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (rawText) {
+            responseJson = JSON.parse(rawText.replace(/```json/gi, '').replace(/```/g, '').trim());
+            break;
+          }
+        } catch (mErr) {
+          console.warn(`Tentativa com modelo ${model} falhou:`, mErr);
+          lastError = mErr.message;
+        }
+      }
+
+      if (!responseJson || !Array.isArray(responseJson.slides) || responseJson.slides.length === 0) {
+        throw new Error(lastError || 'Nenhum versículo foi identificado com clareza nas fotos fornecidas.');
+      }
+
+      if (aiOcrProgressBar) aiOcrProgressBar.style.width = '90%';
+      if (aiOcrProgressPercent) aiOcrProgressPercent.textContent = '90%';
+      if (aiOcrProgressStatus) aiOcrProgressStatus.textContent = 'Montando slides no editor...';
+
+      currentSlides = responseJson.slides.map(item => ({
+        type: item.type || 'versículo',
+        reference: item.reference || '',
+        runs: buildRunsFromHighlights(item.text, item.highlights || [])
+      }));
+
+      if (aiOcrProgressBar) aiOcrProgressBar.style.width = '100%';
+      if (aiOcrProgressPercent) aiOcrProgressPercent.textContent = '100%';
+      if (aiOcrProgressStatus) aiOcrProgressStatus.textContent = 'Concluído com sucesso!';
+
+      showToast(`🎉 ${currentSlides.length} slide(s) de versículo gerado(s) com IA!`, 'success');
+      renderResults();
+
+    } catch (err) {
+      console.error('Erro na extração com Gemini Vision:', err);
+      showToast(err.message || 'Erro ao extrair versículos das fotos.', 'error');
+    } finally {
+      if (btnGenerate) {
+        btnGenerate.disabled = false;
+        btnGenerate.innerHTML = '<span class="btn-icon">⚡</span> Extrair Versículos e Gerar Slides com IA';
+      }
+      if (aiOcrProgressContainer) {
+        setTimeout(() => {
+          aiOcrProgressContainer.style.display = 'none';
+        }, 1200);
+      }
+    }
+  }
+
   // Carregar templates oficiais de fundo
   fetch('/api/slides/templates')
     .then(res => res.json())
@@ -222,6 +574,18 @@ document.addEventListener('DOMContentLoaded', () => {
   // Ação de Geração de Slides
   if (btnGenerate) {
     btnGenerate.addEventListener('click', async () => {
+      // 1. Caso o usuário esteja na aba de fotos/imagens com IA
+      if (activeSlideKillerTab === 'tab-images-ocr') {
+        if (sermonImageFiles.length === 0) {
+          showToast('Por favor, anexe pelo menos uma foto de slide ou tela com versículo.', 'error');
+          return;
+        }
+        const bVersion = bibleVersionSelect ? bibleVersionSelect.value : 'exact';
+        await extractVersesFromImagesWithGemini(sermonImageFiles, bVersion);
+        return;
+      }
+
+      // 2. Caso PDF ou Texto manual
       const text = sermonTextInput.value.trim();
       if (!currentFile && !text) {
         showToast('Envie um arquivo PDF ou cole o texto do sermão.', 'error');
@@ -254,10 +618,24 @@ document.addEventListener('DOMContentLoaded', () => {
         renderResults();
 
       } catch (err) {
-        showToast(err.message, 'error');
+        // Fallback local caso backend não esteja ativo (ex: GitHub Pages estático)
+        if (text && !currentFile) {
+          showToast('Modo estático: montando slides localmente...', 'info');
+          const lines = text.split('\n').filter(l => l.trim().length > 0);
+          currentSlides = lines.map(line => ({
+            type: 'versículo',
+            reference: 'Passagem Bíblica',
+            runs: [{ text: line.trim(), highlight: false }]
+          }));
+          renderResults();
+        } else {
+          showToast(err.message, 'error');
+        }
       } finally {
         btnGenerate.disabled = false;
-        btnGenerate.innerHTML = '<span class="btn-icon">⚡</span> Gerar Slides Instantaneamente';
+        btnGenerate.innerHTML = (activeSlideKillerTab === 'tab-images-ocr')
+          ? '<span class="btn-icon">⚡</span> Extrair Versículos e Gerar Slides com IA'
+          : '<span class="btn-icon">⚡</span> Gerar Slides Instantaneamente';
       }
     });
   }
@@ -373,17 +751,216 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Download PPTX no cliente com PptxGenJS
+  async function exportSlideKillerPptx() {
+    if (currentSlides.length === 0) {
+      showToast('Nenhum slide para exportar.', 'error');
+      return;
+    }
+
+    if (typeof PptxGenJS === 'undefined') {
+      showToast('Biblioteca PptxGenJS não carregada. Tente novamente em instantes.', 'error');
+      return;
+    }
+
+    showToast('Gerando apresentação em PowerPoint (.pptx)...', 'info');
+
+    try {
+      const pptx = new PptxGenJS();
+      pptx.layout = 'LAYOUT_16x9';
+
+      const bgUrl = (templateSelect && templateSelect.value) ? templateSelect.value : 'assets/church_sermon_bg.png';
+
+      for (const item of currentSlides) {
+        const slide = pptx.addSlide();
+        if (bgUrl) {
+          slide.background = { path: bgUrl };
+        } else {
+          slide.background = { color: '0B0F19' };
+        }
+
+        const textLength = (item.runs || []).reduce((acc, r) => acc + (r.text || '').length, 0);
+        let fontSize = 52;
+        if (textLength < 70) fontSize = 64;
+        else if (textLength > 160) fontSize = 40;
+        else if (textLength > 120) fontSize = 46;
+
+        const runs = (item.runs || []).map(r => ({
+          text: r.text,
+          options: {
+            fontFace: 'Bahnschrift SemiBold Condensed',
+            fontSize: fontSize,
+            color: r.highlight ? 'E8B859' : 'FFFFFF',
+            shadow: { type: 'outer', angle: 90, blur: 4, offset: 2, opacity: 0.5, color: '000000' }
+          }
+        }));
+
+        slide.addText(runs, {
+          x: 0.8,
+          y: 1.2,
+          w: 11.7,
+          h: 4.2,
+          valign: 'middle',
+          align: 'left',
+          paraSpaceAfter: 10
+        });
+
+        if (item.reference) {
+          slide.addText(item.reference, {
+            x: 0.8,
+            y: 5.6,
+            w: 11.7,
+            h: 0.8,
+            fontFace: 'Bebas Neue',
+            fontSize: 40,
+            color: 'E8B859',
+            align: 'left',
+            shadow: { type: 'outer', angle: 90, blur: 3, offset: 2, opacity: 0.5, color: '000000' }
+          });
+        }
+      }
+
+      const fileName = 'SLIDES_CULTO_' + Date.now() + '.pptx';
+      await pptx.writeFile({ fileName });
+      showToast('🎉 Apresentação PPTX baixada com sucesso!', 'success');
+    } catch (err) {
+      console.error('Erro ao exportar PPTX:', err);
+      showToast('Erro ao exportar PPTX: ' + err.message, 'error');
+    }
+  }
+
+  // Download PDF no cliente com jsPDF
+  async function exportSlideKillerPdf() {
+    if (currentSlides.length === 0) {
+      showToast('Nenhum slide para exportar.', 'error');
+      return;
+    }
+
+    if (typeof window.jspdf === 'undefined' || !window.jspdf.jsPDF) {
+      showToast('Biblioteca jsPDF não carregada. Tente novamente em instantes.', 'error');
+      return;
+    }
+
+    showToast('Gerando documento em PDF (.pdf)...', 'info');
+
+    try {
+      const { jsPDF } = window.jspdf;
+      const baseW = 1920;
+      const baseH = 1080;
+
+      const doc = new jsPDF({
+        orientation: 'landscape',
+        unit: 'px',
+        format: [baseW, baseH],
+        hotfixes: ['px_scaling']
+      });
+
+      const bgUrl = (templateSelect && templateSelect.value) ? templateSelect.value : 'assets/church_sermon_bg.png';
+      const bgImg = new Image();
+      bgImg.crossOrigin = 'anonymous';
+
+      await new Promise((resolve) => {
+        bgImg.onload = resolve;
+        bgImg.onerror = resolve;
+        bgImg.src = bgUrl;
+      });
+
+      const canvas = document.createElement('canvas');
+      canvas.width = baseW;
+      canvas.height = baseH;
+      const ctx = canvas.getContext('2d');
+
+      for (let i = 0; i < currentSlides.length; i++) {
+        if (i > 0) doc.addPage([baseW, baseH], 'landscape');
+
+        const item = currentSlides[i];
+
+        // Fundo
+        if (bgImg.complete && bgImg.naturalWidth > 0) {
+          ctx.drawImage(bgImg, 0, 0, baseW, baseH);
+        } else {
+          ctx.fillStyle = '#0B0F19';
+          ctx.fillRect(0, 0, baseW, baseH);
+        }
+
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+
+        const fullText = (item.runs || []).map(r => r.text).join('');
+        let fontSize = 56;
+        if (fullText.length > 150) fontSize = 44;
+        else if (fullText.length < 70) fontSize = 66;
+
+        ctx.font = `bold ${fontSize}px 'Inter', sans-serif`;
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+        ctx.shadowBlur = 8;
+        ctx.shadowOffsetX = 2;
+        ctx.shadowOffsetY = 2;
+
+        const startX = 120;
+        let curX = startX;
+        let curY = 160;
+        const maxWidth = 1680;
+        const lineHeight = fontSize * 1.45;
+
+        for (const run of (item.runs || [])) {
+          ctx.fillStyle = run.highlight ? '#E8B859' : '#FFFFFF';
+          const words = run.text.split(/(\s+)/);
+
+          for (const w of words) {
+            const wWidth = ctx.measureText(w).width;
+            if (curX + wWidth > startX + maxWidth && !w.match(/^\s+$/)) {
+              curX = startX;
+              curY += lineHeight;
+            }
+            ctx.fillText(w, curX, curY);
+            curX += wWidth;
+          }
+        }
+
+        // Referência Bíblica
+        if (item.reference) {
+          ctx.font = `bold 44px 'Bebas Neue', 'Inter', sans-serif`;
+          ctx.fillStyle = '#E8B859';
+          ctx.fillText(item.reference, startX, baseH - 160);
+        }
+
+        const slideImgData = canvas.toDataURL('image/jpeg', 0.92);
+        doc.addImage(slideImgData, 'JPEG', 0, 0, baseW, baseH, undefined, 'FAST');
+      }
+
+      const fileName = 'SLIDES_CULTO_' + Date.now() + '.pdf';
+      doc.save(fileName);
+      showToast('🎉 Documento PDF (.pdf) baixado com sucesso!', 'success');
+    } catch (err) {
+      console.error('Erro ao exportar PDF:', err);
+      showToast('Erro ao exportar PDF: ' + err.message, 'error');
+    }
+  }
+
+  // Download de Ambos (PPTX + PDF)
+  async function exportSlideKillerBoth() {
+    showToast('Exportando apresentação em PowerPoint (.pptx)...', 'info');
+    await exportSlideKillerPptx();
+    setTimeout(async () => {
+      showToast('Exportando documento em PDF (.pdf)...', 'info');
+      await exportSlideKillerPdf();
+    }, 800);
+  }
+
   // Download PPTX
   function triggerDownload() {
     if (currentDownloadUrl) {
       window.open(currentDownloadUrl, '_blank');
     } else {
-      showToast('Nenhum arquivo pronto para download.', 'error');
+      exportSlideKillerPptx();
     }
   }
 
   if (btnDownloadTop) btnDownloadTop.addEventListener('click', triggerDownload);
   if (btnDownloadMain) btnDownloadMain.addEventListener('click', triggerDownload);
+  if (btnDownloadPdfSk) btnDownloadPdfSk.addEventListener('click', exportSlideKillerPdf);
+  if (btnDownloadBothSk) btnDownloadBothSk.addEventListener('click', exportSlideKillerBoth);
 
   // Novo Documento
   if (btnNewPresentation) {
@@ -394,9 +971,17 @@ document.addEventListener('DOMContentLoaded', () => {
       currentFile = null;
       currentSlides = [];
       currentDownloadUrl = null;
+      sermonImageFiles = [];
       if (pdfFileInput) pdfFileInput.value = '';
       if (sermonTextInput) sermonTextInput.value = '';
+      if (verseImagesInput) verseImagesInput.value = '';
       if (selectedFileInfo) selectedFileInfo.style.display = 'none';
+      if (verseImagesThumbnailsGrid) {
+        verseImagesThumbnailsGrid.innerHTML = '';
+        verseImagesThumbnailsGrid.style.display = 'none';
+      }
+      if (dropzoneOcr) dropzoneOcr.style.display = 'flex';
+      if (aiOcrProgressContainer) aiOcrProgressContainer.style.display = 'none';
     });
   }
 

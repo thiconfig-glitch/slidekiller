@@ -126,6 +126,7 @@
           <div class="tabs">
             <button class="tab-btn active" data-tab="tab-pdf">📄 Enviar Arquivo PDF</button>
             <button class="tab-btn" data-tab="tab-text">✍️ Colar Texto / Esboço</button>
+            <button class="tab-btn" data-tab="tab-images-ocr">📷 Fotos de Slides / Versículos (IA)</button>
           </div>
 
           <!-- Aba 1: Upload PDF -->
@@ -149,6 +150,35 @@
             <textarea id="sermon-text-input" placeholder="Cole aqui o texto ou anotações do pastor com as referências bíblicas (ex: Mateus 6:19-21)..." rows="9"></textarea>
           </div>
 
+          <!-- Aba 3: Fotos de Slides / Versículos com IA Gemini Vision -->
+          <div class="tab-content" id="tab-images-ocr">
+            <div class="dropzone" id="dropzone-ocr">
+              <input type="file" id="verse-images-input" accept="image/*" multiple style="display: none;">
+              <div class="dropzone-icon">📷</div>
+              <div class="dropzone-text">
+                <strong>Arraste fotos de telões, slides ou páginas da Bíblia aqui</strong>
+                <span>ou clique para selecionar fotos do computador ou celular</span>
+              </div>
+            </div>
+
+            <!-- Lista e Ações das Fotos Selecionadas -->
+            <div id="verse-images-container" style="display: none; margin-top: 14px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span style="font-size: 13px; font-weight: 600; color: var(--text);" id="verse-images-count-label">0 foto(s) selecionada(s)</span>
+                <div style="display: flex; gap: 8px;">
+                  <button type="button" class="btn btn-secondary btn-sm" id="btn-add-more-verse-images">
+                    <span>＋</span> Mais Fotos
+                  </button>
+                  <button type="button" class="btn btn-danger btn-sm" id="btn-clear-verse-images">
+                    <span>🗑️</span> Limpar
+                  </button>
+                </div>
+              </div>
+              <!-- Grade de Miniaturas das Fotos Anexadas -->
+              <div class="verse-images-thumbnails-grid" id="verse-images-thumbnails-grid"></div>
+            </div>
+          </div>
+
           <!-- Opções Extras -->
           <div class="options-bar">
             <div class="option-item">
@@ -157,12 +187,32 @@
                 <option value="assets/church_sermon_bg.png">Fundo Oficial da Igreja</option>
               </select>
             </div>
-            <div class="option-item">
+            <div class="option-item" id="option-bible-version" style="display: none;">
+              <label for="bible-version-select">Validação Bíblica (IA):</label>
+              <select id="bible-version-select" class="form-select">
+                <option value="exact">Manter texto exato da imagem/slide</option>
+                <option value="ACF">Validar / Ajustar pela ACF (Almeida Corrigida Fiel)</option>
+                <option value="ARA">Validar / Ajustar pela ARA (Almeida Revista e Atualizada)</option>
+                <option value="NVI">Validar / Ajustar pela NVI (Nova Versão Internacional)</option>
+              </select>
+            </div>
+            <div class="option-item" id="option-use-ai-check">
               <label class="checkbox-container">
                 <input type="checkbox" id="check-use-ai">
                 <span class="checkmark"></span>
-                Usar IA Gemini (Opcional)
+                Usar IA Gemini
               </label>
+            </div>
+          </div>
+
+          <!-- Barra de Progresso da IA Gemini Vision -->
+          <div id="ai-ocr-progress-container" class="direct-progress-box" style="display: none; margin-top: 14px;">
+            <div class="progress-info">
+              <span id="ai-ocr-progress-status">Analisando imagens com IA Gemini Vision...</span>
+              <span id="ai-ocr-progress-percent">0%</span>
+            </div>
+            <div class="progress-bar-bg">
+              <div class="progress-bar-fill" id="ai-ocr-progress-bar" style="width: 0%;"></div>
             </div>
           </div>
 
@@ -174,16 +224,18 @@
 
       <!-- Tela de Resultados e Edição -->
       <section class="results-section" id="results-section" style="display: none;">
-        <div class="results-header">
+        <div class="results-header" style="flex-wrap: wrap; gap: 12px;">
           <div class="results-info">
             <h2 id="results-title">Slides Gerados</h2>
             <span class="badge" id="slide-count-badge">0 slides</span>
           </div>
-          <div class="results-actions">
+          <div class="results-actions" style="flex-wrap: wrap; gap: 8px;">
             <button class="btn btn-outline-gold" id="btn-open-verse-modal">📖 Inserir Versículo</button>
             <button class="btn btn-secondary" id="btn-add-slide">+ Novo Slide</button>
             <button class="btn btn-secondary" id="btn-rebuild">💾 Salvar Edições</button>
+            <button class="btn btn-secondary" id="btn-download-pdf-sk" title="Baixar slides em PDF">📄 Baixar PDF</button>
             <button class="btn btn-primary" id="btn-download-main">📥 Baixar .pptx</button>
+            <button class="btn btn-outline-gold" id="btn-download-both-sk" title="Baixar PPTX e PDF juntos">✨ Ambos</button>
           </div>
         </div>
 
