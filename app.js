@@ -416,6 +416,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const directProgressBar = document.getElementById('direct-progress-bar');
   const directProgressStatus = document.getElementById('direct-progress-status');
   const directProgressPercent = document.getElementById('direct-progress-percent');
+  const directFormatSelect = document.getElementById('direct-format-select');
+  const btnExportDirectPdf = document.getElementById('btn-export-direct-pdf');
+  const btnExportDirectPptx = document.getElementById('btn-export-direct-pptx');
+  const directMainBtnIcon = document.getElementById('direct-main-btn-icon');
+  const directMainBtnLabel = document.getElementById('direct-main-btn-label');
 
   const sectionDirectInput = document.getElementById('section-direct-input');
   const sectionDirectResults = document.getElementById('section-direct-results');
@@ -829,90 +834,223 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Geração e Exportação do PPTX customizado
-  async function generateDirectPptx() {
+  // Função utilitária central para gerar PDF dos slides no navegador via jsPDF
+  async function generateSlidesPdfDoc({
+    slides,
+    aspectChoice,
+    fitChoice,
+    bgChoice,
+    fileName,
+    progressCallback
+  }) {
+    if (typeof window.jspdf === 'undefined' || !window.jspdf.jsPDF) {
+      throw new Error('Biblioteca jsPDF não carregada. Verifique sua conexão com a internet.');
+    }
+    const { jsPDF } = window.jspdf;
+
+    const baseWidth = 1920;
+    let baseHeight = 1080;
+    if (aspectChoice === '4x3') {
+      baseHeight = 1440;
+    } else if (aspectChoice === 'original' && slides[0] && slides[0].ratio) {
+      baseHeight = Math.round(baseWidth / slides[0].ratio);
+    }
+
+    const isLandscape = baseWidth >= baseHeight;
+    const doc = new jsPDF({
+      orientation: isLandscape ? 'landscape' : 'portrait',
+      unit: 'px',
+      format: [baseWidth, baseHeight],
+      hotfixes: ['px_scaling']
+    });
+
+    // Converter hex color para RGB
+    const hex = (bgChoice || '000000').replace('#', '');
+    const r = parseInt(hex.substring(0, 2), 16) || 0;
+    const g = parseInt(hex.substring(2, 4), 16) || 0;
+    const b = parseInt(hex.substring(4, 6), 16) || 0;
+
+    const total = slides.length;
+    for (let i = 0; i < total; i++) {
+      const slide = slides[i];
+      if (progressCallback) progressCallback(i + 1, total);
+
+      if (i > 0) {
+        doc.addPage([baseWidth, baseHeight], isLandscape ? 'landscape' : 'portrait');
+      }
+
+      // Preencher cor de fundo
+      doc.setFillColor(r, g, b);
+      doc.rect(0, 0, baseWidth, baseHeight, 'F');
+
+      const rawImg = slide.imgData || slide.dataUrl;
+      if (!rawImg) continue;
+
+      const imgRatio = slide.ratio || (slide.width && slide.height ? (slide.width / slide.height) : (16 / 9));
+      let drawW = baseWidth;
+      let drawH = baseWidth / imgRatio;
+
+      if (fitChoice === 'cover') {
+        if (drawH < baseHeight) {
+          drawH = baseHeight;
+          drawW = baseHeight * imgRatio;
+        }
+      } else { // contain
+        if (drawH > baseHeight) {
+          drawH = baseHeight;
+          drawW = baseHeight * imgRatio;
+        }
+      }
+
+      const x = (baseWidth - drawW) / 2;
+      const y = (baseHeight - drawH) / 2;
+
+      const imgFormat = rawImg.startsWith('data:image/png') ? 'PNG' : 'JPEG';
+      doc.addImage(rawImg, imgFormat, x, y, drawW, drawH, undefined, 'FAST');
+    }
+
+    doc.save(fileName);
+  }
+
+  function updateDirectExportBtnLabel() {
+    const fmt = directFormatSelect ? directFormatSelect.value : 'pptx';
+    if (directMainBtnIcon && directMainBtnLabel) {
+      if (fmt === 'pdf') {
+        directMainBtnIcon.textContent = '📄';
+        directMainBtnLabel.textContent = 'Gerar e Baixar Documento PDF (.pdf)';
+      } else if (fmt === 'both') {
+        directMainBtnIcon.textContent = '✨';
+        directMainBtnLabel.textContent = 'Gerar e Baixar Ambos (.pptx + .pdf)';
+      } else {
+        directMainBtnIcon.textContent = '⚡';
+        directMainBtnLabel.textContent = 'Gerar e Baixar PowerPoint (.pptx)';
+      }
+    }
+    if (btnDownloadDirectTop) {
+      if (fmt === 'pdf') {
+        btnDownloadDirectTop.innerHTML = '<span>📄</span> Baixar PDF (.pdf)';
+      } else if (fmt === 'both') {
+        btnDownloadDirectTop.innerHTML = '<span>✨</span> Baixar Ambos (.pptx + .pdf)';
+      } else {
+        btnDownloadDirectTop.innerHTML = '<span>📥</span> Baixar PowerPoint (.pptx)';
+      }
+    }
+  }
+
+  if (directFormatSelect) {
+    directFormatSelect.addEventListener('change', updateDirectExportBtnLabel);
+  }
+
+  // Geração e Exportação customizada (PPTX, PDF ou Ambos) para Módulo 2
+  async function generateDirectExport(requestedFormat) {
     if (directSlides.length === 0) {
-      showToast('Adicione pelo menos uma página ou imagem para gerar o PowerPoint.', 'error');
+      showToast('Adicione pelo menos uma página ou imagem para gerar a apresentação.', 'error');
       return;
     }
 
-    if (typeof PptxGenJS === 'undefined') {
-      showToast('Biblioteca PPTX está carregando. Tente novamente em instantes.', 'error');
-      return;
-    }
-
+    const formatChoice = requestedFormat || (directFormatSelect ? directFormatSelect.value : 'pptx');
     const aspectChoice = directAspectSelect ? directAspectSelect.value : '16x9';
     const fitChoice = directFitSelect ? directFitSelect.value : 'contain';
     const bgChoice = directBgSelect ? directBgSelect.value : '000000';
 
+    const baseName = (currentDirectFile ? currentDirectFile.name.replace(/\.[^/.]+$/, '') : 'Apresentacao') + '_PAGINAS';
+    const pptxFileName = baseName + '.pptx';
+    const pdfFileName = baseName + '.pdf';
+
+    if (btnDownloadDirectMain) {
+      btnDownloadDirectMain.disabled = true;
+    }
     if (directExportProgressContainer) {
       directExportProgressContainer.style.display = 'block';
       directExportProgressBar.style.width = '10%';
       directExportProgressPercent.textContent = '10%';
-      directExportProgressStatus.textContent = 'Iniciando montagem do PowerPoint...';
+      directExportProgressStatus.textContent = 'Iniciando preparação dos arquivos...';
     }
 
     try {
-      const pptx = new PptxGenJS();
-
-      if (aspectChoice === 'original' && directSlides[0] && directSlides[0].ratio) {
-        const firstRatio = directSlides[0].ratio || (16 / 9);
-        pptx.defineLayout({ name: 'CUSTOM_PDF', width: 10, height: 10 / firstRatio });
-        pptx.layout = 'CUSTOM_PDF';
-      } else if (aspectChoice === '4x3') {
-        pptx.layout = 'LAYOUT_4x3';
-      } else {
-        pptx.layout = 'LAYOUT_16x9';
-      }
-
       const total = directSlides.length;
-      for (let i = 0; i < total; i++) {
-        const slideItem = directSlides[i];
-        const pct = Math.round(10 + ((i + 1) / total) * 80);
-        if (directExportProgressBar) directExportProgressBar.style.width = `${pct}%`;
-        if (directExportProgressPercent) directExportProgressPercent.textContent = `${pct}%`;
-        if (directExportProgressStatus) directExportProgressStatus.textContent = `Montando slide ${i + 1} de ${total}...`;
 
-        const slide = pptx.addSlide();
-        slide.background = { color: bgChoice };
-
-        if (fitChoice === 'cover') {
-          slide.addImage({
-            data: slideItem.imgData,
-            x: 0,
-            y: 0,
-            w: '100%',
-            h: '100%'
-          });
-        } else {
-          slide.addImage({
-            data: slideItem.imgData,
-            x: 0,
-            y: 0,
-            w: '100%',
-            h: '100%',
-            sizing: { type: 'contain', w: '100%', h: '100%' }
-          });
+      // 1. Exportar PPTX se solicitado
+      if (formatChoice === 'pptx' || formatChoice === 'both') {
+        if (typeof PptxGenJS === 'undefined') {
+          throw new Error('Biblioteca PptxGenJS não carregada.');
         }
+        if (directExportProgressStatus) directExportProgressStatus.textContent = 'Montando apresentação em PowerPoint (.pptx)...';
+
+        const pptx = new PptxGenJS();
+        if (aspectChoice === 'original' && directSlides[0] && directSlides[0].ratio) {
+          const firstRatio = directSlides[0].ratio || (16 / 9);
+          pptx.defineLayout({ name: 'CUSTOM_PDF', width: 10, height: 10 / firstRatio });
+          pptx.layout = 'CUSTOM_PDF';
+        } else if (aspectChoice === '4x3') {
+          pptx.layout = 'LAYOUT_4x3';
+        } else {
+          pptx.layout = 'LAYOUT_16x9';
+        }
+
+        for (let i = 0; i < total; i++) {
+          const slideItem = directSlides[i];
+          const pct = Math.round(10 + ((i + 1) / total) * (formatChoice === 'both' ? 40 : 80));
+          if (directExportProgressBar) directExportProgressBar.style.width = `${pct}%`;
+          if (directExportProgressPercent) directExportProgressPercent.textContent = `${pct}%`;
+          if (directExportProgressStatus) directExportProgressStatus.textContent = `PowerPoint: slide ${i + 1} de ${total}...`;
+
+          const slide = pptx.addSlide();
+          slide.background = { color: bgChoice };
+
+          if (fitChoice === 'cover') {
+            slide.addImage({ data: slideItem.imgData, x: 0, y: 0, w: '100%', h: '100%' });
+          } else {
+            slide.addImage({ data: slideItem.imgData, x: 0, y: 0, w: '100%', h: '100%', sizing: { type: 'contain', w: '100%', h: '100%' } });
+          }
+        }
+
+        directGeneratedPptx = pptx;
+        directPptxFileName = pptxFileName;
+        await pptx.writeFile({ fileName: pptxFileName });
       }
 
-      if (directExportProgressStatus) directExportProgressStatus.textContent = 'Gerando arquivo .pptx...';
-      if (directExportProgressBar) directExportProgressBar.style.width = '95%';
-      if (directExportProgressPercent) directExportProgressPercent.textContent = '95%';
+      // 2. Exportar PDF se solicitado
+      if (formatChoice === 'pdf' || formatChoice === 'both') {
+        if (directExportProgressStatus) directExportProgressStatus.textContent = 'Gerando documento em PDF (.pdf)...';
 
-      const fileName = directPptxFileName || 'Apresentacao_PDF_Imagens.pptx';
-      await pptx.writeFile({ fileName });
+        await generateSlidesPdfDoc({
+          slides: directSlides,
+          aspectChoice,
+          fitChoice,
+          bgChoice,
+          fileName: pdfFileName,
+          progressCallback: (cur, tot) => {
+            const startPct = formatChoice === 'both' ? 55 : 10;
+            const range = formatChoice === 'both' ? 40 : 85;
+            const pct = Math.round(startPct + (cur / tot) * range);
+            if (directExportProgressBar) directExportProgressBar.style.width = `${pct}%`;
+            if (directExportProgressPercent) directExportProgressPercent.textContent = `${pct}%`;
+            if (directExportProgressStatus) directExportProgressStatus.textContent = `PDF: página ${cur} de ${tot}...`;
+          }
+        });
+      }
 
       if (directExportProgressBar) directExportProgressBar.style.width = '100%';
       if (directExportProgressPercent) directExportProgressPercent.textContent = '100%';
       if (directExportProgressStatus) directExportProgressStatus.textContent = 'Concluído!';
 
-      showToast(`🎉 Apresentação baixada com sucesso com ${total} slide(s)!`, 'success');
+      if (formatChoice === 'both') {
+        showToast(`🎉 Apresentação baixada em PPTX e PDF (${total} slides cada)!`, 'success');
+      } else if (formatChoice === 'pdf') {
+        showToast(`🎉 Documento PDF baixado com sucesso (${total} páginas)!`, 'success');
+      } else {
+        showToast(`🎉 Apresentação PPTX baixada com sucesso (${total} slides)!`, 'success');
+      }
 
     } catch (err) {
-      console.error('Erro ao gerar apresentação PPTX:', err);
-      showToast('Erro ao exportar PowerPoint: ' + err.message, 'error');
+      console.error('Erro na exportação:', err);
+      showToast('Erro ao exportar: ' + err.message, 'error');
     } finally {
+      if (btnDownloadDirectMain) {
+        btnDownloadDirectMain.disabled = false;
+        updateDirectExportBtnLabel();
+      }
       if (directExportProgressContainer) {
         setTimeout(() => {
           directExportProgressContainer.style.display = 'none';
@@ -921,8 +1059,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  if (btnDownloadDirectTop) btnDownloadDirectTop.addEventListener('click', generateDirectPptx);
-  if (btnDownloadDirectMain) btnDownloadDirectMain.addEventListener('click', generateDirectPptx);
+  if (btnDownloadDirectTop) btnDownloadDirectTop.addEventListener('click', () => generateDirectExport());
+  if (btnDownloadDirectMain) btnDownloadDirectMain.addEventListener('click', () => generateDirectExport());
+  if (btnExportDirectPdf) btnExportDirectPdf.addEventListener('click', () => generateDirectExport('pdf'));
+  if (btnExportDirectPptx) btnExportDirectPptx.addEventListener('click', () => generateDirectExport('pptx'));
 
   // ==========================================
   // MÓDULO 3: IMAGENS & ZIP ➔ PPTX (ORGANIZADOR)
@@ -952,6 +1092,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const imagesProgressBar = document.getElementById('images-progress-bar');
   const imagesProgressPercent = document.getElementById('images-progress-percent');
   const imagesProgressStatus = document.getElementById('images-progress-status');
+  const imagesFormatSelect = document.getElementById('images-format-select');
+  const btnExportImagesPdf = document.getElementById('btn-export-images-pdf');
+  const btnExportImagesPptx = document.getElementById('btn-export-images-pptx');
+  const imagesMainBtnIcon = document.getElementById('images-main-btn-icon');
+  const imagesMainBtnLabel = document.getElementById('images-main-btn-label');
 
   // Drag & Drop na Dropzone de Imagens
   if (dropzoneImages) {
@@ -1266,103 +1411,163 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Geração e Exportação do PPTX
-  async function generateImagesPptx() {
+  function updateImagesExportBtnLabel() {
+    const fmt = imagesFormatSelect ? imagesFormatSelect.value : 'pptx';
+    if (imagesMainBtnIcon && imagesMainBtnLabel) {
+      if (fmt === 'pdf') {
+        imagesMainBtnIcon.textContent = '📄';
+        imagesMainBtnLabel.textContent = 'Gerar e Baixar Documento PDF (.pdf)';
+      } else if (fmt === 'both') {
+        imagesMainBtnIcon.textContent = '✨';
+        imagesMainBtnLabel.textContent = 'Gerar e Baixar Ambos (.pptx + .pdf)';
+      } else {
+        imagesMainBtnIcon.textContent = '⚡';
+        imagesMainBtnLabel.textContent = 'Gerar e Baixar PowerPoint (.pptx)';
+      }
+    }
+    if (btnDownloadImagesTop) {
+      if (fmt === 'pdf') {
+        btnDownloadImagesTop.innerHTML = '<span>📄</span> Baixar PDF (.pdf)';
+      } else if (fmt === 'both') {
+        btnDownloadImagesTop.innerHTML = '<span>✨</span> Baixar Ambos (.pptx + .pdf)';
+      } else {
+        btnDownloadImagesTop.innerHTML = '<span>📥</span> Baixar PowerPoint (.pptx)';
+      }
+    }
+  }
+
+  if (imagesFormatSelect) {
+    imagesFormatSelect.addEventListener('change', updateImagesExportBtnLabel);
+  }
+
+  // Geração e Exportação customizada (PPTX, PDF ou Ambos) para Módulo 3
+  async function generateImagesExport(requestedFormat) {
     if (imageSlides.length === 0) {
       showToast('Adicione pelo menos uma imagem para gerar a apresentação.', 'error');
       return;
     }
 
-    if (typeof PptxGenJS === 'undefined') {
-      showToast('Biblioteca PptxGenJS não carregada. Verifique sua conexão.', 'error');
-      return;
+    const formatChoice = requestedFormat || (imagesFormatSelect ? imagesFormatSelect.value : 'pptx');
+    const aspectChoice = imagesAspectSelect ? imagesAspectSelect.value : '16x9';
+    const fitChoice = imagesFitSelect ? imagesFitSelect.value : 'contain';
+    const bgColor = imagesBgSelect ? imagesBgSelect.value : '000000';
+
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const pptxFileName = `Apresentacao_Imagens_${timestamp}.pptx`;
+    const pdfFileName = `Apresentacao_Imagens_${timestamp}.pdf`;
+
+    if (btnGenerateImagesPptx) {
+      btnGenerateImagesPptx.disabled = true;
+      btnGenerateImagesPptx.innerHTML = '<span>⏳</span> Exportando Slides...';
+    }
+    if (imagesProgressContainer) {
+      imagesProgressContainer.style.display = 'block';
+      imagesProgressBar.style.width = '10%';
+      imagesProgressPercent.textContent = '10%';
+      imagesProgressStatus.textContent = 'Preparando exportação...';
     }
 
-    btnGenerateImagesPptx.disabled = true;
-    btnGenerateImagesPptx.innerHTML = '<span>⏳</span> Montando Slides PPTX...';
-    imagesProgressContainer.style.display = 'block';
-    imagesProgressBar.style.width = '10%';
-    imagesProgressPercent.textContent = '10%';
-    imagesProgressStatus.textContent = 'Criando apresentação PowerPoint...';
-
     try {
-      const pptx = new PptxGenJS();
-      const aspectChoice = imagesAspectSelect ? imagesAspectSelect.value : '16x9';
-      const fitChoice = imagesFitSelect ? imagesFitSelect.value : 'contain';
-      const bgColor = imagesBgSelect ? imagesBgSelect.value : '000000';
-
-      if (aspectChoice === '4x3') {
-        pptx.layout = 'LAYOUT_4x3';
-      } else {
-        pptx.layout = 'LAYOUT_16x9';
-      }
-
       const total = imageSlides.length;
 
-      for (let i = 0; i < total; i++) {
-        const slideData = imageSlides[i];
-        const pct = Math.round(10 + ((i + 1) / total) * 80);
-        imagesProgressBar.style.width = `${pct}%`;
-        imagesProgressPercent.textContent = `${pct}%`;
-        imagesProgressStatus.textContent = `Inserindo imagem ${i + 1} de ${total}...`;
-
-        const slide = pptx.addSlide();
-        slide.background = { color: bgColor };
-
-        if (fitChoice === 'cover') {
-          slide.addImage({
-            data: slideData.dataUrl,
-            x: 0,
-            y: 0,
-            w: '100%',
-            h: '100%'
-          });
-        } else {
-          slide.addImage({
-            data: slideData.dataUrl,
-            x: 0,
-            y: 0,
-            w: '100%',
-            h: '100%',
-            sizing: { type: 'contain', w: '100%', h: '100%' }
-          });
+      // 1. Exportar PPTX se solicitado
+      if (formatChoice === 'pptx' || formatChoice === 'both') {
+        if (typeof PptxGenJS === 'undefined') {
+          throw new Error('Biblioteca PptxGenJS não carregada.');
         }
+
+        const pptx = new PptxGenJS();
+        if (aspectChoice === '4x3') {
+          pptx.layout = 'LAYOUT_4x3';
+        } else {
+          pptx.layout = 'LAYOUT_16x9';
+        }
+
+        for (let i = 0; i < total; i++) {
+          const slideData = imageSlides[i];
+          const pct = Math.round(10 + ((i + 1) / total) * (formatChoice === 'both' ? 40 : 80));
+          imagesProgressBar.style.width = `${pct}%`;
+          imagesProgressPercent.textContent = `${pct}%`;
+          imagesProgressStatus.textContent = `PowerPoint: slide ${i + 1} de ${total}...`;
+
+          const slide = pptx.addSlide();
+          slide.background = { color: bgColor };
+
+          if (fitChoice === 'cover') {
+            slide.addImage({ data: slideData.dataUrl, x: 0, y: 0, w: '100%', h: '100%' });
+          } else {
+            slide.addImage({ data: slideData.dataUrl, x: 0, y: 0, w: '100%', h: '100%', sizing: { type: 'contain', w: '100%', h: '100%' } });
+          }
+        }
+
+        imagesGeneratedPptx = pptx;
+        imagesPptxFileName = pptxFileName;
+        await pptx.writeFile({ fileName: pptxFileName });
       }
 
-      imagesProgressStatus.textContent = 'Concluindo arquivo PPTX...';
-      imagesProgressBar.style.width = '96%';
-      imagesProgressPercent.textContent = '96%';
+      // 2. Exportar PDF se solicitado
+      if (formatChoice === 'pdf' || formatChoice === 'both') {
+        imagesProgressStatus.textContent = 'Gerando documento em PDF (.pdf)...';
 
-      const timestamp = new Date().toISOString().slice(0, 10);
-      imagesPptxFileName = `Apresentacao_Imagens_${timestamp}.pptx`;
-      imagesGeneratedPptx = pptx;
+        await generateSlidesPdfDoc({
+          slides: imageSlides,
+          aspectChoice,
+          fitChoice,
+          bgChoice: bgColor,
+          fileName: pdfFileName,
+          progressCallback: (cur, tot) => {
+            const startPct = formatChoice === 'both' ? 55 : 10;
+            const range = formatChoice === 'both' ? 40 : 85;
+            const pct = Math.round(startPct + (cur / tot) * range);
+            imagesProgressBar.style.width = `${pct}%`;
+            imagesProgressPercent.textContent = `${pct}%`;
+            imagesProgressStatus.textContent = `PDF: página ${cur} de ${tot}...`;
+          }
+        });
+      }
 
-      await pptx.writeFile({ fileName: imagesPptxFileName });
-
-      imagesProgressStatus.textContent = 'Download concluído com sucesso!';
+      imagesProgressStatus.textContent = 'Concluído!';
       imagesProgressBar.style.width = '100%';
       imagesProgressPercent.textContent = '100%';
 
-      showToast(`Sucesso! ${total} slides gerados em PowerPoint (.pptx).`, 'success');
+      if (formatChoice === 'both') {
+        showToast(`🎉 Apresentação baixada em PPTX e PDF (${total} slides cada)!`, 'success');
+      } else if (formatChoice === 'pdf') {
+        showToast(`🎉 Documento PDF baixado com sucesso (${total} páginas)!`, 'success');
+      } else {
+        showToast(`🎉 Apresentação PPTX baixada com sucesso (${total} slides)!`, 'success');
+      }
 
     } catch (err) {
-      console.error('Erro ao gerar PPTX a partir de imagens:', err);
-      showToast('Erro ao exportar PowerPoint: ' + err.message, 'error');
+      console.error('Erro na exportação de imagens:', err);
+      showToast('Erro ao exportar: ' + err.message, 'error');
     } finally {
-      btnGenerateImagesPptx.disabled = false;
-      btnGenerateImagesPptx.innerHTML = '<span>⚡</span> Gerar e Baixar PowerPoint (.pptx)';
-      setTimeout(() => {
-        if (imagesProgressContainer) imagesProgressContainer.style.display = 'none';
-      }, 3000);
+      if (btnGenerateImagesPptx) {
+        btnGenerateImagesPptx.disabled = false;
+        updateImagesExportBtnLabel();
+      }
+      if (imagesProgressContainer) {
+        setTimeout(() => {
+          imagesProgressContainer.style.display = 'none';
+        }, 1500);
+      }
     }
   }
 
   if (btnGenerateImagesPptx) {
-    btnGenerateImagesPptx.addEventListener('click', generateImagesPptx);
+    btnGenerateImagesPptx.addEventListener('click', () => generateImagesExport());
   }
 
   if (btnDownloadImagesTop) {
-    btnDownloadImagesTop.addEventListener('click', generateImagesPptx);
+    btnDownloadImagesTop.addEventListener('click', () => generateImagesExport());
+  }
+
+  if (btnExportImagesPdf) {
+    btnExportImagesPdf.addEventListener('click', () => generateImagesExport('pdf'));
+  }
+
+  if (btnExportImagesPptx) {
+    btnExportImagesPptx.addEventListener('click', () => generateImagesExport('pptx'));
   }
 
   // ==========================================

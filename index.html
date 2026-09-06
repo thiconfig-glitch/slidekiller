@@ -10,6 +10,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/libs/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/dist/pptxgen.min.js"></script>
+  <!-- jsPDF para exportação instantânea em PDF no navegador -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <!-- Firebase SDKs para sincronização Celular ➔ PC -->
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
@@ -265,9 +267,17 @@
           </div>
         </div>
 
-        <!-- Barra de Configurações de Exportação PPTX -->
+        <!-- Barra de Configurações de Exportação PPTX / PDF -->
         <div class="card" style="margin-bottom: 20px; padding: 16px 20px;">
           <div class="options-bar" style="margin: 0; display: flex; flex-wrap: wrap; gap: 18px; align-items: center;">
+            <div class="option-item">
+              <label for="direct-format-select">Formato de Exportação:</label>
+              <select id="direct-format-select" class="form-select" style="font-weight: 700; color: var(--primary);">
+                <option value="pptx">PowerPoint (.pptx)</option>
+                <option value="pdf">Documento PDF (.pdf)</option>
+                <option value="both">Ambos (.pptx + .pdf juntos)</option>
+              </select>
+            </div>
             <div class="option-item">
               <label for="direct-aspect-select">Proporção dos Slides:</label>
               <select id="direct-aspect-select" class="form-select">
@@ -291,9 +301,15 @@
                 <option value="FFFFFF">Branco (#FFFFFF)</option>
               </select>
             </div>
-            <div style="margin-left: auto; display: flex; align-items: flex-end;">
+            <div style="margin-left: auto; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-export-direct-pdf" title="Exportar rapidamente em PDF">
+                <span>📄</span> Baixar PDF
+              </button>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-export-direct-pptx" title="Exportar rapidamente em PPTX">
+                <span>📊</span> Baixar PPTX
+              </button>
               <button class="btn btn-primary" id="btn-download-direct-main" style="padding: 10px 22px; font-weight: 700; background: linear-gradient(135deg, var(--primary), #ffd978); color: #000; box-shadow: 0 4px 15px rgba(232, 184, 89, 0.4);">
-                <span>⚡</span> Gerar e Baixar PowerPoint (.pptx)
+                <span id="direct-main-btn-icon">⚡</span> <span id="direct-main-btn-label">Gerar e Baixar PowerPoint (.pptx)</span>
               </button>
             </div>
           </div>
@@ -378,9 +394,17 @@
           </div>
         </div>
 
-        <!-- Barra de Configurações de Exportação PPTX -->
+        <!-- Barra de Configurações de Exportação PPTX / PDF -->
         <div class="card" style="margin-bottom: 20px; padding: 16px 20px;">
           <div class="options-bar" style="margin: 0; display: flex; flex-wrap: wrap; gap: 18px; align-items: center;">
+            <div class="option-item">
+              <label for="images-format-select">Formato de Exportação:</label>
+              <select id="images-format-select" class="form-select" style="font-weight: 700; color: var(--accent-purple);">
+                <option value="pptx">PowerPoint (.pptx)</option>
+                <option value="pdf">Documento PDF (.pdf)</option>
+                <option value="both">Ambos (.pptx + .pdf juntos)</option>
+              </select>
+            </div>
             <div class="option-item">
               <label for="images-aspect-select">Proporção dos Slides:</label>
               <select id="images-aspect-select" class="form-select">
@@ -391,7 +415,7 @@
             <div class="option-item">
               <label for="images-fit-select">Ajuste da Imagem:</label>
               <select id="images-fit-select" class="form-select">
-                <option value="contain">Ajustar ao Slide com Fundo Escuro (Sem cortes)</option>
+                <option value="contain">Ajustar ao Slide com Fundo (Sem cortes)</option>
                 <option value="cover">Preencher Slide Completo (100% Full Cover)</option>
               </select>
             </div>
@@ -403,9 +427,15 @@
                 <option value="FFFFFF">Branco (#FFFFFF)</option>
               </select>
             </div>
-            <div style="margin-left: auto; display: flex; align-items: flex-end;">
+            <div style="margin-left: auto; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-export-images-pdf" title="Exportar rapidamente em PDF">
+                <span>📄</span> Baixar PDF
+              </button>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-export-images-pptx" title="Exportar rapidamente em PPTX">
+                <span>📊</span> Baixar PPTX
+              </button>
               <button class="btn btn-primary" id="btn-generate-images-pptx" style="padding: 10px 22px; font-weight: 700; background: linear-gradient(135deg, var(--primary), #ffd978); color: #000; box-shadow: 0 4px 15px rgba(232, 184, 89, 0.4);">
-                <span>⚡</span> Gerar e Baixar PowerPoint (.pptx)
+                <span id="images-main-btn-icon">⚡</span> <span id="images-main-btn-label">Gerar e Baixar PowerPoint (.pptx)</span>
               </button>
             </div>
           </div>
