@@ -1,2148 +1,610 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <title>Central Multimídia Church — Hub de Mídia & Culto (v2.0.0)</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/libs/jszip.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/dist/pptxgen.min.js"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600&family=Oswald:wght@500&display=swap');
-        
-        :root { 
-            --bg-base: #18181b; /* Zinc 900 */
-            --bg-panel: #27272a; /* Zinc 800 */
-            --bg-hover: #3f3f46; /* Zinc 700 */
-            --primary: #8b5cf6; /* Violet 500 */
-            --primary-hover: #7c3aed; /* Violet 600 */
-            --text-light: #f4f4f5; /* Zinc 100 */
-            --text-dim: #a1a1aa; /* Zinc 400 */
-            --accent: #ef4444; /* Red 500 */
-            --border: #3f3f46;
-        }
-        
-        body { font-family: 'Inter', sans-serif; background: var(--bg-base); color: var(--text-light); margin: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; user-select: none; }
-        
-        /* Typography & Scrollbar */
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: var(--bg-base); }
-        ::-webkit-scrollbar-thumb { background: var(--bg-hover); border-radius: 4px; }
-        
-        /* Header */
-        header { background: var(--bg-panel); padding: 0 20px; height: 50px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
-        header h1 { margin: 0; font-size: 13px; font-weight: 600; letter-spacing: 1px; color: var(--text-light); display: flex; align-items: center; gap: 8px; }
-        .badge { background: var(--primary); color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; }
-        
-        .btn { background: var(--primary); color: white; font-weight: 500; padding: 6px 14px; border: none; border-radius: 6px; cursor: pointer; transition: 0.2s; font-size: 12px; display: flex; align-items: center; gap: 6px; }
-        .btn:hover { background: var(--primary-hover); }
-        .btn-outline { background: transparent; border: 1px solid var(--border); }
-        .btn-outline:hover { background: var(--bg-hover); }
-        .btn-danger { background: transparent; border: 1px solid var(--accent); color: var(--accent); }
-        .btn-danger:hover { background: var(--accent); color: white; }
-        .btn-icon { padding: 4px; border-radius: 4px; background: transparent; border: none; color: var(--text-dim); cursor: pointer; display: grid; place-items: center; transition: 0.2s; }
-        .btn-icon:hover { background: var(--bg-hover); color: white; }
-
-        /* Setup Screen */
-        #setup { margin: auto; padding: 40px; background: var(--bg-panel); border-radius: 16px; text-align: center; max-width: 480px; box-shadow: 0 20px 40px rgba(0,0,0,0.4); border: 1px solid var(--border); }
-        .dropzone { border: 2px dashed var(--border); padding: 40px; border-radius: 12px; cursor: pointer; margin-top: 20px; transition: 0.2s; background: var(--bg-base); }
-        .dropzone:hover { border-color: var(--primary); background: rgba(139, 92, 246, 0.05); }
-
-        /* App Layout */
-        #app { display: none; flex: 1; flex-direction: column; overflow: hidden; }
-        #main-row { display: flex; flex: 1; overflow: hidden; }
-        
-        /* Left Toolbar */
-        #left-bar { width: 64px; background: var(--bg-panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; padding-top: 16px; gap: 12px; z-index: 50; }
-        .tool-btn { width: 44px; height: 44px; border-radius: 10px; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; color: var(--text-dim); transition: 0.2s; font-size: 10px; font-weight: 500; gap: 4px; }
-        .tool-btn svg { width: 20px; height: 20px; fill: currentColor; }
-        .tool-btn:hover { background: var(--bg-hover); color: var(--text-light); }
-
-        /* Right Panel */
-        #right-bar { width: 300px; background: var(--bg-panel); border-left: 1px solid var(--border); display: flex; flex-direction: column; z-index: 50; }
-        .panel-section { border-bottom: 1px solid var(--border); display: flex; flex-direction: column; }
-        .panel-header { padding: 12px 16px; font-size: 12px; font-weight: 600; color: var(--text-light); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.1); }
-        .panel-body { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
-        
-        .prop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .prop-group { display: flex; flex-direction: column; gap: 6px; }
-        .prop-group label { font-size: 11px; color: var(--text-dim); font-weight: 500; }
-        
-        .prop-input { background: var(--bg-base); border: 1px solid var(--border); color: white; padding: 6px 8px; border-radius: 6px; font-size: 12px; outline: none; transition: 0.2s; width: 100%; box-sizing: border-box; }
-        .prop-input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2); }
-        .prop-input[type="color"] { padding: 2px; height: 28px; cursor: pointer; }
-        .prop-input[type="range"] { padding: 0; border: none; }
-        
-        .action-row { display: flex; gap: 8px; margin-top: 8px; }
-
-        /* Layers Panel */
-        #layers-list { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
-        .layer-item { background: var(--bg-base); padding: 8px 12px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; font-size: 12px; cursor: pointer; border: 1px solid var(--border); transition: 0.1s; }
-        .layer-item:hover { border-color: var(--text-dim); }
-        .layer-item.active { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
-        .layer-item .icons { display: flex; gap: 4px; }
-        .layer-item.locked { opacity: 0.6; }
-
-        /* Filmstrip (Bottom) */
-        #filmstrip { height: 110px; background: var(--bg-panel); border-top: 1px solid var(--border); display: flex; align-items: center; padding: 0 16px; gap: 16px; overflow-x: auto; z-index: 50; }
-        .thumb-wrapper { display: flex; flex-direction: column; align-items: center; gap: 6px; }
-        .thumb { width: 128px; height: 72px; background: #000; border: 2px solid var(--border); border-radius: 6px; cursor: pointer; position: relative; overflow: hidden; background-size: cover; background-position: center; transition: 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-        .thumb:hover { border-color: var(--text-dim); }
-        .thumb.active { border-color: var(--primary); }
-        .thumb-num { font-size: 11px; color: var(--text-dim); font-weight: 500; }
-        
-        /* Thumb Mini Canvas */
-        .thumb-mini-el { position: absolute; pointer-events: none; overflow: hidden; }
-        .thumb-mini-txt { width: 100%; height: 100%; transform-origin: top left; line-height: 1.1; white-space: pre-wrap; word-wrap: break-word; }
-
-        /* Canvas Area */
-        #canvas-area { flex: 1; background: #09090b; display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; background-image: radial-gradient(circle at center, #1f1f22 0%, #09090b 100%); }
-        #canvas-container { position: relative; box-shadow: 0 20px 60px rgba(0,0,0,0.8); }
-        #slide-canvas { width: 960px; height: 540px; background: #000; background-size: cover; background-position: center; position: relative; overflow: hidden; transform-origin: top left; }
-
-        /* Elements */
-        .slide-el { position: absolute; box-sizing: border-box; }
-        .el-text { width: 100%; height: 100%; outline: none; line-height: 1.1; white-space: pre-wrap; word-wrap: break-word; }
-        .el-img { width: 100%; height: 100%; object-fit: contain; }
-        
-        .slide-el:hover:not(.locked) { outline: 1px dashed rgba(139, 92, 246, 0.45); cursor: default; }
-        
-        /* Transform Controls (Estilo PowerPoint) */
-        #transform-box { position: absolute; border: 1.5px dashed var(--primary); pointer-events: none; display: none; z-index: 1000; box-shadow: 0 0 0 1px rgba(0,0,0,0.3); }
-        .tf-edge { position: absolute; pointer-events: auto; cursor: move; }
-        .tf-edge-n { top: -6px; left: 0; right: 0; height: 12px; }
-        .tf-edge-s { bottom: -6px; left: 0; right: 0; height: 12px; }
-        .tf-edge-w { top: 0; bottom: 0; left: -6px; width: 12px; }
-        .tf-edge-e { top: 0; bottom: 0; right: -6px; width: 12px; }
-        .tf-drag-bar {
-            position: absolute; top: -24px; left: 0; background: var(--primary); color: white;
-            font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 4px 4px 0 0;
-            display: flex; align-items: center; gap: 4px; cursor: move; pointer-events: auto;
-            user-select: none; box-shadow: 0 -2px 6px rgba(0,0,0,0.3);
-        }
-        .tf-drag-icon { font-size: 11px; opacity: 0.95; }
-        .tf-drag-label { letter-spacing: 0.3px; }
-
-        .handle { position: absolute; width: 10px; height: 10px; background: white; border: 1.5px solid var(--primary); pointer-events: auto; border-radius: 50%; transform: translate(-50%, -50%); box-shadow: 0 1px 3px rgba(0,0,0,0.3); transition: transform 0.1s; }
-        .handle:hover { transform: translate(-50%, -50%) scale(1.3); }
-        .h-nw { top: 0; left: 0; cursor: nwse-resize; } .h-n { top: 0; left: 50%; cursor: ns-resize; } .h-ne { top: 0; left: 100%; cursor: nesw-resize; }
-        .h-e { top: 50%; left: 100%; cursor: ew-resize; } .h-se { top: 100%; left: 100%; cursor: nwse-resize; } .h-s { top: 100%; left: 50%; cursor: ns-resize; }
-        .h-sw { top: 100%; left: 0; cursor: nesw-resize; } .h-w { top: 50%; left: 0; cursor: ew-resize; }
-        .h-rot { top: -30px; left: 50%; cursor: crosshair; background: white; }
-        .rot-line { position: absolute; width: 1.5px; height: 30px; background: var(--primary); top: -30px; left: 50%; transform: translateX(-50%); pointer-events: none; }
-
-        /* Barra Flutuante de Formatação Rápida (Mini Toolbar estilo PowerPoint) */
-        .mini-toolbar {
-            position: absolute; display: flex; align-items: center; gap: 4px;
-            background: rgba(24, 24, 27, 0.96); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.18); box-shadow: 0 12px 30px rgba(0, 0, 0, 0.7), 0 0 1px rgba(255, 255, 255, 0.25);
-            border-radius: 8px; padding: 4px 6px; z-index: 1005; user-select: none; pointer-events: auto;
-            animation: miniToolbarPop 0.15s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-        @keyframes miniToolbarPop {
-            from { opacity: 0; transform: translateY(4px) scale(0.97); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-        .mini-drag-grip { color: #a1a1aa; font-size: 13px; cursor: move; padding: 2px 4px; display: flex; align-items: center; transition: color 0.15s; }
-        .mini-drag-grip:hover { color: #ffffff; }
-        .mini-drag-grip svg { pointer-events: none; }
-        .mini-group { display: flex; align-items: center; gap: 2px; }
-        .mini-divider { width: 1px; height: 18px; background: rgba(255, 255, 255, 0.15); margin: 0 3px; }
-        .mini-btn {
-            background: transparent; color: #e4e4e7; border: 1px solid transparent; border-radius: 5px;
-            padding: 3px 6px; font-size: 12px; line-height: 1; cursor: pointer; display: inline-flex;
-            align-items: center; justify-content: center; transition: all 0.12s ease; min-width: 24px; height: 24px;
-        }
-        .mini-btn svg { display: block; pointer-events: none; }
-        .mini-btn:hover { background: rgba(255, 255, 255, 0.12); color: #ffffff; border-color: rgba(255, 255, 255, 0.2); }
-        .mini-btn.active { background: var(--primary); color: #ffffff; border-color: var(--primary); }
-        .mini-btn-gold {
-            color: #E8B859; font-weight: 600; font-size: 11px; background: rgba(232, 184, 89, 0.15);
-            border-color: rgba(232, 184, 89, 0.4); padding: 3px 8px; gap: 4px;
-        }
-        .mini-btn-gold:hover { background: #E8B859; color: #000000; border-color: #E8B859; box-shadow: 0 0 10px rgba(232, 184, 89, 0.4); }
-        .mini-btn-gold:hover svg { fill: #000000; stroke: #000000; }
-        .mini-btn-del:hover { background: rgba(239, 68, 68, 0.22); color: #ef4444; border-color: rgba(239, 68, 68, 0.4); }
-        .mini-select {
-            background: #18181b; color: #f4f4f5; border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 5px; padding: 2px 4px; font-size: 11px; height: 24px; outline: none; max-width: 105px;
-        }
-        .mini-select:focus { border-color: var(--primary); }
-        .mini-input-size {
-            width: 40px; background: #18181b; color: #f4f4f5; border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 5px; padding: 2px 2px; font-size: 12px; font-weight: 600; text-align: center; height: 24px; outline: none;
-        }
-        .mini-input-size:focus { border-color: var(--primary); }
-        .mini-input-size::-webkit-inner-spin-button, .mini-input-size::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-        .mini-color-btn {
-            display: inline-flex; align-items: center; justify-content: center; position: relative;
-            cursor: pointer; background: transparent; border: 1px solid transparent; border-radius: 5px;
-            padding: 2px 4px; font-size: 13px; height: 24px; width: 24px;
-        }
-        .mini-color-btn:hover { background: rgba(255, 255, 255, 0.12); }
-
-        /* Snapping Guides */
-        .snap-guide { position: absolute; background: #ec4899; pointer-events: none; z-index: 999; display: none; }
-        .guide-v { width: 1px; height: 100%; top: 0; }
-        .guide-h { height: 1px; width: 100%; left: 0; }
-
-        /* Effects */
-        .shadow-dark { filter: drop-shadow(3px 4px 6px rgba(0,0,0,0.9)); }
-        .shadow-glow { filter: drop-shadow(0 0 10px rgba(255,255,255,0.7)); }
-
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Central Multimídia Church — Hub de Produção e Mídia</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/libs/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/dist/pptxgen.min.js"></script>
+  <!-- Firebase SDKs para sincronização Celular ➔ PC -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+  <link rel="stylesheet" href="style.css?v=2.3.0">
 </head>
 <body>
-
-<header>
-    <div style="display:flex; align-items:center; gap:16px;">
-        <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:22px;">🏛️</span>
-            <div>
-                <div style="display:flex; align-items:center; gap:6px;">
-                    <span style="font-weight:700; font-size:14px; color:#fff; letter-spacing:0.3px;">Central Multimídia Church</span>
-                    <span class="badge" style="background:#8b5cf6; font-size:10px;">v2.1.0</span>
-                </div>
-                <span style="font-size:10px; color:#a1a1aa; display:block;">Hub de Mídia & Culto</span>
-            </div>
+  <!-- Cabeçalho Principal do Hub -->
+  <header class="app-header">
+    <div class="header-left">
+      <div class="church-brand">
+        <span class="brand-icon">🏛️</span>
+        <div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <h1 class="brand-title">Central Multimídia Church</h1>
+            <span class="version-tag">v2.3.0</span>
+          </div>
+          <span class="brand-subtitle">Plataforma Unificada de Mídia & Culto</span>
         </div>
-
-        <!-- Seletor de Módulos (Personalidades) -->
-        <nav id="hubNav" style="display:flex; gap:6px; background:#18181b; padding:4px; border-radius:8px; border:1px solid var(--border);">
-            <button class="btn" id="modSlidekillerBtn" onclick="switchHubModule('slidekiller')" style="padding:4px 10px; font-size:11px; border-radius:6px;">
-                ⚡ Slide Killer
-            </button>
-            <button class="btn btn-outline" id="modVideoBtn" onclick="switchHubModule('video-editor')" style="padding:4px 10px; font-size:11px; border-radius:6px;">
-                🎬 Editor de Vídeo (OpenCut)
-            </button>
-        </nav>
+      </div>
     </div>
 
-    <!-- Ações Slide Killer -->
-    <div id="actionsSlidekiller" style="display:flex; gap:10px; align-items:center;">
-        <button class="btn btn-outline" id="btnNewDoc" style="display:none;" onclick="location.reload()">
-            <span>➕</span> Novo
-        </button>
-        <button class="btn btn-secondary" id="btnValidateAI" style="display:none;" onclick="handleValidateAIClick()">
-            <span>✨</span> Validar com IA
-        </button>
-        <button class="btn-icon" id="btnConfigAI" style="display:none;" onclick="openAiModal()" title="Configurar Chave da IA">
-            ⚙️
-        </button>
-        <input type="text" id="outFileName" value="Apresentacao.pptx" class="prop-input" style="width:190px; font-weight:500;" />
-        <button class="btn" id="btnExport">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M19 9H15V3H9V9H5L12 16L19 9ZM5 18V20H19V18H5Z"/></svg>
-            Exportar PPTX
-        </button>
-    </div>
+    <!-- Seletor de Módulos (Personalidades) -->
+    <nav class="hub-nav">
+      <button class="nav-module-btn active" data-module="slidekiller">
+        <span class="module-icon">⚡</span>
+        <span class="module-label">Slide Killer</span>
+        <span class="module-pill">Sermões</span>
+      </button>
 
-    <!-- Ações Editor de Vídeo -->
-    <div id="actionsVideoEditor" style="display:none; gap:10px; align-items:center;">
-        <button class="btn btn-outline" onclick="toggleVideoFullscreenRoot()">
-            <span>⛶</span> Tela Cheia
+      <button class="nav-module-btn" data-module="pdf-to-pptx">
+        <span class="module-icon">📄</span>
+        <span class="module-label">PDF ➔ PPTX Direto</span>
+        <span class="module-pill pill-gold">1 Pág = 1 Slide</span>
+      </button>
+
+      <button class="nav-module-btn" data-module="images-to-pptx">
+        <span class="module-icon">🖼️</span>
+        <span class="module-label">Imagens / ZIP ➔ PPTX</span>
+        <span class="module-pill pill-purple">Organizador</span>
+      </button>
+
+      <button class="nav-module-btn" data-module="video-editor">
+        <span class="module-icon">🎬</span>
+        <span class="module-label">Editor de Vídeo</span>
+        <span class="module-pill pill-cyan">OpenCut</span>
+      </button>
+    </nav>
+
+    <div class="header-right">
+      <!-- Ações do Módulo Slide Killer -->
+      <div class="module-actions" id="actions-slidekiller">
+        <button class="btn btn-secondary" id="btn-new-presentation">Novo Documento</button>
+        <button class="btn btn-primary" id="btn-download-top" style="display: none;">
+          <span>📥</span> Baixar PowerPoint (.pptx)
         </button>
-        <a href="https://opencut.app" target="_blank" rel="noopener noreferrer" class="btn" style="text-decoration:none;">
-            <span>↗</span> Abrir no Navegador
+      </div>
+
+      <!-- Ações do Módulo PDF ➔ PPTX Direto -->
+      <div class="module-actions" id="actions-pdf-to-pptx" style="display: none;">
+        <button class="btn btn-secondary" id="btn-new-direct-top">Novo PDF</button>
+        <button class="btn btn-primary" id="btn-download-direct-top" style="display: none;">
+          <span>📥</span> Baixar PowerPoint (.pptx)
+        </button>
+      </div>
+
+      <!-- Ações do Módulo Imagens / ZIP ➔ PPTX -->
+      <div class="module-actions" id="actions-images-to-pptx" style="display: none;">
+        <button class="btn btn-secondary" id="btn-new-images-top">Novo Lote</button>
+        <button class="btn btn-primary" id="btn-download-images-top" style="display: none;">
+          <span>📥</span> Baixar PowerPoint (.pptx)
+        </button>
+      </div>
+
+      <!-- Ações do Módulo Editor de Vídeo -->
+      <div class="module-actions" id="actions-video-editor" style="display: none;">
+        <button class="btn btn-secondary" id="btn-video-fullscreen" title="Expandir editor para tela cheia">
+          <span>⛶</span> Tela Cheia
+        </button>
+        <a href="https://opencut.app" target="_blank" rel="noopener noreferrer" class="btn btn-primary" id="btn-open-video-external">
+          <span>↗</span> Abrir no Navegador
         </a>
-    </div>
-</header>
+      </div>
 
-<!-- Modal de Chave da IA Gemini -->
-<div id="modalAiKey" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.75); z-index:9999; justify-content:center; align-items:center;">
-    <div style="background:var(--bg-panel); border:1px solid var(--border); border-radius:12px; padding:24px; max-width:440px; width:90%; box-shadow:0 20px 50px rgba(0,0,0,0.6); text-align:left;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-            <h3 style="margin:0; font-size:16px; color:var(--text-light); display:flex; align-items:center; gap:8px;">
-                ✨ Validação Estrutural com IA
-            </h3>
-            <button class="btn-icon" onclick="closeAiModal()">✕</button>
-        </div>
-        <p style="font-size:12px; color:var(--text-dim); margin-bottom:16px; line-height:1.5;">
-            A IA atua exclusivamente como <strong>Guardiã Estrutural</strong>: ela valida referências bíblicas e quebras de versículos, <strong>sem alterar nenhuma palavra nem inventar destaques</strong>.
-        </p>
-        <div style="margin-bottom:16px;">
-            <label style="font-size:11px; font-weight:600; color:var(--text-dim); display:block; margin-bottom:6px;">Chave de API do Google Gemini:</label>
-            <input type="password" id="inputGeminiKey" placeholder="Cole sua chave AIzaSy..." class="prop-input" style="width:100%; box-sizing:border-box;" />
-            <small style="display:block; margin-top:6px; font-size:11px;">
-                <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--primary); text-decoration:none; font-weight:600;">🔗 Obter chave gratuita no Google AI Studio</a>
-            </small>
-        </div>
-        <div style="display:flex; gap:8px; justify-content:flex-end;">
-            <button class="btn btn-outline" onclick="closeAiModal()">Cancelar</button>
-            <button class="btn" id="btnSaveAiKey" onclick="saveAndRunAiValidation()">Salvar e Validar</button>
-        </div>
+      <!-- Botão Global: Tarefas em Andamento (Celular / PC) -->
+      <button class="btn btn-tasks-toggle" id="btn-open-tasks-panel" title="Tarefas em Andamento (Sincronizadas na Nuvem)">
+        <span>📌</span> <span class="btn-tasks-text">Tarefas</span>
+        <span class="tasks-counter-badge" id="tasks-counter-badge">0/3</span>
+      </button>
     </div>
-</div>
+  </header>
 
-<!-- Modal Inserir Versículo Bíblico -->
-<div id="modalVerse" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.75); z-index:9999; align-items:center; justify-content:center; backdrop-filter:blur(4px);">
-    <div style="background:var(--bg-panel); border:1px solid var(--border); border-radius:14px; padding:24px; max-width:620px; width:92%; box-shadow:0 20px 40px rgba(0,0,0,0.7); max-height:90vh; overflow-y:auto;">
+  <main class="app-main">
+    <!-- ========================================== -->
+    <!-- MÓDULO 1: SLIDE KILLER                     -->
+    <!-- ========================================== -->
+    <div class="module-view active" id="view-slidekiller">
+      <!-- Tela Inicial de Entrada (Upload / Texto) -->
+      <section class="input-section" id="input-section">
+        <div class="card hero-card">
+          <div class="module-header-badge">
+            <span class="badge-dot"></span>
+            <span>MÓDULO SLIDE KILLER • GERADOR INTELIGENTE</span>
+          </div>
+          <h2>Transforme Esboços e PDFs em Slides Profissionais</h2>
+          <p>Extração automática de versículos, destaque de palavras-chave, quebra de múltiplos versículos e tipografia padronizada em 16:9 Full HD.</p>
+          
+          <div class="direct-shortcut-banner" id="banner-goto-direct">
+            <span>💡 <strong>Precisa de conversão 1:1?</strong> Transforme cada página do PDF diretamente em um slide do PowerPoint sem alterar nada.</span>
+            <button type="button" class="btn btn-sm btn-outline-gold" id="btn-switch-to-direct">Ir para Conversor Direto ➔</button>
+          </div>
+
+          <div class="tabs">
+            <button class="tab-btn active" data-tab="tab-pdf">📄 Enviar Arquivo PDF</button>
+            <button class="tab-btn" data-tab="tab-text">✍️ Colar Texto / Esboço</button>
+          </div>
+
+          <!-- Aba 1: Upload PDF -->
+          <div class="tab-content active" id="tab-pdf">
+            <div class="dropzone" id="dropzone">
+              <input type="file" id="pdf-file-input" accept=".pdf" style="display: none;">
+              <div class="dropzone-icon">📁</div>
+              <div class="dropzone-text">
+                <strong>Arraste o arquivo PDF do pastor aqui</strong>
+                <span>ou clique para selecionar do computador</span>
+              </div>
+              <div class="selected-file-info" id="selected-file-info" style="display: none;">
+                <span class="file-name" id="file-name-display"></span>
+                <button class="btn-clear" id="btn-clear-file">✕</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Aba 2: Colar Texto -->
+          <div class="tab-content" id="tab-text">
+            <textarea id="sermon-text-input" placeholder="Cole aqui o texto ou anotações do pastor com as referências bíblicas (ex: Mateus 6:19-21)..." rows="9"></textarea>
+          </div>
+
+          <!-- Opções Extras -->
+          <div class="options-bar">
+            <div class="option-item">
+              <label for="template-select">Plano de Fundo:</label>
+              <select id="template-select" class="form-select">
+                <option value="/assets/church_sermon_bg.png">Fundo Oficial da Igreja</option>
+              </select>
+            </div>
+            <div class="option-item">
+              <label class="checkbox-container">
+                <input type="checkbox" id="check-use-ai">
+                <span class="checkmark"></span>
+                Usar IA Gemini (Opcional)
+              </label>
+            </div>
+          </div>
+
+          <button class="btn btn-action" id="btn-generate">
+            <span class="btn-icon">⚡</span> Gerar Slides Instantaneamente
+          </button>
+        </div>
+      </section>
+
+      <!-- Tela de Resultados e Edição -->
+      <section class="results-section" id="results-section" style="display: none;">
+        <div class="results-header">
+          <div class="results-info">
+            <h2 id="results-title">Slides Gerados</h2>
+            <span class="badge" id="slide-count-badge">0 slides</span>
+          </div>
+          <div class="results-actions">
+            <button class="btn btn-outline-gold" id="btn-open-verse-modal">📖 Inserir Versículo</button>
+            <button class="btn btn-secondary" id="btn-add-slide">+ Novo Slide</button>
+            <button class="btn btn-secondary" id="btn-rebuild">💾 Salvar Edições</button>
+            <button class="btn btn-primary" id="btn-download-main">📥 Baixar .pptx</button>
+          </div>
+        </div>
+
+        <!-- Grid de Slides -->
+        <div class="slides-grid" id="slides-grid"></div>
+      </section>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MÓDULO 2: PDF ➔ PPTX DIRETO (1:1)          -->
+    <!-- ========================================== -->
+    <div class="module-view" id="view-pdf-to-pptx">
+      <section class="input-section" id="section-direct-input">
+        <div class="card hero-card">
+          <div class="module-header-badge">
+            <span class="badge-dot" style="background-color: var(--primary); box-shadow: 0 0 8px var(--primary);"></span>
+            <span>MÓDULO CONVERSOR DIRETO • 1 PÁGINA = 1 SLIDE</span>
+          </div>
+          <h2>Conversão Direta de PDF para PowerPoint</h2>
+          <p>Anexe qualquer PDF e receba uma apresentação .pptx onde cada página do PDF se torna exatamente um slide em alta resolução Full HD, sem extração ou alteração de texto. Pronto para telões e softwares de projeção.</p>
+
+          <div class="dropzone" id="dropzone-direct">
+            <input type="file" id="pdf-direct-input" accept=".pdf" style="display: none;">
+            <div class="dropzone-icon">📄</div>
+            <div class="dropzone-text">
+              <strong>Arraste o arquivo PDF aqui</strong>
+              <span>ou clique para selecionar do computador</span>
+            </div>
+            <div class="selected-file-info" id="direct-file-info" style="display: none;">
+              <span class="file-name" id="direct-file-name"></span>
+              <button class="btn-clear" id="btn-clear-direct-file">✕</button>
+            </div>
+          </div>
+
+          <!-- Opções do Conversor Direto -->
+          <div class="options-bar" style="margin-top: 18px;">
+            <div class="option-item">
+              <label for="direct-aspect-select">Proporção dos Slides:</label>
+              <select id="direct-aspect-select" class="form-select">
+                <option value="16x9">Widescreen 16:9 Full HD (Padrão Telão)</option>
+                <option value="original">Proporção Original do PDF (Fiel às Páginas)</option>
+              </select>
+            </div>
+            <div class="option-item">
+              <label for="direct-fit-select">Ajuste da Página no Slide:</label>
+              <select id="direct-fit-select" class="form-select">
+                <option value="contain">Ajustar ao Slide com Fundo Escuro (Sem cortes)</option>
+                <option value="cover">Preencher Slide Completo (100% Full Cover)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Barra de Progresso da Conversão -->
+          <div id="direct-progress-container" class="direct-progress-box" style="display: none;">
+            <div class="progress-info">
+              <span id="direct-progress-status">Preparando conversão...</span>
+              <span id="direct-progress-percent">0%</span>
+            </div>
+            <div class="progress-bar-bg">
+              <div class="progress-bar-fill" id="direct-progress-bar" style="width: 0%;"></div>
+            </div>
+          </div>
+
+          <button class="btn btn-action" id="btn-convert-direct" style="margin-top: 18px;">
+            <span class="btn-icon">⚡</span> Converter para PPTX Instantaneamente
+          </button>
+        </div>
+      </section>
+
+      <!-- Seção de Resultados da Conversão Direta -->
+      <section class="results-section" id="section-direct-results" style="display: none;">
+        <div class="results-header">
+          <div class="results-info">
+            <h2 id="direct-results-title">Apresentação Convertida</h2>
+            <span class="badge" id="direct-slide-count-badge">0 slides</span>
+          </div>
+          <div class="results-actions">
+            <button class="btn btn-secondary" id="btn-new-direct-main">Converter Outro PDF</button>
+            <button class="btn btn-primary" id="btn-download-direct-main">📥 Baixar PowerPoint (.pptx)</button>
+          </div>
+        </div>
+
+        <!-- Grid de Miniaturas das Páginas -->
+        <div class="slides-grid" id="direct-slides-grid"></div>
+      </section>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MÓDULO 3: IMAGENS / ZIP ➔ PPTX             -->
+    <!-- ========================================== -->
+    <div class="module-view" id="view-images-to-pptx">
+      <section class="input-section" id="section-images-input">
+        <div class="card hero-card">
+          <div class="module-header-badge">
+            <span class="badge-dot" style="background-color: var(--accent-purple); box-shadow: 0 0 8px var(--accent-purple);"></span>
+            <span>MÓDULO IMAGENS & ZIP • ORGANIZADOR VISUAL DE SLIDES</span>
+          </div>
+          <h2>Transforme Imagens Avulsas ou Arquivos ZIP em PowerPoint</h2>
+          <p>Selecione fotos avulsas ou anexe um arquivo ZIP com imagens. Ajuste a ordem de cada slide arrastando com o mouse ou usando os botões de posição, e exporte sua apresentação .pptx 16:9 Full HD pronta para telões.</p>
+
+          <div class="dropzone" id="dropzone-images">
+            <input type="file" id="images-files-input" accept="image/*,.zip" multiple style="display: none;">
+            <input type="file" id="zip-files-input" accept=".zip" style="display: none;">
+            <div class="dropzone-icon">🖼️</div>
+            <div class="dropzone-text">
+              <strong>Arraste suas imagens ou arquivo ZIP aqui</strong>
+              <span>ou clique para selecionar fotos avulsas ou pacote .ZIP</span>
+            </div>
+          </div>
+
+          <!-- Dicas e Ações Rápidas de Upload -->
+          <div style="display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; justify-content: center;">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('images-files-input').click()">
+              <span>📁</span> Selecionar Imagens Avulsas (Fotos)
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('zip-files-input').click()">
+              <span>📦</span> Selecionar Arquivo .ZIP
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Seção do Organizador de Slides e Exportação -->
+      <section class="results-section" id="section-images-organizer" style="display: none;">
+        <div class="results-header" style="flex-wrap: wrap; gap: 16px;">
+          <div class="results-info">
+            <h2>Organizador de Slides</h2>
+            <span class="badge" id="images-slide-count-badge" style="background: rgba(168,85,247,0.2); color: var(--accent-purple); border-color: rgba(168,85,247,0.4);">0 imagens</span>
+            <span style="font-size: 12px; color: var(--text-muted); margin-left: 8px;">💡 Arraste os cards para reorganizar a ordem</span>
+          </div>
+
+          <div class="results-actions" style="flex-wrap: wrap; gap: 8px;">
+            <button class="btn btn-secondary btn-sm" id="btn-add-more-images" onclick="document.getElementById('images-files-input').click()">
+              <span>＋</span> Mais Fotos
+            </button>
+            <button class="btn btn-secondary btn-sm" id="btn-add-more-zip" onclick="document.getElementById('zip-files-input').click()">
+              <span>📦</span> Mais um ZIP
+            </button>
+            <button class="btn btn-secondary btn-sm" id="btn-sort-images-az" title="Ordenar slides por nome do arquivo">
+              <span>🔤</span> A-Z
+            </button>
+            <button class="btn btn-secondary btn-sm" id="btn-reverse-images" title="Inverter a ordem atual dos slides">
+              <span>🔀</span> Inverter
+            </button>
+            <button class="btn btn-danger btn-sm" id="btn-clear-all-images" title="Remover todas as imagens">
+              <span>🗑️</span> Limpar
+            </button>
+          </div>
+        </div>
+
+        <!-- Barra de Configurações de Exportação PPTX -->
+        <div class="card" style="margin-bottom: 20px; padding: 16px 20px;">
+          <div class="options-bar" style="margin: 0; display: flex; flex-wrap: wrap; gap: 18px; align-items: center;">
+            <div class="option-item">
+              <label for="images-aspect-select">Proporção dos Slides:</label>
+              <select id="images-aspect-select" class="form-select">
+                <option value="16x9">Widescreen 16:9 Full HD (Padrão Telão)</option>
+                <option value="4x3">Proporção 4:3 Tradicional</option>
+              </select>
+            </div>
+            <div class="option-item">
+              <label for="images-fit-select">Ajuste da Imagem:</label>
+              <select id="images-fit-select" class="form-select">
+                <option value="contain">Ajustar ao Slide com Fundo Escuro (Sem cortes)</option>
+                <option value="cover">Preencher Slide Completo (100% Full Cover)</option>
+              </select>
+            </div>
+            <div class="option-item">
+              <label for="images-bg-select">Cor de Fundo:</label>
+              <select id="images-bg-select" class="form-select">
+                <option value="000000">Preto Puro (#000000)</option>
+                <option value="0b0f19">Escuro Church (#0b0f19)</option>
+                <option value="FFFFFF">Branco (#FFFFFF)</option>
+              </select>
+            </div>
+            <div style="margin-left: auto; display: flex; align-items: flex-end;">
+              <button class="btn btn-primary" id="btn-generate-images-pptx" style="padding: 10px 22px; font-weight: 700; background: linear-gradient(135deg, var(--primary), #ffd978); color: #000; box-shadow: 0 4px 15px rgba(232, 184, 89, 0.4);">
+                <span>⚡</span> Gerar e Baixar PowerPoint (.pptx)
+              </button>
+            </div>
+          </div>
+
+          <!-- Barra de Progresso da Geração de Slides -->
+          <div id="images-progress-container" class="direct-progress-box" style="display: none; margin-top: 14px;">
+            <div class="progress-info">
+              <span id="images-progress-status">Preparando slides...</span>
+              <span id="images-progress-percent">0%</span>
+            </div>
+            <div class="progress-bar-bg">
+              <div class="progress-bar-fill" id="images-progress-bar" style="width: 0%;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Grid de Cards de Imagens Reordenáveis (Drag and Drop + Botões) -->
+        <div class="images-reorder-grid" id="images-reorder-grid"></div>
+      </section>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MÓDULO 4: EDITOR DE VÍDEO (OPENCUT)         -->
+    <!-- ========================================== -->
+    <div class="module-view" id="view-video-editor">
+      <!-- Tela de Entrada com Identidade da Igreja -->
+      <div id="video-welcome-screen" class="video-welcome-container">
+        <div class="module-header-badge">
+          <span class="badge-dot" style="background-color: var(--accent-cyan); box-shadow: 0 0 8px var(--accent-cyan);"></span>
+          <span>CENTRAL MULTIMÍDIA CHURCH • VÍDEO STUDIO</span>
+        </div>
+        <h2>Estúdio de Edição & Cortes de Culto</h2>
+        <p class="section-desc">Crie cortes de pregações, reels para redes sociais e clipes de louvor direto no navegador, com timeline profissional, sem filas e sem marcas d'água.</p>
+
+        <!-- Cards de Presets da Igreja -->
+        <div class="video-presets-grid">
+          <div class="preset-card" onclick="openPublicVideoEditor('pregação')">
+            <div class="preset-icon">✂️</div>
+            <h3>Cortes de Pregação (16:9)</h3>
+            <p>Formato widescreen para YouTube, avisos e melhores momentos da mensagem pastoral.</p>
+          </div>
+
+          <div class="preset-card" onclick="openPublicVideoEditor('reels')">
+            <div class="preset-icon">📱</div>
+            <h3>Reels & Shorts (9:16)</h3>
+            <p>Formato vertical otimizado para Instagram, TikTok e stories com frases fortes de fé.</p>
+          </div>
+
+          <div class="preset-card" onclick="openPublicVideoEditor('louvor')">
+            <div class="preset-icon">🎵</div>
+            <h3>Música & Louvor</h3>
+            <p>Edição de solos, introduções de ministração, louvores e testemunhos.</p>
+          </div>
+        </div>
+
+        <!-- Botão Principal -->
+        <div style="margin-top: 24px;">
+          <button class="btn btn-action" onclick="openPublicVideoEditor('geral')" style="max-width: 360px; margin: 0 auto; display: flex;">
+            <span>🚀</span> Abrir Estúdio de Edição Completo
+          </button>
+        </div>
+
+        <div class="video-welcome-features">
+          <span>🔒 100% no seu Navegador</span>
+          <span>•</span>
+          <span>🎞️ Exportação Full HD</span>
+          <span>•</span>
+          <span>⚡ Sem Marcas d'água</span>
+        </div>
+      </div>
+
+      <!-- Workspace com Submenu e Editor OpenCut -->
+      <div class="video-module-container" id="video-container" style="display: none;">
+        <!-- Barra de Status e Controles do Editor de Vídeo -->
+        <div class="video-toolbar">
+          <div class="toolbar-info">
+            <button class="btn btn-secondary" id="btn-back-to-video-welcome" style="padding: 4px 10px; font-size: 12px;">
+              <span>⬅</span> Voltar ao Painel
+            </button>
+            <div class="video-brand-badge">
+              <span class="rec-dot"></span>
+              <strong>Central Multimídia Church Studio</strong>
+              <span class="oss-tag">OpenCut OSS</span>
+            </div>
+            <div class="toolbar-tips">
+              <span>✂️ Timeline Multi-pistas</span>
+              <span>⚡ Sem marcas d'água</span>
+            </div>
+          </div>
+          <div class="toolbar-controls">
+            <button class="btn-icon-control" id="btn-reload-video" title="Recarregar Editor">
+              🔄 Recarregar
+            </button>
+            <button class="btn-icon-control" id="btn-expand-canvas" title="Modo Foco / Maximizar">
+              ⛶ Maximizar
+            </button>
+          </div>
+        </div>
+
+        <!-- Iframe do Editor OpenCut -->
+        <div class="video-frame-wrapper" id="video-frame-wrapper">
+          <iframe 
+            id="opencut-iframe" 
+            src="https://opencut.app" 
+            title="OpenCut Video Editor"
+            allow="camera; microphone; display-capture; autoplay; clipboard-read; clipboard-write; fullscreen"
+            sandbox="allow-scripts allow-same-origin allow-forms allow-downloads allow-modals allow-popups"
+            loading="lazy">
+          </iframe>
+          <div class="iframe-loading-overlay" id="iframe-loading">
+            <div class="spinner"></div>
+            <p>Carregando OpenCut Video Studio...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Inserir Versículo Bíblico -->
+    <div id="modalVerse" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.75); z-index:9999; align-items:center; justify-content:center; backdrop-filter:blur(4px);">
+      <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:14px; padding:24px; max-width:620px; width:92%; box-shadow:0 20px 40px rgba(0,0,0,0.7); max-height:90vh; overflow-y:auto;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-            <h3 style="margin:0; font-size:17px; color:var(--text-light); display:flex; align-items:center; gap:8px;">
-                📖 Inserir Versículo Bíblico no Culto
-            </h3>
-            <button class="btn-icon" onclick="closeVerseModal()">✕</button>
+          <h3 style="margin:0; font-size:17px; color:var(--text-main); display:flex; align-items:center; gap:8px;">
+            📖 Inserir Versículo Bíblico no Culto
+          </h3>
+          <button class="btn-clear" id="btn-close-verse-modal" style="font-size:16px;">✕</button>
         </div>
 
-        <p style="font-size:12px; color:var(--text-dim); margin-bottom:16px;">
-            Busque passagens bíblicas instantaneamente ou dite/edite o texto. O slide será gerado no padrão oficial da igreja com destaque dourado e tipografia de telão.
+        <p style="font-size:12px; color:var(--text-muted); margin-bottom:16px;">
+          Busque passagens bíblicas instantaneamente ou dite/edite o texto. O slide será gerado no padrão oficial da igreja com destaque dourado e tipografia de telão.
         </p>
 
         <!-- Linha de Busca -->
         <div style="display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap;">
-            <div style="flex:2; min-width:180px;">
-                <label style="font-size:11px; font-weight:600; color:var(--text-dim); display:block; margin-bottom:4px;">Referência (Livro Cap:Versículo):</label>
-                <input type="text" id="verseRefInput" placeholder="Ex: João 3:16, Sl 23:1-3, Rm 8:28" class="prop-input" style="width:100%; box-sizing:border-box; font-size:13px; font-weight:600;" onkeydown="if(event.key==='Enter') searchBibleVerse();" />
-            </div>
-            <div style="flex:1; min-width:130px;">
-                <label style="font-size:11px; font-weight:600; color:var(--text-dim); display:block; margin-bottom:4px;">Versão:</label>
-                <select id="verseVersionSelect" class="prop-input" style="width:100%; height:34px;">
-                    <option value="ACF">ACF (Almeida Corrigida Fiel)</option>
-                    <option value="ARA">ARA (Almeida Revista e Atualizada)</option>
-                    <option value="ARC">ARC (Revista e Corrigida)</option>
-                    <option value="NVI">NVI (Nova Versão Internacional)</option>
-                </select>
-            </div>
-            <div style="display:flex; align-items:flex-end;">
-                <button type="button" class="btn" id="btnSearchVerse" style="height:34px;" onclick="searchBibleVerse()">
-                    🔍 Buscar
-                </button>
-            </div>
+          <div style="flex:2; min-width:180px;">
+            <label style="font-size:11px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Referência (Livro Cap:Versículo):</label>
+            <input type="text" id="verseRefInput" placeholder="Ex: João 3:16, Sl 23:1-3, Rm 8:28" class="form-select" style="width:100%; box-sizing:border-box; font-size:13px; font-weight:600; padding:6px 10px;" />
+          </div>
+          <div style="flex:1; min-width:130px;">
+            <label style="font-size:11px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Versão:</label>
+            <select id="verseVersionSelect" class="form-select" style="width:100%; height:34px;">
+              <option value="ACF">ACF (Almeida Corrigida Fiel)</option>
+              <option value="ARA">ARA (Almeida Revista e Atualizada)</option>
+              <option value="ARC">ARC (Revista e Corrigida)</option>
+              <option value="NVI">NVI (Nova Versão Internacional)</option>
+            </select>
+          </div>
+          <div style="display:flex; align-items:flex-end;">
+            <button type="button" class="btn btn-primary" id="btnSearchVerse" style="height:34px;">
+              🔍 Buscar
+            </button>
+          </div>
         </div>
 
         <!-- Sugestões Rápidas -->
         <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px;">
-            <span style="font-size:11px; color:var(--text-dim); align-self:center;">Exemplos rápidos:</span>
-            <button type="button" class="btn btn-outline" style="padding:2px 8px; font-size:10px;" onclick="quickFillVerse('João 3:16')">João 3:16</button>
-            <button type="button" class="btn btn-outline" style="padding:2px 8px; font-size:10px;" onclick="quickFillVerse('Salmos 23:1-3')">Salmos 23:1-3</button>
-            <button type="button" class="btn btn-outline" style="padding:2px 8px; font-size:10px;" onclick="quickFillVerse('Romanos 8:28')">Romanos 8:28</button>
-            <button type="button" class="btn btn-outline" style="padding:2px 8px; font-size:10px;" onclick="quickFillVerse('Filipenses 4:13')">Filipenses 4:13</button>
+          <span style="font-size:11px; color:var(--text-muted); align-self:center;">Exemplos rápidos:</span>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="quickFillVersePublic('João 3:16')">João 3:16</button>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="quickFillVersePublic('Salmos 23:1-3')">Salmos 23:1-3</button>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="quickFillVersePublic('Romanos 8:28')">Romanos 8:28</button>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="quickFillVersePublic('Filipenses 4:13')">Filipenses 4:13</button>
         </div>
 
         <!-- Área de Edição do Versículo -->
-        <div style="background:var(--bg-base); border:1px solid var(--border); border-radius:10px; padding:12px; margin-bottom:14px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:6px;">
-                <label style="font-size:11px; font-weight:600; color:var(--primary); margin:0;">
-                    Texto do Versículo (Edição Livre & Destaques):
-                </label>
-                <!-- Ações Rápidas de Formatação -->
-                <div style="display:flex; gap:6px; align-items:center;">
-                    <button type="button" class="btn btn-outline" style="padding:3px 8px; font-size:11px; color:#E8B859; border-color:#E8B859; display:flex; align-items:center; gap:4px;" onclick="highlightSelectionInVerseModal()" title="Envolver palavra selecionada com destaque (#E8B859)">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="#E8B859"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                        <span>Destacar</span>
-                    </button>
-                    <button type="button" class="btn btn-outline" style="padding:3px 8px; font-size:11px;" onclick="toggleQuotesInVerseModal()" title="Colocar ou tirar aspas">
-                        “ ” Aspas
-                    </button>
-                    <div style="display:flex; align-items:center; gap:2px; margin-left:4px;">
-                        <button type="button" class="btn btn-outline" style="padding:2px 6px; font-size:10px;" onclick="changeVerseModalFontSize(-4)">A-</button>
-                        <span id="verseFontSizeBadge" style="font-size:11px; font-weight:600; min-width:26px; text-align:center;">52</span>
-                        <button type="button" class="btn btn-outline" style="padding:2px 6px; font-size:10px;" onclick="changeVerseModalFontSize(4)">A+</button>
-                    </div>
-                </div>
+        <div style="background:rgba(9, 13, 22, 0.6); border:1px solid var(--border); border-radius:10px; padding:12px; margin-bottom:14px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:6px;">
+            <label style="font-size:11px; font-weight:600; color:var(--primary); margin:0;">
+              Texto do Versículo (Edição Livre & Destaques):
+            </label>
+            <div style="display:flex; gap:6px; align-items:center;">
+              <button type="button" class="btn btn-outline-gold btn-sm" id="btn-highlight-verse-modal" title="Envolver palavra selecionada com destaque dourado">
+                ⭐ Destaque Dourado
+              </button>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-quotes-verse-modal" title="Colocar ou tirar aspas">
+                “ ” Aspas
+              </button>
             </div>
+          </div>
 
-            <textarea id="verseTextInput" rows="5" class="prop-input" style="width:100%; box-sizing:border-box; font-family:'Inter', sans-serif; font-size:13px; line-height:1.4;" placeholder="Digite, cole ou busque o texto do versículo. Para destacar palavras, selecione o trecho e clique no botão 'Destacar' acima."></textarea>
-            
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
-                <div style="display:flex; align-items:center; gap:8px;">
-                    <label style="font-size:11px; color:var(--text-dim); display:flex; align-items:center; gap:4px; cursor:pointer;">
-                        <input type="checkbox" id="checkSplitMultiVerses" checked />
-                        Dividir passagens longas em múltiplos slides
-                    </label>
-                </div>
-                <div id="verseSearchStatus" style="font-size:11px; color:var(--primary); font-weight:500;"></div>
+          <textarea id="verseTextInput" rows="5" class="form-select" style="width:100%; box-sizing:border-box; font-family:'Inter', sans-serif; font-size:13px; line-height:1.4; padding:8px;" placeholder="Digite, cole ou busque o texto do versículo. Para destacar palavras em dourado, selecione o trecho e clique em '⭐ Destaque Dourado'."></textarea>
+          
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <label style="font-size:11px; color:var(--text-muted); display:flex; align-items:center; gap:4px; cursor:pointer;">
+                <input type="checkbox" id="checkSplitMultiVersesPublic" checked />
+                Dividir passagens longas em múltiplos slides
+              </label>
             </div>
+            <div id="verseSearchStatus" style="font-size:11px; color:var(--primary); font-weight:500;"></div>
+          </div>
         </div>
 
         <!-- Rodapé do Modal -->
         <div style="display:flex; justify-content:space-between; align-items:center;">
-            <button class="btn btn-outline" onclick="closeVerseModal()">Cancelar</button>
-            <button class="btn" style="background:var(--primary); color:#000; font-weight:600;" onclick="confirmInsertVerseSlide()">
-                ➕ Inserir Slide no Culto
-            </button>
+          <button class="btn btn-secondary" id="btn-cancel-verse-modal">Cancelar</button>
+          <button class="btn btn-primary" id="btn-confirm-insert-verse">
+            ➕ Inserir Slide no Culto
+          </button>
         </div>
-    </div>
-</div>
-
-<div id="setup">
-    <h2 style="margin-top:0; color:var(--text-light); font-weight:600;">Bem-vindo à Central Multimídia Church</h2>
-    <p style="color:var(--text-dim); font-size:13px; margin-bottom:24px;">Transforme seus sermões em apresentações incríveis com ferramentas profissionais.</p>
-    
-    <div style="background:var(--bg-base); padding:20px; border-radius:12px; text-align:left; border:1px solid var(--border);">
-        <label style="font-size:12px; font-weight:500; color:var(--text-dim); display:block; margin-bottom:8px;">1. Fundo Padrão (Opcional)</label>
-        <input type="file" id="globalBg" accept="image/*" class="prop-input" />
-    </div>
-    
-    <div style="margin:16px 0 8px 0; display:flex; gap:10px; justify-content:center;">
-        <button type="button" id="btnModeDirect" class="btn" style="background:var(--primary); font-size:12px; padding:8px 16px;">
-            📄 Modo Direto (1 Pág = 1 Slide)
-        </button>
-        <button type="button" id="btnModeSermon" class="btn btn-outline" style="font-size:12px; padding:8px 16px;">
-            ⚡ Modo Sermão (Versículos & Destaques)
-        </button>
+      </div>
     </div>
 
-    <div class="dropzone" id="dropZone">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="var(--text-dim)" style="margin-bottom:12px;"><path d="M14 2H6C4.9 2 4.01 2.9 4.01 4L4 20C4 21.1 4.89 22 5.99 22H18C19.1 22 20 21.1 20 20V8L14 2ZM18 20H6V4H13V9H18V20Z"/></svg>
-        <h3 id="dropTitle" style="margin:0 0 4px 0; font-weight:500;">2. Importar PDF (1 Página = 1 Slide)</h3>
-        <p id="dropDesc" style="margin:0; color:var(--text-dim); font-size:12px;">Conversão direta sem alterar nada. Arraste o arquivo ou clique.</p>
-    </div>
-    <input type="file" id="pdfInput" accept="application/pdf" style="position:absolute; left:-9999px;" />
-    <div id="statusMsg" style="margin-top:16px; color:var(--primary); font-size:13px; font-weight:500;"></div>
-</div>
+    <!-- Drawer de Tarefas em Andamento (Sincronização Celular / PC - Máx 3) -->
+    <div id="tasks-drawer-overlay" class="tasks-drawer-overlay" onclick="window.toggleTasksDrawer(false)">
+      <div class="tasks-drawer" onclick="event.stopPropagation()">
+        <div class="tasks-drawer-header">
+          <div>
+            <h3 style="margin: 0; font-size: 1.15rem; color: #fff; display: flex; align-items: center; gap: 8px;">
+              <span>📌 Tarefas em Andamento</span>
+              <span class="tasks-counter-badge" id="drawer-tasks-counter-badge">0/3</span>
+            </h3>
+            <span style="font-size: 12px; color: var(--text-muted); display: block; margin-top: 4px;">
+              Edite no celular e conclua no PC (Limite: até 3 tarefas)
+            </span>
+          </div>
+          <button class="btn-clear" onclick="window.toggleTasksDrawer(false)">✕</button>
+        </div>
 
-<div id="app">
-    <div id="main-row">
-        <!-- Left Toolbar -->
-        <aside id="left-bar">
-            <div class="tool-btn" title="Inserir Versículo Bíblico no Culto" onclick="openVerseModal()" style="color:#e8b859;">
-                <svg viewBox="0 0 24 24"><path d="M18 2H6C4.9 2 4 2.9 4 4V20C4 21.1 4.9 22 6 22H18C19.1 22 20 21.1 20 20V4C20 2.9 19.1 2 18 2ZM9 4H11V9L10 8.25L9 9V4ZM18 20H6V4H7V11L10 8.75L13 11V4H18V20Z"/></svg>
-                Versículo
-            </div>
-            <div class="tool-btn" title="Texto Padrão" onclick="addElement('text')">
-                <svg viewBox="0 0 24 24"><path d="M5 4V7H10.5V19H13.5V7H19V4H5Z"/></svg>
-                Texto
-            </div>
-            <div class="tool-btn" title="Inserir Imagem" onclick="document.getElementById('imgUpload').click()">
-                <svg viewBox="0 0 24 24"><path d="M21 19V5C21 3.9 20.1 3 19 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19ZM8.5 13.5L11 16.51L14.5 12L19 18H5L8.5 13.5Z"/></svg>
-                Imagem
-            </div>
-            <input type="file" id="imgUpload" accept="image/*" style="display:none;" onchange="handleElImageUpload(this)">
-            
-            <div class="tool-btn" title="Forma (Retângulo)" onclick="addElement('shape')">
-                <svg viewBox="0 0 24 24"><path d="M3 3H21V21H3V3Z"/></svg>
-                Forma
-            </div>
-        </aside>
+        <!-- Botão Salvar Tarefa Atual -->
+        <div style="padding: 14px 20px; border-bottom: 1px solid var(--border); background: rgba(0,0,0,0.2);">
+          <button class="btn btn-primary" id="btn-save-current-task" style="width: 100%; justify-content: center; font-size: 13px;">
+            <span>💾</span> Salvar Trabalho Atual na Nuvem
+          </button>
+        </div>
 
-        <!-- Center Workspace -->
-        <main id="canvas-area">
-            <div id="canvas-container">
-                <div id="slide-canvas">
-                    <!-- Elements injected here -->
-                    <div id="snap-v" class="snap-guide guide-v"></div>
-                    <div id="snap-h" class="snap-guide guide-h"></div>
-                </div>
-            </div>
-        </main>
+        <!-- Lista de até 3 Tarefas -->
+        <div class="tasks-list" id="tasks-list-container">
+          <div class="empty-tasks-msg">
+            Nenhuma tarefa salva no momento.<br>
+            Clique em <strong>Salvar Trabalho Atual</strong> para guardar seu progresso na nuvem.
+          </div>
+        </div>
 
-        <!-- Right Properties & Layers -->
-        <aside id="right-bar">
-            
-            <!-- Slide Props -->
-            <div class="panel-section" id="panel-slide">
-                <div class="panel-header">Propriedades do Slide</div>
-                <div class="panel-body">
-                    <div class="prop-group">
-                        <label>Classificação (Tipo)</label>
-                        <select class="prop-input" id="slType" onchange="updateSlideType(this.value)">
-                            <option value="verse">Versículo Bíblico</option>
-                            <option value="reflection">Reflexão / Texto Livre</option>
-                            <option value="topic">Tópico de Reunião</option>
-                        </select>
-                    </div>
-                    <div class="prop-grid">
-                        <div class="prop-group">
-                            <label>Cor de Fundo</label>
-                            <input type="color" class="prop-input" id="slBgColor" onchange="updateSlideProp('bgColor', this.value)" />
-                        </div>
-                        <div class="prop-group">
-                            <label>Imagem Fundo</label>
-                            <input type="file" class="prop-input" style="padding:4px; font-size:10px;" accept="image/*" onchange="handleSlideBgUpload(this)" />
-                        </div>
-                    </div>
-                    <div class="action-row">
-                        <button class="btn btn-danger" style="flex:1; display:flex; align-items:center; justify-content:center; gap:6px;" onclick="deleteCurrentSlide()">
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-                            <span>Excluir Slide</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Element Props -->
-            <div class="panel-section" id="panel-element" style="display:none;">
-                <div class="panel-header" style="color:var(--primary);">Inspetor de Objeto</div>
-                <div class="panel-body">
-                    <div class="prop-grid">
-                        <div class="prop-group">
-                            <label>Pos X / Y</label>
-                            <div style="display:flex; gap:4px;">
-                                <input type="number" class="prop-input" id="elX" onchange="updateElProp('x', this.value)" />
-                                <input type="number" class="prop-input" id="elY" onchange="updateElProp('y', this.value)" />
-                            </div>
-                        </div>
-                        <div class="prop-group">
-                            <label>Larg / Alt</label>
-                            <div style="display:flex; gap:4px;">
-                                <input type="number" class="prop-input" id="elW" onchange="updateElProp('w', this.value)" />
-                                <input type="number" class="prop-input" id="elH" onchange="updateElProp('h', this.value)" />
-                            </div>
-                        </div>
-                    </div>
-                    <div class="prop-group">
-                        <label>Opacidade / Transparência</label>
-                        <input type="range" min="0" max="1" step="0.05" id="elOpacity" oninput="updateElProp('opacity', this.value)" />
-                    </div>
-
-                    <div id="text-props">
-                        <div class="prop-group">
-                            <label>Tipografia & Formatação</label>
-                            <div style="display:flex; gap:4px; align-items:center; margin-bottom:6px;">
-                                <select class="prop-input" id="elFont" style="flex:1;" onchange="updateElProp('fontFace', this.value)">
-                                    <option value="Bahnschrift SemiBold Condensed">Bahnschrift</option>
-                                    <option value="Bebas Neue">Bebas Neue</option>
-                                    <option value="Oswald">Oswald</option>
-                                    <option value="Arial">Arial</option>
-                                </select>
-                                <button type="button" class="btn btn-outline" id="btnSideBold" style="padding:4px 8px; font-size:11px; font-weight:bold; min-width:28px;" onclick="toggleCurrentBold()" title="Negrito (B)">B</button>
-                                <button type="button" class="btn btn-outline" id="btnSideItalic" style="padding:4px 8px; font-size:11px; font-style:italic; min-width:28px;" onclick="toggleCurrentItalic()" title="Itálico (I)">I</button>
-                            </div>
-                            <div style="display:flex; gap:4px; align-items:center;">
-                                <button type="button" class="btn btn-outline" style="padding:4px 8px; font-size:11px;" onclick="adjustCurrentFontSize(-4)" title="Diminuir tamanho da fonte">A-</button>
-                                <input type="number" class="prop-input" style="flex:1; text-align:center;" id="elFontSize" oninput="updateElProp('fontSize', this.value)" title="Tamanho da fonte (pt)" />
-                                <button type="button" class="btn btn-outline" style="padding:4px 8px; font-size:11px;" onclick="adjustCurrentFontSize(4)" title="Aumentar tamanho da fonte">A+</button>
-                            </div>
-                        </div>
-                        <div class="prop-group" style="margin-top:8px; margin-bottom:8px;">
-                            <button type="button" class="btn" style="width:100%; background:rgba(232,184,89,0.15); color:#e8b859; border:1px solid #e8b859; font-size:11px; padding:7px 10px; justify-content:center; display:flex; align-items:center; gap:6px;" onclick="quickHighlightCurrentSelection()" title="Destacar trecho ou palavra selecionada (#E8B859)">
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="#E8B859"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                                <span>Destacar Seleção (#E8B859)</span>
-                            </button>
-                        </div>
-                        <div class="prop-grid">
-                            <div class="prop-group">
-                                <label>Cor do Texto</label>
-                                <input type="color" class="prop-input" id="elColor" oninput="updateElProp('color', this.value)" />
-                            </div>
-                            <div class="prop-group">
-                                <label>Alinhamento</label>
-                                <select class="prop-input" id="elAlign" onchange="updateElProp('align', this.value)">
-                                    <option value="left">Esquerda</option><option value="center">Centro</option><option value="right">Direita</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="prop-grid">
-                            <div class="prop-group">
-                                <label>Efeito Visual</label>
-                                <select class="prop-input" id="elShadow" onchange="updateElProp('shadow', this.value)">
-                                    <option value="none">Nenhum</option>
-                                    <option value="dark">Sombra (Drop)</option>
-                                    <option value="glow">Brilho (Glow)</option>
-                                </select>
-                            </div>
-                            <div class="prop-group">
-                                <label>Borda (Stroke)</label>
-                                <select class="prop-input" id="elStroke" onchange="updateElProp('stroke', this.value)">
-                                    <option value="none">Nenhum</option>
-                                    <option value="black">Contorno Preto</option>
-                                    <option value="white">Contorno Branco</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="action-row">
-                        <button class="btn btn-outline" style="flex:1;" onclick="cloneSelectedElement()">Copiar</button>
-                        <button class="btn btn-danger" style="flex:1;" onclick="deleteSelectedElement()">Apagar</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Layers Panel -->
-            <div class="panel-section" style="flex:1; display:flex; flex-direction:column; padding:0; border:none;">
-                <div class="panel-header">Camadas (Z-Index)</div>
-                <div id="layers-list"></div>
-            </div>
-            
-        </aside>
+        <!-- Rodapé Informativo -->
+        <div class="tasks-drawer-footer">
+          <span style="font-size: 11px; color: var(--text-muted); line-height: 1.4; display: block;">
+            ⚡ <strong>Liberdade Total:</strong> Comece a montar no celular e baixe o PowerPoint no computador, ou vice-versa! Limite máximo de 3 tarefas para manter tudo ágil e leve.
+          </span>
+        </div>
+      </div>
     </div>
 
-    <!-- Filmstrip -->
-    <footer id="filmstrip">
-        <button class="btn btn-outline" style="height:76px; width:76px; flex-direction:column; justify-content:center; color:#e8b859; border-color:rgba(232,184,89,0.4);" onclick="openVerseModal()" title="Adicionar Versículo Bíblico ao Culto">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2H6C4.9 2 4 2.9 4 4V20C4 21.1 4.9 22 6 22H18C19.1 22 20 21.1 20 20V4C20 2.9 19.1 2 18 2ZM9 4H11V9L10 8.25L9 9V4ZM18 20H6V4H7V11L10 8.75L13 11V4H18V20Z"/></svg>
-            + Bíblia
-        </button>
-        <button class="btn btn-outline" style="height:76px; width:76px; flex-direction:column; justify-content:center;" onclick="addBlankSlide()">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13H13V19H11V13H5V11H11V5H13V11H19V13Z"/></svg>
-            Novo
-        </button>
-        <div id="thumb-container" style="display:flex; gap:16px;"></div>
-    </footer>
-</div>
-
-<!-- Módulo 2: Editor de Vídeo com Identidade Central Multimídia Church -->
-<div id="hubModuleVideo" style="display:none; flex:1; width:100%; height:calc(100vh - 50px); position:relative; background:#09090b; overflow-y:auto;">
-    <!-- Tela de Entrada com Identidade da Igreja -->
-    <div id="videoHubWelcome" style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px 20px; max-width:960px; margin:auto; width:100%; text-align:center;">
-        <div style="display:inline-flex; align-items:center; gap:8px; background:rgba(139,92,246,0.15); border:1px solid rgba(139,92,246,0.3); color:#c4b5fd; font-size:11px; font-weight:700; padding:5px 14px; border-radius:20px; margin-bottom:16px; letter-spacing:0.5px;">
-            <span style="width:7px; height:7px; border-radius:50%; background:#8b5cf6; box-shadow:0 0 8px #8b5cf6;"></span>
-            CENTRAL MULTIMÍDIA CHURCH • VÍDEO STUDIO
-        </div>
-        <h2 style="font-size:32px; font-weight:700; color:#fff; margin-bottom:12px; letter-spacing:-0.5px;">
-            Estúdio de Edição & Cortes de Culto
-        </h2>
-        <p style="color:#a1a1aa; font-size:15px; max-width:640px; margin-bottom:32px; line-height:1.6;">
-            Crie cortes de pregações, reels para redes sociais e clipes de louvor direto no navegador, com timeline profissional, sem filas e sem marcas d'água.
-        </p>
-
-        <!-- Cards de Ações Rápidas (Modelos de Igreja) -->
-        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:18px; width:100%; margin-bottom:32px;">
-            <div onclick="openOpenCutEditor('pregação')" style="background:#18181b; border:1px solid #3f3f46; border-radius:12px; padding:22px; text-align:left; cursor:pointer; transition:0.2s;" onmouseover="this.style.borderColor='#8b5cf6'; this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='#3f3f46'; this.style.transform='translateY(0)'">
-                <div style="font-size:28px; margin-bottom:10px;">✂️</div>
-                <h4 style="color:#fff; font-size:16px; margin:0 0 6px 0;">Cortes de Pregação (16:9)</h4>
-                <p style="color:#a1a1aa; font-size:13px; margin:0; line-height:1.4;">Cortes horizontais para YouTube, avisos e melhores momentos da mensagem pastoral.</p>
-            </div>
-
-            <div onclick="openOpenCutEditor('reels')" style="background:#18181b; border:1px solid #3f3f46; border-radius:12px; padding:22px; text-align:left; cursor:pointer; transition:0.2s;" onmouseover="this.style.borderColor='#ec4899'; this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='#3f3f46'; this.style.transform='translateY(0)'">
-                <div style="font-size:28px; margin-bottom:10px;">📱</div>
-                <h4 style="color:#fff; font-size:16px; margin:0 0 6px 0;">Reels & Shorts (9:16)</h4>
-                <p style="color:#a1a1aa; font-size:13px; margin:0; line-height:1.4;">Formato vertical ideal para Instagram, TikTok e stories com frases fortes de fé.</p>
-            </div>
-
-            <div onclick="openOpenCutEditor('louvor')" style="background:#18181b; border:1px solid #3f3f46; border-radius:12px; padding:22px; text-align:left; cursor:pointer; transition:0.2s;" onmouseover="this.style.borderColor='#e8b859'; this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='#3f3f46'; this.style.transform='translateY(0)'">
-                <div style="font-size:28px; margin-bottom:10px;">🎵</div>
-                <h4 style="color:#fff; font-size:16px; margin:0 0 6px 0;">Música & Louvor</h4>
-                <p style="color:#a1a1aa; font-size:13px; margin:0; line-height:1.4;">Edição de trechos de hinos, introduções de ministração, apresentações e testemunhos.</p>
-            </div>
-        </div>
-
-        <!-- Botão Principal -->
-        <div style="display:flex; gap:12px; justify-content:center;">
-            <button onclick="openOpenCutEditor('geral')" class="btn" style="background:#8b5cf6; padding:14px 28px; font-size:15px; border-radius:8px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:8px;">
-                <span>🚀</span> Abrir Estúdio de Edição Completo
-            </button>
-        </div>
-
-        <div style="display:flex; gap:20px; justify-content:center; margin-top:28px; font-size:12px; color:#71717a;">
-            <span>🔒 100% no seu Navegador</span>
-            <span>•</span>
-            <span>🎞️ Exportação Full HD</span>
-            <span>•</span>
-            <span>⚡ Sem Marcas d'água</span>
-        </div>
-    </div>
-
-    <!-- State B: Workspace do Editor Ativo com Submenu Church -->
-    <div id="videoHubEditorWorkspace" style="display:none; flex-direction:column; width:100%; height:100%;">
-        <!-- Submenu com Identidade da Igreja -->
-        <div style="background:#18181b; border-bottom:1px solid #3f3f46; padding:8px 16px; display:flex; justify-content:space-between; align-items:center; z-index:10; flex-shrink:0;">
-            <div style="display:flex; align-items:center; gap:12px;">
-                <button onclick="closeOpenCutEditor()" class="btn btn-outline" style="padding:5px 10px; font-size:12px; display:flex; align-items:center; gap:6px;">
-                    <span>⬅</span> Voltar ao Painel
-                </button>
-                <span style="font-size:12px; color:#c4b5fd; font-weight:600; display:flex; align-items:center; gap:6px;">
-                    <span style="width:6px; height:6px; border-radius:50%; background:#ef4444; box-shadow:0 0 6px #ef4444;"></span>
-                    Central Multimídia Church • OpenCut Studio
-                </span>
-            </div>
-            <div style="display:flex; gap:8px; align-items:center;">
-                <button onclick="toggleVideoFullscreenRoot()" class="btn btn-outline" style="padding:5px 10px; font-size:12px;">
-                    ⛶ Tela Cheia
-                </button>
-                <button onclick="document.getElementById('opencutIframeRoot').src=document.getElementById('opencutIframeRoot').src" class="btn btn-outline" style="padding:5px 10px; font-size:12px;">
-                    🔄 Recarregar
-                </button>
-                <a href="https://opencut.app" target="_blank" rel="noopener noreferrer" class="btn" style="padding:5px 10px; font-size:12px; text-decoration:none;">
-                    ↗ Nova Aba
-                </a>
-            </div>
-        </div>
-        <!-- Iframe Original do Editor -->
-        <div style="flex:1; width:100%; height:calc(100% - 46px); position:relative; background:#000;">
-            <iframe id="opencutIframeRoot" src="https://opencut.app" style="width:100%; height:100%; border:none;" allow="camera; microphone; display-capture; autoplay; clipboard-read; clipboard-write; fullscreen" sandbox="allow-scripts allow-same-origin allow-forms allow-downloads allow-modals allow-popups"></iframe>
-        </div>
-    </div>
-</div>
-
-<script>
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
-
-    const C_WIDTH = 960; const C_HEIGHT = 540;
-    const PT_TO_PX = 1.333;
-
-    let globalBgData = null;
-    let slides = [];
-    let curSlideIdx = -1;
-    let selElId = null;
-
-    const setup = document.getElementById('setup');
-    const app = document.getElementById('app');
-    const canvasContainer = document.getElementById('canvas-container');
-    const slideCanvas = document.getElementById('slide-canvas');
-    const thumbContainer = document.getElementById('thumb-container');
-    const layersList = document.getElementById('layers-list');
-    
-    // Setup Drag handle box
-    const tfBox = document.createElement('div');
-    tfBox.id = 'transform-box';
-    tfBox.innerHTML = `
-        <div class="tf-drag-bar" data-action="move" title="Arraste para mover o texto">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" style="opacity:0.95;">
-                <circle cx="9" cy="6" r="2.5"/><circle cx="15" cy="6" r="2.5"/>
-                <circle cx="9" cy="12" r="2.5"/><circle cx="15" cy="12" r="2.5"/>
-                <circle cx="9" cy="18" r="2.5"/><circle cx="15" cy="18" r="2.5"/>
-            </svg>
-            <span class="tf-drag-label">Mover</span>
-        </div>
-        <div class="tf-edge tf-edge-n" data-action="move" title="Arraste a borda para mover"></div>
-        <div class="tf-edge tf-edge-s" data-action="move" title="Arraste a borda para mover"></div>
-        <div class="tf-edge tf-edge-w" data-action="move" title="Arraste a borda para mover"></div>
-        <div class="tf-edge tf-edge-e" data-action="move" title="Arraste a borda para mover"></div>
-        <div class="rot-line"></div>
-        <div class="handle h-nw" data-dir="nw"></div><div class="handle h-n" data-dir="n"></div><div class="handle h-ne" data-dir="ne"></div>
-        <div class="handle h-e" data-dir="e"></div><div class="handle h-se" data-dir="se"></div><div class="handle h-s" data-dir="s"></div>
-        <div class="handle h-sw" data-dir="sw"></div><div class="handle h-w" data-dir="w"></div>
-        <div class="handle h-rot" data-dir="rot"></div>
-    `;
-    slideCanvas.appendChild(tfBox);
-
-    // Setup Barra Flutuante de Formatação (Canva / PowerPoint Mini Toolbar)
-    const miniBar = document.createElement('div');
-    miniBar.id = 'floating-mini-bar';
-    miniBar.className = 'mini-toolbar';
-    miniBar.style.display = 'none';
-    miniBar.innerHTML = `
-        <div class="mini-drag-grip" id="miniDragGrip" title="Arraste para mover">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
-                <circle cx="9" cy="6" r="2"/><circle cx="15" cy="6" r="2"/>
-                <circle cx="9" cy="12" r="2"/><circle cx="15" cy="12" r="2"/>
-                <circle cx="9" cy="18" r="2"/><circle cx="15" cy="18" r="2"/>
-            </svg>
-        </div>
-        <div class="mini-group mini-text-only">
-            <select id="miniFont" class="mini-select" title="Fonte">
-                <option value="Bahnschrift SemiBold Condensed">Bahnschrift</option>
-                <option value="Bebas Neue">Bebas Neue</option>
-                <option value="Oswald">Oswald</option>
-                <option value="Arial">Arial</option>
-            </select>
-        </div>
-        <div class="mini-divider mini-text-only"></div>
-        <div class="mini-group mini-text-only">
-            <button type="button" class="mini-btn" id="miniDecSize" title="Diminuir Fonte (A-)">
-                <span style="font-size:12px; font-weight:700; display:inline-flex; align-items:center;">A<span style="font-size:10px; margin-left:1px;">−</span></span>
-            </button>
-            <input type="number" id="miniSizeInput" class="mini-input-size" min="12" max="180" step="2" title="Tamanho da Fonte (pt)">
-            <button type="button" class="mini-btn" id="miniIncSize" title="Aumentar Fonte (A+)">
-                <span style="font-size:12px; font-weight:700; display:inline-flex; align-items:center;">A<span style="font-size:11px; margin-left:1px;">+</span></span>
-            </button>
-        </div>
-        <div class="mini-divider mini-text-only"></div>
-        <div class="mini-group mini-text-only">
-            <button type="button" class="mini-btn" id="miniBold" title="Negrito (B)" style="font-family:serif; font-weight:900; font-size:13px;">B</button>
-            <button type="button" class="mini-btn" id="miniItalic" title="Itálico (I)" style="font-family:serif; font-style:italic; font-weight:700; font-size:13px;">I</button>
-            <button type="button" class="mini-btn mini-btn-gold" id="miniGold" title="Destacar seleção (#E8B859)" style="display:flex; align-items:center; gap:5px;">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="#E8B859" stroke="#E8B859" stroke-width="1"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                <span>Destacar</span>
-            </button>
-        </div>
-        <div class="mini-divider mini-text-only"></div>
-        <div class="mini-group mini-text-only">
-            <label class="mini-color-btn" title="Cor do Texto">
-                <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; width:100%;">
-                    <span style="font-weight:900; font-size:12px; line-height:1; font-family:'Inter', sans-serif;">A</span>
-                    <div id="miniColorBar" style="width:13px; height:3px; background:#ffffff; border-radius:1.5px; box-shadow:0 0 2px rgba(0,0,0,0.5);"></div>
-                </div>
-                <input type="color" id="miniColor" style="position:absolute; opacity:0; width:0; height:0; pointer-events:none;">
-            </label>
-            <button type="button" class="mini-btn" id="miniAlignL" title="Alinhar à Esquerda">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="18" y2="18"/></svg>
-            </button>
-            <button type="button" class="mini-btn" id="miniAlignC" title="Centralizar">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="6" y1="12" x2="18" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
-            </button>
-            <button type="button" class="mini-btn" id="miniAlignR" title="Alinhar à Direita">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="9" y1="12" x2="21" y2="12"/><line x1="6" y1="18" x2="21" y2="18"/></svg>
-            </button>
-        </div>
-        <div class="mini-divider mini-text-only"></div>
-        <div class="mini-group mini-text-only">
-            <button type="button" class="mini-btn" id="miniSelectAll" title="Selecionar Todo o Texto (Ctrl+A)" style="display:flex; align-items:center; gap:4px; font-size:11px; font-weight:600; padding:3px 7px;">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
-                <span>Tudo</span>
-            </button>
-        </div>
-        <div class="mini-divider"></div>
-        <div class="mini-group">
-            <button type="button" class="mini-btn" id="miniClone" title="Duplicar (Ctrl+D)">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-            </button>
-            <button type="button" class="mini-btn mini-btn-del" id="miniDel" title="Excluir Elemento">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-            </button>
-        </div>
-    `;
-    slideCanvas.appendChild(miniBar);
-    const snapV = document.getElementById('snap-v');
-    const snapH = document.getElementById('snap-h');
-
-    // Setup Listeners
-    document.getElementById('globalBg').addEventListener('change', e => {
-        const f = e.target.files[0]; if(f) { const r = new FileReader(); r.onload = ev => { globalBgData = ev.target.result; document.getElementById('statusMsg').innerText="Fundo padrão salvo!"; }; r.readAsDataURL(f); }
-    });
-    const dropZone = document.getElementById('dropZone');
-    dropZone.addEventListener('click', () => document.getElementById('pdfInput').click());
-    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--primary)'; dropZone.style.background = 'rgba(139,92,246,0.1)'; });
-    dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--border)'; dropZone.style.background = 'var(--bg-base)'; });
-    dropZone.addEventListener('drop', (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--border)'; dropZone.style.background = 'var(--bg-base)'; if(e.dataTransfer.files[0]) parsePDF(e.dataTransfer.files[0]); });
-    document.getElementById('pdfInput').addEventListener('change', e => { if(e.target.files[0]) parsePDF(e.target.files[0]); });
-    
-    let pdfConversionMode = 'direct';
-    const btnModeDirect = document.getElementById('btnModeDirect');
-    const btnModeSermon = document.getElementById('btnModeSermon');
-    const dropTitle = document.getElementById('dropTitle');
-    const dropDesc = document.getElementById('dropDesc');
-
-    if (btnModeDirect && btnModeSermon) {
-        btnModeDirect.addEventListener('click', () => {
-            pdfConversionMode = 'direct';
-            btnModeDirect.className = 'btn';
-            btnModeDirect.style.background = 'var(--primary)';
-            btnModeSermon.className = 'btn btn-outline';
-            btnModeSermon.style.background = 'transparent';
-            if (dropTitle) dropTitle.innerText = '2. Importar PDF (1 Página = 1 Slide)';
-            if (dropDesc) dropDesc.innerText = 'Conversão direta sem alterar nada. Arraste o arquivo ou clique.';
-        });
-
-        btnModeSermon.addEventListener('click', () => {
-            pdfConversionMode = 'sermon';
-            btnModeSermon.className = 'btn';
-            btnModeSermon.style.background = 'var(--primary)';
-            btnModeDirect.className = 'btn btn-outline';
-            btnModeDirect.style.background = 'transparent';
-            if (dropTitle) dropTitle.innerText = '2. Importar Sermão em PDF';
-            if (dropDesc) dropDesc.innerText = 'Extração automática de versículos e destaques. Arraste ou clique.';
-        });
-    }
-
-    let rawExtractedSermonText = "";
-
-    async function parsePDF(file) {
-        document.getElementById('statusMsg').innerText = 'Processando PDF...';
-        try {
-            document.getElementById('outFileName').value = file.name.replace('.pdf', '.pptx');
-            const arr = await file.arrayBuffer();
-            const pdf = await pdfjsLib.getDocument({data: arr}).promise;
-
-            if (pdfConversionMode === 'direct') {
-                const newSlides = [];
-                for (let i = 1; i <= pdf.numPages; i++) {
-                    document.getElementById('statusMsg').innerText = `Convertendo página ${i} de ${pdf.numPages}...`;
-                    const page = await pdf.getPage(i);
-                    const unscaled = page.getViewport({ scale: 1.0 });
-                    const scale = Math.max(1920 / unscaled.width, 1.8);
-                    const viewport = page.getViewport({ scale });
-
-                    const canvas = document.createElement('canvas');
-                    canvas.width = viewport.width;
-                    canvas.height = viewport.height;
-                    const ctx = canvas.getContext('2d');
-                    ctx.fillStyle = '#FFFFFF';
-                    ctx.fillRect(0, 0, canvas.width, canvas.height);
-                    await page.render({ canvasContext: ctx, viewport }).promise;
-
-                    const imgData = canvas.toDataURL('image/jpeg', 0.92);
-                    const s = {
-                        id: 's_' + genId(),
-                        bgImage: null,
-                        bgColor: '#000000',
-                        type: 'pdf_page',
-                        elements: [
-                            {
-                                id: genId(),
-                                type: 'image',
-                                name: `Página ${i}`,
-                                content: imgData,
-                                x: 0,
-                                y: 0,
-                                w: C_WIDTH,
-                                h: C_HEIGHT,
-                                rotation: 0,
-                                opacity: 1,
-                                locked: true,
-                                hidden: false
-                            }
-                        ]
-                    };
-                    newSlides.push(s);
-                }
-                slides = newSlides;
-                setup.style.display = 'none'; 
-                app.style.display = 'flex';
-                document.getElementById('btnNewDoc').style.display = 'inline-flex';
-                document.getElementById('btnValidateAI').style.display = 'none';
-                document.getElementById('btnConfigAI').style.display = 'none';
-                resizeWorkspace();
-                if (slides.length > 0) setSlide(0);
-                document.getElementById('statusMsg').innerText = '';
-                return;
-            }
-
-            let fullText = "";
-            for(let i=1; i<=pdf.numPages; i++) {
-                const page = await pdf.getPage(i);
-                const tc = await page.getTextContent();
-                
-                // Contar frequência de cada fonte para identificar o corpo de texto principal
-                const fontCounts = {};
-                tc.items.forEach(it => {
-                    if (!it.str.trim()) return;
-                    fontCounts[it.fontName] = (fontCounts[it.fontName] || 0) + it.str.length;
-                });
-                let mainFont = null;
-                let maxCount = -1;
-                for (const f in fontCounts) {
-                    if (fontCounts[f] > maxCount) {
-                        maxCount = fontCounts[f];
-                        mainFont = f;
-                    }
-                }
-
-                let lastY = null;
-                for(let item of tc.items) {
-                    if(lastY !== null && Math.abs(item.transform[5] - lastY) > 5) fullText += "\n";
-                    const isHL = item.fontName !== mainFont && item.str.trim().length > 1 && !/^[⸻\-_\s:?.,;]+$/.test(item.str);
-                    if (isHL) {
-                        fullText += `[HL]${item.str}[/HL]`;
-                    } else {
-                        fullText += item.str;
-                    }
-                    lastY = item.transform[5];
-                }
-                fullText += "\n";
-            }
-            rawExtractedSermonText = fullText;
-            slides = parseSermon(fullText);
-            setup.style.display = 'none'; 
-            app.style.display = 'flex';
-            document.getElementById('btnNewDoc').style.display = 'inline-flex';
-            document.getElementById('btnValidateAI').style.display = 'inline-flex';
-            document.getElementById('btnConfigAI').style.display = 'inline-flex';
-            resizeWorkspace();
-            if(slides.length > 0) setSlide(0);
-        } catch(e) { console.error(e); alert("Erro ao ler PDF:\n" + e.message); }
-    }
-
-    // ==========================================
-    // MÓDULO DE INSERÇÃO DE VERSÍCULOS BÍBLICOS
-    // ==========================================
-    let verseModalFontSize = 52;
-
-    function openVerseModal() {
-        const modal = document.getElementById('modalVerse');
-        if (modal) {
-            modal.style.display = 'flex';
-            setTimeout(() => {
-                const input = document.getElementById('verseRefInput');
-                if (input) input.focus();
-            }, 50);
-        }
-    }
-
-    function closeVerseModal() {
-        const modal = document.getElementById('modalVerse');
-        if (modal) modal.style.display = 'none';
-    }
-
-    function quickFillVerse(ref) {
-        const input = document.getElementById('verseRefInput');
-        if (input) {
-            input.value = ref;
-            searchBibleVerse();
-        }
-    }
-
-    function changeVerseModalFontSize(delta) {
-        verseModalFontSize = Math.max(24, Math.min(120, verseModalFontSize + delta));
-        const badge = document.getElementById('verseFontSizeBadge');
-        if (badge) badge.innerText = verseModalFontSize;
-    }
-
-    function highlightSelectionInVerseModal() {
-        const textarea = document.getElementById('verseTextInput');
-        if (!textarea) return;
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
-        const val = textarea.value;
-        if (start !== end) {
-            const selected = val.substring(start, end).replace(/\[\/?HL\]/gi, '');
-            const replacement = `[HL]${selected}[/HL]`;
-            textarea.value = val.substring(0, start) + replacement + val.substring(end);
-            textarea.selectionStart = start;
-            textarea.selectionEnd = start + replacement.length;
-        } else {
-            alert('Selecione uma palavra ou trecho no texto para aplicar o destaque dourado.');
-        }
-        textarea.focus();
-    }
-
-    function toggleQuotesInVerseModal() {
-        const textarea = document.getElementById('verseTextInput');
-        if (!textarea) return;
-        let val = textarea.value.trim();
-        if ((val.startsWith('“') && val.endsWith('”')) || (val.startsWith('"') && val.endsWith('"'))) {
-            val = val.replace(/^[“”"]|[“”"]$/g, '').trim();
-        } else {
-            val = fmtQuote(val);
-        }
-        textarea.value = val;
-    }
-
-    async function searchBibleVerse() {
-        const refInput = document.getElementById('verseRefInput');
-        const versionSelect = document.getElementById('verseVersionSelect');
-        const status = document.getElementById('verseSearchStatus');
-        const textInput = document.getElementById('verseTextInput');
-
-        const ref = refInput.value.trim();
-        const version = versionSelect.value;
-        if (!ref) {
-            alert('Por favor, digite a referência bíblica (ex: João 3:16 ou Sl 23:1-3).');
-            return;
-        }
-
-        const btn = document.getElementById('btnSearchVerse');
-        const origText = btn.innerHTML;
-        btn.innerHTML = '⏳ Buscando...';
-        btn.disabled = true;
-        status.innerText = `Consultando passagem na versão ${version}...`;
-
-        try {
-            let foundText = null;
-            let finalRef = ref;
-
-            // 1. Consulta rápida na API pública bíblica em português (Almeida)
-            try {
-                const cleanQuery = ref
-                    .replace(/\s+/g, '+')
-                    .replace(/salmo\b/i, 'salmos')
-                    .replace(/cântico\b/i, 'cantares');
-                const apiUrl = `https://bible-api.com/${encodeURIComponent(cleanQuery)}?translation=almeida`;
-                const apiRes = await fetch(apiUrl);
-                if (apiRes.ok) {
-                    const apiData = await apiRes.json();
-                    if (apiData && apiData.text) {
-                        foundText = apiData.text.replace(/\s+/g, ' ').trim();
-                        if (apiData.reference) finalRef = apiData.reference;
-                    }
-                }
-            } catch(e) {
-                console.warn('API pública offline, tentando fallback:', e.message);
-            }
-
-            // 2. Refinamento de versão específica (ACF, ARA, NVI) via IA Gemini se disponível
-            const apiKey = localStorage.getItem('GEMINI_API_KEY') || DEFAULT_GEMINI_KEY;
-            if (apiKey && (!foundText || version !== 'ACF')) {
-                try {
-                    const models = ['gemini-3.7-flash', 'gemini-3.5-flash-lite', 'gemini-3.6-flash', 'gemini-flash-latest'];
-                    const prompt = `Retorne o texto exato de "${ref}" na versão "${version}" da Bíblia Sagrada em português. Mantenha a pontuação bíblica fiel. Responda exclusivamente um objeto JSON: {"reference": "${ref}", "version": "${version}", "text": "texto completo aqui"}`;
-
-                    for (const model of models) {
-                        try {
-                            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-                            const aiRes = await fetch(url, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-                                    generationConfig: { temperature: 0.1, responseMimeType: 'application/json' }
-                                })
-                            });
-                            if (aiRes.ok) {
-                                const aiData = await aiRes.json();
-                                const raw = aiData.candidates?.[0]?.content?.parts?.[0]?.text;
-                                if (raw) {
-                                    const parsed = JSON.parse(raw);
-                                    if (parsed && parsed.text) {
-                                        foundText = parsed.text.trim();
-                                        if (parsed.reference) finalRef = parsed.reference;
-                                        break;
-                                    }
-                                }
-                            }
-                        } catch(err) {}
-                    }
-                } catch(aiErr) {}
-            }
-
-            if (foundText) {
-                textInput.value = fmtQuote(foundText);
-                refInput.value = `${normRef(finalRef)} (${version})`;
-                status.innerText = `✅ Versículo carregado na versão ${version}!`;
-            } else {
-                status.innerText = `ℹ️ Digite ou cole o texto do versículo diretamente na caixa de texto.`;
-                if (!textInput.value.trim()) textInput.placeholder = `Digite ou dite aqui o texto de ${ref} (${version})...`;
-            }
-        } catch(err) {
-            status.innerText = `Pronto para digitação manual ou ditado.`;
-        } finally {
-            btn.innerHTML = origText;
-            btn.disabled = false;
-        }
-    }
-
-    function confirmInsertVerseSlide() {
-        const textInput = document.getElementById('verseTextInput');
-        const refInput = document.getElementById('verseRefInput');
-        const checkSplit = document.getElementById('checkSplitMultiVerses');
-
-        const rawText = textInput.value.trim();
-        const reference = refInput.value.trim() || 'Referência Bíblica';
-
-        if (!rawText) {
-            alert('Por favor, informe ou busque o texto do versículo antes de inserir.');
-            return;
-        }
-
-        commitText();
-
-        const doSplit = checkSplit ? checkSplit.checked : false;
-        // Identificar versículos múltiplos (ex: "19 Não ajunteis... 20 Mas ajuntai... 21 Porque...")
-        const verseSplit = doSplit ? rawText.split(/(?=\b\d{1,3}\s+[A-ZÀ-Ý“"])/g).filter(s => s.trim().length > 0) : [rawText];
-
-        const baseBookAndChap = reference.includes(':') ? reference.split(':')[0] : reference;
-
-        verseSplit.forEach(vChunk => {
-            let cleanText = vChunk.trim();
-            let currentRef = reference;
-
-            const numMatch = cleanText.match(/^“?\s*(\d{1,3})\s+(.*)$/);
-            if (numMatch && baseBookAndChap) {
-                const vNum = numMatch[1];
-                cleanText = numMatch[2].trim();
-                const versionMatch = reference.match(/\((.*?)\)/);
-                const verStr = versionMatch ? ` ${versionMatch[0]}` : '';
-                currentRef = `${baseBookAndChap}:${vNum}${verStr}`;
-            }
-
-            cleanText = fmtQuote(cleanText);
-
-            const s = newSlide('verse');
-            const textEl = newTextEl(cleanText, false, 'verse');
-            textEl.fontSize = verseModalFontSize || 52;
-            s.elements.push(textEl);
-
-            const refEl = newTextEl(normRef(currentRef), true, 'verse');
-            s.elements.push(refEl);
-
-            slides.push(s);
-        });
-
-        closeVerseModal();
-        setSlide(slides.length - 1);
-        renderCanvas();
-        renderFilmstrip();
-
-        const statusMsg = document.getElementById('statusMsg');
-        if (statusMsg) statusMsg.innerText = `Slide de ${reference} adicionado ao culto!`;
-    }
-
-    // --- Melhorias Rápidas de Edição (Estilo PowerPoint: Mini Toolbar, Destaque Dourado & Formatação) ---
-    function adjustCurrentFontSize(delta) {
-        if (curSlideIdx < 0 || !selElId) return;
-        const el = slides[curSlideIdx].elements.find(x => x.id === selElId);
-        if (!el || el.type !== 'text') return;
-        const newSize = Math.max(12, Math.min(200, (parseInt(el.fontSize) || 44) + delta));
-        el.fontSize = newSize;
-        const input = document.getElementById('elFontSize');
-        if (input) input.value = newSize;
-        const miniInput = document.getElementById('miniSizeInput');
-        if (miniInput) miniInput.value = newSize;
-        const dom = document.getElementById(`ui_${el.id}`);
-        if (dom) {
-            const txtEl = dom.querySelector('.el-text');
-            if (txtEl) txtEl.style.fontSize = (newSize * PT_TO_PX) + 'px';
-        }
-        renderFilmstrip();
-    }
-
-    function toggleCurrentBold() {
-        if (curSlideIdx < 0 || !selElId) return;
-        const el = slides[curSlideIdx].elements.find(x => x.id === selElId);
-        if (!el || el.type !== 'text') return;
-        el.bold = !el.bold;
-        const miniBold = document.getElementById('miniBold');
-        if (miniBold) miniBold.classList.toggle('active', !!el.bold);
-        const sideBold = document.getElementById('btnSideBold');
-        if (sideBold) sideBold.classList.toggle('active', !!el.bold);
-        const dom = document.getElementById(`ui_${el.id}`);
-        if (dom) {
-            const txtEl = dom.querySelector('.el-text');
-            if (txtEl) txtEl.style.fontWeight = el.bold ? 'bold' : 'normal';
-        }
-        renderFilmstrip();
-    }
-
-    function toggleCurrentItalic() {
-        if (curSlideIdx < 0 || !selElId) return;
-        const el = slides[curSlideIdx].elements.find(x => x.id === selElId);
-        if (!el || el.type !== 'text') return;
-        el.italic = !el.italic;
-        const miniItalic = document.getElementById('miniItalic');
-        if (miniItalic) miniItalic.classList.toggle('active', !!el.italic);
-        const sideItalic = document.getElementById('btnSideItalic');
-        if (sideItalic) sideItalic.classList.toggle('active', !!el.italic);
-        const dom = document.getElementById(`ui_${el.id}`);
-        if (dom) {
-            const txtEl = dom.querySelector('.el-text');
-            if (txtEl) txtEl.style.fontStyle = el.italic ? 'italic' : 'normal';
-        }
-        renderFilmstrip();
-    }
-
-    function quickHighlightCurrentSelection() {
-        if (curSlideIdx < 0 || !selElId) {
-            alert('Selecione uma caixa de texto primeiro.');
-            return;
-        }
-        const el = slides[curSlideIdx].elements.find(x => x.id === selElId);
-        if (!el || el.type !== 'text') return;
-
-        const sel = window.getSelection();
-        const selectedText = sel ? sel.toString().trim() : '';
-
-        if (selectedText && selectedText.length > 0) {
-            const cleanSelected = selectedText.replace(/\[\/?HL\]/gi, '');
-            if (el.content.includes(`[HL]${cleanSelected}[/HL]`)) {
-                el.content = el.content.replace(`[HL]${cleanSelected}[/HL]`, cleanSelected);
-            } else if (el.content.includes(selectedText)) {
-                el.content = el.content.replace(selectedText, `[HL]${cleanSelected}[/HL]`);
-            } else {
-                el.content = `[HL]${el.content}[/HL]`;
-            }
-        } else {
-            if (el.content.includes('[HL]')) {
-                el.content = el.content.replace(/\[\/?HL\]/gi, '');
-            } else {
-                const word = prompt('Digite a palavra ou frase que deseja destacar (ou deixe em branco para destacar todo o texto):', '');
-                if (word !== null) {
-                    if (word.trim()) {
-                        const w = word.trim();
-                        const regex = new RegExp(`(${w})`, 'gi');
-                        el.content = el.content.replace(regex, '[HL]$1[/HL]');
-                    } else {
-                        el.content = `[HL]${el.content}[/HL]`;
-                    }
-                }
-            }
-        }
-        renderCanvas();
-        renderFilmstrip();
-    }
-
-    function syncMiniBar(el) {
-        const miniBar = document.getElementById('floating-mini-bar');
-        if (!miniBar) return;
-        if (!el || el.hidden || el.locked || curSlideIdx < 0) {
-            miniBar.style.display = 'none';
-            return;
-        }
-
-        miniBar.style.display = 'flex';
-
-        const barW = 460;
-        let left = el.x + (el.w / 2) - (barW / 2);
-        if (left < 8) left = 8;
-        if (left + barW > C_WIDTH - 8) left = Math.max(8, C_WIDTH - barW - 8);
-
-        let top = el.y - 48;
-        if (top < 10) {
-            top = el.y + el.h + 12;
-            if (top + 40 > C_HEIGHT) top = 10;
-        }
-
-        miniBar.style.left = Math.round(left) + 'px';
-        miniBar.style.top = Math.round(top) + 'px';
-
-        const isText = (el.type === 'text');
-        miniBar.querySelectorAll('.mini-text-only').forEach(n => {
-            n.style.display = isText ? '' : 'none';
-        });
-
-        if (isText) {
-            const miniFont = document.getElementById('miniFont');
-            if (miniFont) miniFont.value = el.fontFace || 'Bahnschrift SemiBold Condensed';
-
-            const miniSize = document.getElementById('miniSizeInput');
-            if (miniSize) miniSize.value = Math.round(el.fontSize || 44);
-
-            const miniBold = document.getElementById('miniBold');
-            if (miniBold) miniBold.classList.toggle('active', !!el.bold);
-
-            const miniItalic = document.getElementById('miniItalic');
-            if (miniItalic) miniItalic.classList.toggle('active', !!el.italic);
-
-            const miniColor = document.getElementById('miniColor');
-            if (miniColor) miniColor.value = el.color || '#ffffff';
-            const miniColorBar = document.getElementById('miniColorBar');
-            if (miniColorBar) miniColorBar.style.background = el.color || '#ffffff';
-
-            const miniAlignL = document.getElementById('miniAlignL');
-            const miniAlignC = document.getElementById('miniAlignC');
-            const miniAlignR = document.getElementById('miniAlignR');
-            if (miniAlignL) miniAlignL.classList.toggle('active', el.align === 'left');
-            if (miniAlignC) miniAlignC.classList.toggle('active', el.align === 'center');
-            if (miniAlignR) miniAlignR.classList.toggle('active', el.align === 'right');
-        }
-    }
-
-    function setupMiniToolbarListeners() {
-        const miniFont = document.getElementById('miniFont');
-        if (miniFont) {
-            miniFont.onchange = () => {
-                updateElProp('fontFace', miniFont.value);
-                const sideFont = document.getElementById('elFont');
-                if (sideFont) sideFont.value = miniFont.value;
-            };
-        }
-
-        const miniDec = document.getElementById('miniDecSize');
-        if (miniDec) miniDec.onclick = (e) => { e.preventDefault(); adjustCurrentFontSize(-2); };
-
-        const miniInc = document.getElementById('miniIncSize');
-        if (miniInc) miniInc.onclick = (e) => { e.preventDefault(); adjustCurrentFontSize(2); };
-
-        const miniSize = document.getElementById('miniSizeInput');
-        if (miniSize) {
-            miniSize.oninput = () => {
-                const v = parseInt(miniSize.value, 10);
-                if (!isNaN(v) && v >= 10 && v <= 200) {
-                    updateElProp('fontSize', v);
-                    const sideSize = document.getElementById('elFontSize');
-                    if (sideSize) sideSize.value = v;
-                }
-            };
-        }
-
-        const miniBold = document.getElementById('miniBold');
-        if (miniBold) miniBold.onclick = (e) => { e.preventDefault(); toggleCurrentBold(); };
-
-        const miniItalic = document.getElementById('miniItalic');
-        if (miniItalic) miniItalic.onclick = (e) => { e.preventDefault(); toggleCurrentItalic(); };
-
-        const miniGold = document.getElementById('miniGold');
-        if (miniGold) miniGold.onclick = (e) => { e.preventDefault(); quickHighlightCurrentSelection(); };
-
-        const miniColor = document.getElementById('miniColor');
-        if (miniColor) {
-            miniColor.oninput = () => {
-                updateElProp('color', miniColor.value);
-                const sideColor = document.getElementById('elColor');
-                if (sideColor) sideColor.value = miniColor.value;
-                const miniColorBar = document.getElementById('miniColorBar');
-                if (miniColorBar) miniColorBar.style.background = miniColor.value;
-            };
-        }
-
-        const miniAlignL = document.getElementById('miniAlignL');
-        if (miniAlignL) {
-            miniAlignL.onclick = (e) => {
-                e.preventDefault();
-                updateElProp('align', 'left');
-                if(miniAlignL) miniAlignL.classList.add('active');
-                if(miniAlignC) miniAlignC.classList.remove('active');
-                if(miniAlignR) miniAlignR.classList.remove('active');
-            };
-        }
-        const miniAlignC = document.getElementById('miniAlignC');
-        if (miniAlignC) {
-            miniAlignC.onclick = (e) => {
-                e.preventDefault();
-                updateElProp('align', 'center');
-                if(miniAlignC) miniAlignC.classList.add('active');
-                if(miniAlignL) miniAlignL.classList.remove('active');
-                if(miniAlignR) miniAlignR.classList.remove('active');
-            };
-        }
-        const miniAlignR = document.getElementById('miniAlignR');
-        if (miniAlignR) {
-            miniAlignR.onclick = (e) => {
-                e.preventDefault();
-                updateElProp('align', 'right');
-                if(miniAlignR) miniAlignR.classList.add('active');
-                if(miniAlignL) miniAlignL.classList.remove('active');
-                if(miniAlignC) miniAlignC.classList.remove('active');
-            };
-        }
-
-        const miniSelectAll = document.getElementById('miniSelectAll');
-        if (miniSelectAll) {
-            miniSelectAll.onclick = (e) => {
-                e.preventDefault();
-                if (!selElId || curSlideIdx < 0) return;
-                const dom = document.getElementById(`ui_${selElId}`);
-                if (dom) {
-                    const txt = dom.querySelector('.el-text');
-                    if (txt) {
-                        txt.focus();
-                        const range = document.createRange();
-                        range.selectNodeContents(txt);
-                        const sel = window.getSelection();
-                        sel.removeAllRanges();
-                        sel.addRange(range);
-                    }
-                }
-            };
-        }
-
-        const miniClone = document.getElementById('miniClone');
-        if (miniClone) miniClone.onclick = (e) => { e.preventDefault(); cloneSelectedElement(); };
-
-        const miniDel = document.getElementById('miniDel');
-        if (miniDel) miniDel.onclick = (e) => { e.preventDefault(); deleteSelectedElement(); };
-
-        const miniGrip = document.getElementById('miniDragGrip');
-        if (miniGrip) {
-            miniGrip.onmousedown = (e) => {
-                dragAct = 'move';
-                isDrag = true; stX = e.clientX; stY = e.clientY;
-                const el = slides[curSlideIdx].elements.find(x=>x.id===selElId);
-                if (!el) return;
-                oX = el.x; oY = el.y; oW = el.w; oH = el.h;
-                e.preventDefault();
-                document.addEventListener('mousemove', onDrag);
-                document.addEventListener('mouseup', endDrag);
-            };
-        }
-    }
-    setupMiniToolbarListeners();
-
-    // --- Gemini AI Validation Engine ---
-    const DEFAULT_GEMINI_KEY = atob('QVEuQWI4Uk42Si1lTWMtdVdvWVlpMWpsVGw4WXVvZ3RTajhuTXE2VzdSdVl1Zk8zbi1LcXc=');
-
-    function openAiModal() {
-        const modal = document.getElementById('modalAiKey');
-        const input = document.getElementById('inputGeminiKey');
-        input.value = localStorage.getItem('GEMINI_API_KEY') || DEFAULT_GEMINI_KEY;
-        modal.style.display = 'flex';
-    }
-    function closeAiModal() {
-        document.getElementById('modalAiKey').style.display = 'none';
-    }
-
-    function handleValidateAIClick() {
-        const savedKey = localStorage.getItem('GEMINI_API_KEY') || DEFAULT_GEMINI_KEY;
-        runAiValidation(savedKey);
-    }
-
-    function saveAndRunAiValidation() {
-        const key = document.getElementById('inputGeminiKey').value.trim();
-        if (!key) return alert('Por favor, insira a chave da API do Gemini.');
-        localStorage.setItem('GEMINI_API_KEY', key);
-        closeAiModal();
-        runAiValidation(key);
-    }
-
-    async function runAiValidation(apiKey) {
-        const btn = document.getElementById('btnValidateAI');
-        const originalHtml = btn.innerHTML;
-        btn.innerHTML = '⏳ Validando...';
-        btn.disabled = true;
-
-        const prompt = `Você é um auditor e validador estrutural de slides de sermão de igreja para projeção e telão.
-SUA MISSÃO: Validar e estruturar o texto em uma sequência de SLIDES INDIVIDUAIS em formato JSON.
-
-REGRAS ESTRITAS E INVIOLÁVEIS:
-1. NÃO CRIE SLIDES DE REFERÊNCIA ISOLADOS: Vá direto para os slides com o texto do versículo. NUNCA gere um slide contendo apenas o nome da passagem bíblica (ex: "Mateus 7:19-23").
-2. NÃO COLOQUE A REFERÊNCIA NEM O NÚMERO DO VERSÍCULO DENTRO DO TEXTO:
-   - O campo "content" deve conter apenas as palavras da mensagem/versículo entre aspas “ ... ” (remova o número do versículo como "19 " ou "20 " do início do texto).
-   - O campo "reference" conterá a referência correspondente (ex: "Mateus 7:19", "1 Samuel 15:22").
-3. PROIBIDO ALTERAR O TEXTO: Mantenha cada palavra, concordância e pontuação 100% IDÊNTICA ao original. NÃO altere o português, NÃO invente palavras, NÃO resuma.
-4. PRESERVE OS DESTAQUES [HL]...[/HL]: Mantenha as tags [HL]...[/HL] EXATAMENTE nas palavras onde vieram do PDF original. NÃO invente novos destaques.
-5. TIPOS DE SLIDES:
-   - "verse": 1 versículo por slide com aspas “ ... ” e campo "reference".
-   - "topic": Títulos ou tópicos (ex: "Obediência acima de tudo:").
-   - "question_short": Perguntas curtas dramáticas (ex: "E Jairo?").
-   - "reflection": Frases de reflexão do pregador.
-
-FORMATO DE RESPOSTA (APENAS JSON VÁLIDO):
-[
-  {
-    "type": "verse",
-    "reference": "Mateus 7:19",
-    "content": "“Toda a árvore que não dá bom fruto corta-se e [HL]lança-se no fogo[/HL].”"
-  },
-  {
-    "type": "topic",
-    "reference": "",
-    "content": "Obediência acima de tudo:"
-  }
-]
-
-TEXTO DO SERMÃO:
-${rawExtractedSermonText || slides.map(s => s.elements.map(e => e.content).join(' ')).join('\n')}`;
-
-        const models = ['gemini-3.7-flash', 'gemini-3.5-flash-lite', 'gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-3.1-flash-lite', 'gemini-flash-latest'];
-        let success = false;
-        let lastErr = null;
-
-        for (const model of models) {
-            try {
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-                const res = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-                        generationConfig: {
-                            temperature: 0.1,
-                            maxOutputTokens: 8192,
-                            responseMimeType: 'application/json'
-                        }
-                    })
-                });
-                const data = await res.json();
-                if (data.error) {
-                    lastErr = data.error.message;
-                    continue;
-                }
-                const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-                if (text) {
-                    const parsed = JSON.parse(text);
-                    const list = Array.isArray(parsed) ? parsed : (parsed.slides || []);
-                    if (list.length > 0) {
-                        applyAiValidatedSlides(list);
-                        success = true;
-                        break;
-                    }
-                }
-            } catch(err) {
-                lastErr = err.message;
-            }
-        }
-
-        btn.innerHTML = originalHtml;
-        btn.disabled = false;
-
-        if (!success) {
-            alert('Falha na validação com IA:\n' + (lastErr || 'Verifique sua chave de API do Gemini.'));
-            openAiModal();
-        } else {
-            alert('✨ Estrutura validada com sucesso pela IA Gemini! Os slides e referências foram refinados mantendo 100% dos seus textos e destaques originais.');
-        }
-    }
-
-    function applyAiValidatedSlides(aiSlides) {
-        commitText();
-        const newSlides = [];
-        aiSlides.forEach(item => {
-            const tp = item.type || 'verse';
-            
-            // Se for um slide duplicado contendo apenas a referência pura, ignora
-            if (tp === 'verse' && isPureRef(item.content)) return;
-            
-            let cleanContent = item.content;
-            if (tp === 'verse') {
-                cleanContent = cleanContent.replace(/^“?\s*\d{1,3}\s+/, '“');
-                cleanContent = fmtQuote(cleanContent);
-            }
-            
-            const s = newSlide(tp);
-            s.elements.push(newTextEl(cleanContent, false, tp));
-            if (item.reference && tp === 'verse') {
-                s.elements.push(newTextEl(normRef(item.reference), true, tp));
-            }
-            newSlides.push(s);
-        });
-        slides = newSlides;
-        setSlide(0);
-    }
-
-    // --- Parser Engine ---
-    const PREFIXES = "(?:1[ºª°\\.]?|2[ºª°\\.]?|3[ºª°\\.]?|I{1,3}|Primeir[oa]|Segund[oa]|Terceir[oa])";
-
-    const BOOK_NAMES = [
-        `${PREFIXES}\\s*(?:Samuel|Sam\\.?|Sm\\.?)`,
-        `${PREFIXES}\\s*(?:Reis|Rs\\.?)`,
-        `${PREFIXES}\\s*(?:Cr[oôó]nicas|Cr\\.?)`,
-        `${PREFIXES}\\s*(?:Cor[ií]ntios|Co\\.?|Cor\\.?)`,
-        `${PREFIXES}\\s*(?:Tessalonicenses|Ts\\.?)`,
-        `${PREFIXES}\\s*(?:Tim[oó]teo|Tm\\.?)`,
-        `${PREFIXES}\\s*(?:Pedro|Pe\\.?|Ped\\.?)`,
-        `${PREFIXES}\\s*(?:Jo[aã]o|Jo\\.?)`,
-        "G[eê]nesis|Gn\\.?", "[EÊ]xodo|Ex\\.?", "Lev[ií]tico|Lv\\.?", "N[uú]meros|Nm\\.?", "Deuteron[oô]mio|Dt\\.?", "Josu[eé]|Js\\.?", "Ju[ií]zes|Jz\\.?", "Rute|Rt\\.?", "Esdras|Ed\\.?", "Neemias|Ne\\.?", "Ester|Et\\.?", "J[oó]", "Salmos?|Sl\\.?|Sal\\.?", "Prov[eé]rbios?|Pv\\.?|Prov\\.?", "Eclesiastes|Ec\\.?|Ecl\\.?", "C[aâ]nticos|Cantares|Ct\\.?", "Isa[ií]as|Is\\.?", "Jeremias|Jr\\.?", "Lamenta[cç][oõ]es|Lm\\.?", "Ezequiel|Ez\\.?", "Daniel|Dn\\.?", "Os[eé]ias|Os\\.?", "Joel|Jl\\.?", "Am[oó]s|Am\\.?", "Obadias|Ob\\.?", "Jonas|Jn\\.?", "Miqu[eé]ias|Mq\\.?", "Naum|Na\\.?", "Habacuque|Hc\\.?", "Sofonias|Sf\\.?", "Ageu|Ag\\.?", "Zacarias|Zc\\.?", "Malaquias|Ml\\.?", "Mateus|Mt\\.?|Mat\\.?", "Marcos|Mc\\.?|Marc\\.?", "Lucas|Lc\\.?|Luc\\.?", "Jo[aã]o|Jo\\.?", "Atos|At\\.?", "Romanos|Rm\\.?|Rom\\.?", "G[aá]latas|Gl\\.?|Gal\\.?", "Ef[eé]sios|Ef\\.?", "Filipenses|Fp\\.?|Fil\\.?", "Colossenses|Cl\\.?|Col\\.?", "Tito|Tt\\.?", "Filemom|Filemon|Fm\\.?", "Hebreus|Hb\\.?|Heb\\.?", "Tiago|Tg\\.?", "Judas|Jd\\.?", "Apocalipse|Ap\\.?|Apoc\\.?"
-    ].join("|");
-
-    const BIB_REGEX = new RegExp(`(?:${BOOK_NAMES})\\s+\\d+\\s*[:.,]\\s*\\d+(?:\\s*[-–—a]\\s*\\d+)?(?:,\\s*\\d+)*`, 'i');
-
-    function isRef(l) { const m = l.match(BIB_REGEX); return m ? m[0] : null; }
-    function isPureRef(l) { const m = isRef(l); return m ? l.trim().length <= m.length+8 : false; }
-    function isHead(l) {
-        const trimmed = l.replace(/^[⸻\-_\s*#]+|[⸻\-_\s*#]+$/g, '').trim();
-        if (trimmed.length < 3) return false;
-        if (isRef(trimmed)) return false;
-        if (trimmed.endsWith(':') && trimmed.length < 80) return true;
-        const letters = trimmed.replace(/[^a-zA-ZÀ-ÿ]/g, '');
-        if (letters.length >= 4) {
-            const up = (trimmed.match(/[A-ZÀ-Ý]/g) || []).length;
-            if (up / letters.length >= 0.75) return true;
-        }
-        return false;
-    }
-    function normRef(ref) {
-        return ref
-            .replace(/^I\s+/i, '1 ').replace(/^II\s+/i, '2 ').replace(/^III\s+/i, '3 ')
-            .replace(/^1[ºª°]\s*/i, '1 ').replace(/^2[ºª°]\s*/i, '2 ').replace(/^3[ºª°]\s*/i, '3 ')
-            .replace(/^Primeir[oa]\s+/i, '1 ').replace(/^Segund[oa]\s+/i, '2 ').replace(/^Terceir[oa]\s+/i, '3 ');
-    }
-    function fmtQuote(t) { let x=t.trim(); if(!x.startsWith('“')&&!x.startsWith('"')) x='“'+x; if(!x.endsWith('”')&&!x.endsWith('"')) x=x.replace(/[.]+$/,'')+'”'; return x; }
-    function genId() { return 'el_' + Math.random().toString(36).substr(2,9); }
-
-    function newSlide(type) { return { id:'s_'+genId(), bgImage:globalBgData, bgColor:'#000000', type:type, elements:[] }; }
-    function newTextEl(txt, isR, type) {
-        let fz=44, ff='Bahnschrift SemiBold Condensed', col='#ffffff', al='left', y=76, h=345, sh='dark', strk='none';
-        if(isR) { fz=40; ff='Bebas Neue'; col='#E8B859'; y=441; h=76; }
-        else if(type==='topic') { fz=64; ff='Bebas Neue'; al='center'; y=180; h=180; }
-        else if(type==='reflection') { al='center'; y=150; }
-        else if(type==='question_short') { fz=90; al='center'; y=150; }
-        else { if(txt.length<70) fz=52; else if(txt.length>160) fz=38; }
-        return {
-            id: genId(), type: 'text', name: isR ? 'Referência Bíblica' : (type==='topic' ? 'Título do Tópico' : 'Texto Principal'), content: txt,
-            x:48, y:y, w:864, h:h, rotation:0, opacity:1, locked:false, hidden:false,
-            fontFace:ff, fontSize:fz, color:col, align:al, shadow:sh, stroke:strk, isRef:isR,
-            bold:false, italic:false
-        };
-    }
-
-    function parseSermon(raw) {
-        const normalized = (raw || '').replace(/\u00A0/g, ' ');
-        const lines = normalized.split(/\r?\n/).map(l => l.replace(/^[⸻\-_\s]+|[⸻\-_\s]+$/g, '').trim()).filter(l => l.length > 0);
-        const out = []; let i = 0;
-        const pushSld = (t, r, tp) => { 
-            const s = newSlide(tp); 
-            s.elements.push(newTextEl(tp==='topic'||tp==='question_short' ? t : fmtQuote(t), false, tp)); 
-            if(r) s.elements.push(newTextEl(r, true, tp)); 
-            out.push(s); 
-        };
-
-        while(i < lines.length) {
-            let l = lines[i];
-            if (isHead(l)) {
-                pushSld(l.replace(/^[⸻\-_\s*#]+|[⸻\-_\s*#]+$/g, '').trim(), '', 'topic');
-                i++;
-                continue;
-            }
-            if (l.endsWith('?') && l.length <= 25 && !isRef(l)) {
-                pushSld(l, '', 'question_short');
-                i++;
-                continue;
-            }
-            if (isPureRef(l)) {
-                const rawRef = isRef(l);
-                const baseRef = normRef(rawRef);
-                i++;
-                const verseLines = [];
-                while (
-                    i < lines.length &&
-                    !isPureRef(lines[i]) &&
-                    !isHead(lines[i]) &&
-                    !(lines[i].endsWith('?') && lines[i].length <= 25)
-                ) {
-                    const emb = isRef(lines[i]);
-                    if (emb && lines[i].length > emb.length + 12) break;
-                    verseLines.push(lines[i]);
-                    i++;
-                }
-                const combined = verseLines.join('\n');
-                const numberedRegex = /(?:^|\n)\s*(\d{1,3})\s+([A-ZÀ-Ý“"a-z])/;
-                if (numberedRegex.test(combined)) {
-                    const chunks = combined.split(/(?=(?:^|\n)\s*\d{1,3}\s+[A-ZÀ-Ý“"])/).filter(s => s.trim().length > 0);
-                    const bookAndChap = baseRef.split(/[:.,]/)[0];
-                    chunks.forEach(chunk => {
-                        const m = chunk.trim().match(/^(\d{1,3})\s+(.*)$/s);
-                        if (m) {
-                            const vNum = m[1];
-                            let vText = m[2].replace(/\n+/g, ' ').trim();
-                            pushSld(vText, `${bookAndChap}:${vNum}`, 'verse');
-                        } else {
-                            let vText = chunk.replace(/\n+/g, ' ').trim();
-                            pushSld(vText, baseRef, 'verse');
-                        }
-                    });
-                } else {
-                    if (verseLines.length > 0) {
-                        verseLines.forEach(vL => {
-                            let vText = vL.trim();
-                            if (vText.length > 3) pushSld(vText, baseRef, 'verse');
-                        });
-                    }
-                }
-                continue;
-            }
-            const trailingRef = isRef(l);
-            if (trailingRef && l.length > trailingRef.length + 8) {
-                const vText = l.replace(trailingRef, '').replace(/[()]/g, '').trim();
-                pushSld(vText, normRef(trailingRef), 'verse');
-                i++;
-                continue;
-            }
-            pushSld(l, '', 'reflection');
-            i++;
-        }
-        return out;
-    }
-
-    // --- RENDER ---
-    function resizeWorkspace() {
-        const w = canvasContainer.parentElement.clientWidth; const h = canvasContainer.parentElement.clientHeight;
-        const scale = Math.min((w - 80) / C_WIDTH, (h - 80) / C_HEIGHT);
-        canvasContainer.style.width = `${C_WIDTH * scale}px`; canvasContainer.style.height = `${C_HEIGHT * scale}px`;
-        slideCanvas.style.transform = `scale(${scale})`;
-    }
-    window.addEventListener('resize', resizeWorkspace);
-
-    function setSlide(idx) {
-        commitText(); curSlideIdx = idx; selElId = null;
-        renderFilmstrip(); renderCanvas(); renderProps(); renderLayers();
-    }
-
-    function buildMiniDOM(s) {
-        const scale = 128 / C_WIDTH;
-        let html = '';
-        s.elements.forEach(el => {
-            if(el.hidden) return;
-            const isText = el.type === 'text';
-            const bg = el.type==='shape' ? `background:${el.color};` : '';
-            let content = '';
-            let extraStyle = '';
-            if(isText) {
-                const ff = el.fontFace.includes('Bebas') ? "'Bebas Neue', sans-serif" : "'Oswald', sans-serif";
-                extraStyle = `color:${el.color}; font-family:${ff}; font-size:${el.fontSize*PT_TO_PX*scale}px; text-align:${el.align};`;
-                content = el.content.substring(0,30) + '...';
-            } else if (el.type==='image') {
-                content = `<img src="${el.content}" style="width:100%;height:100%;object-fit:cover;">`;
-            }
-            html += `<div class="thumb-mini-el" style="left:${el.x*scale}px; top:${el.y*scale}px; width:${el.w*scale}px; height:${el.h*scale}px; opacity:${el.opacity}; transform:rotate(${el.rotation||0}deg); ${bg} ${extraStyle}">${content}</div>`;
-        });
-        return html;
-    }
-
-    function renderFilmstrip() {
-        thumbContainer.innerHTML = '';
-        slides.forEach((s, i) => {
-            const wrap = document.createElement('div'); wrap.className = 'thumb-wrapper';
-            const d = document.createElement('div');
-            d.className = `thumb ${i===curSlideIdx?'active':''}`;
-            d.style.backgroundImage = s.bgImage ? `url(${s.bgImage})` : 'none';
-            d.style.backgroundColor = s.bgColor;
-            d.innerHTML = buildMiniDOM(s);
-            d.onclick = () => setSlide(i);
-            const num = document.createElement('div'); num.className = 'thumb-num'; num.innerText = `Slide ${i+1}`;
-            wrap.appendChild(d); wrap.appendChild(num);
-            thumbContainer.appendChild(wrap);
-        });
-    }
-
-    function getStyleString(el) {
-        if(el.type !== 'text') return '';
-        let ff = el.fontFace || 'Bahnschrift SemiBold Condensed';
-        let fontCss = ff.includes('Bebas') ? "'Bebas Neue', sans-serif" : (ff.includes('Arial') ? "Arial, sans-serif" : `'${ff}', 'Oswald', sans-serif`);
-        let s = `font-family:${fontCss}; font-size:${el.fontSize*PT_TO_PX}px; color:${el.color}; text-align:${el.align};`;
-        if(el.stroke === 'black') s += ` -webkit-text-stroke: 1px black;`;
-        if(el.stroke === 'white') s += ` -webkit-text-stroke: 1px white;`;
-        if(el.bold) s += ` font-weight: bold;`; else s += ` font-weight: normal;`;
-        if(el.italic) s += ` font-style: italic;`; else s += ` font-style: normal;`;
-        return s;
-    }
-
-    function highlightKW(txt) {
-        if (txt.includes('[HL]')) {
-            return txt.replace(/\[HL\](.*?)\[\/HL\]/gi, '<span style="color:#E8B859;">$1</span>');
-        }
-        const kw = /(não temas,?\s*crê somente|quem me tocou\??|não o faria\??|não o confirmaria\??|angústia de espírito|tendo-os feito sair|teu coração|não se apóie|os teus bens|os teus celeiros|transbordarão|talitá cumi|prostrou-se|um dos principais da sinagoga|despendido tudo quanto tinha|não ajunteis tesouros|ajuntai tesouros|honra ao senhor|confia no senhor|obedecer é melhor|obedeça à palavra|palavra do senhor|casa do senhor|voluntariamente|transgressões|amor de mim|não me lembro|prosperarão|buscarei o teu bem|morar na casa do senhor|contemplar a formosura|inquirir no seu templo|senhor|jesus|deus)/gi;
-        return txt.replace(kw, '<span style="color:#E8B859;">$1</span>');
-    }
-
-    function renderCanvas() {
-        if(curSlideIdx < 0) return; const s = slides[curSlideIdx];
-        slideCanvas.style.backgroundImage = s.bgImage ? `url(${s.bgImage})` : 'none'; slideCanvas.style.backgroundColor = s.bgColor;
-        Array.from(slideCanvas.children).forEach(c => { if(c.id !== 'transform-box' && c.id !== 'floating-mini-bar' && !c.classList.contains('snap-guide')) c.remove(); });
-
-        s.elements.forEach(el => {
-            if(el.hidden) return;
-            const d = document.createElement('div');
-            d.className = 'slide-el'; d.id = `ui_${el.id}`;
-            d.style.left = el.x+'px'; d.style.top = el.y+'px'; d.style.width = el.w+'px'; d.style.height = el.h+'px';
-            d.style.transform = `rotate(${el.rotation||0}deg)`; d.style.opacity = el.opacity; d.style.zIndex = s.elements.indexOf(el);
-
-            if(el.type === 'text') {
-                const t = document.createElement('div'); t.className = 'el-text'; t.contentEditable = !el.locked;
-                t.style.cssText = getStyleString(el);
-                if(el.shadow === 'dark') t.classList.add('shadow-dark'); else if(el.shadow === 'glow') t.classList.add('shadow-glow');
-                t.innerHTML = el.isRef ? el.content : highlightKW(el.content);
-                t.onmousedown = () => { if(el.locked) return; if(selElId !== el.id) { commitText(); selElId = el.id; updateSelection(); } };
-                t.onblur = () => { el.content = t.innerText; renderFilmstrip(); };
-                d.appendChild(t);
-            } else if (el.type === 'shape') {
-                d.style.backgroundColor = el.color;
-                d.onmousedown = () => { if(!el.locked) { commitText(); selElId = el.id; updateSelection(); } };
-            } else if (el.type === 'image') {
-                d.innerHTML = `<img src="${el.content}" class="el-img" draggable="false">`;
-                d.onmousedown = () => { if(!el.locked) { commitText(); selElId = el.id; updateSelection(); } };
-            }
-            slideCanvas.insertBefore(d, tfBox);
-        });
-        updateSelection();
-    }
-
-    function renderLayers() {
-        layersList.innerHTML = ''; if(curSlideIdx < 0) return; const s = slides[curSlideIdx];
-        for(let i = s.elements.length - 1; i >= 0; i--) {
-            const el = s.elements[i];
-            const div = document.createElement('div');
-            div.className = `layer-item ${selElId===el.id?'active':''} ${el.locked?'locked':''}`;
-            div.innerHTML = `
-                <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${el.name}</div>
-                <div class="icons">
-                    <button class="btn-icon" onclick="moveLayer('${el.id}', 1)" title="Subir">⬆️</button>
-                    <button class="btn-icon" onclick="moveLayer('${el.id}', -1)" title="Descer">⬇️</button>
-                    <button class="btn-icon" onclick="toggleProp('${el.id}','hidden')">${el.hidden?'👁️‍🗨️':'👁️'}</button>
-                    <button class="btn-icon" onclick="toggleProp('${el.id}','locked')">${el.locked?'🔒':'🔓'}</button>
-                </div>
-            `;
-            div.onclick = (e) => { if(e.target.tagName==='DIV') { commitText(); selElId=el.id; updateSelection(); } };
-            layersList.appendChild(div);
-        }
-    }
-
-    window.moveLayer = (id, dir) => {
-        const s = slides[curSlideIdx]; const idx = s.elements.findIndex(x=>x.id===id);
-        if(idx < 0) return;
-        if(dir === 1 && idx < s.elements.length - 1) { const temp = s.elements[idx]; s.elements[idx] = s.elements[idx+1]; s.elements[idx+1] = temp; }
-        else if (dir === -1 && idx > 0) { const temp = s.elements[idx]; s.elements[idx] = s.elements[idx-1]; s.elements[idx-1] = temp; }
-        renderCanvas(); renderLayers();
-    };
-
-    function toggleProp(id, prop) { const el = slides[curSlideIdx].elements.find(x=>x.id===id); if(el) { el[prop] = !el[prop]; renderCanvas(); renderLayers(); } }
-
-    function renderProps() {
-        if(curSlideIdx < 0) return; const s = slides[curSlideIdx];
-        document.getElementById('slType').value = s.type; document.getElementById('slBgColor').value = s.bgColor;
-        if(!selElId) {
-            document.getElementById('panel-element').style.display = 'none';
-        } else {
-            document.getElementById('panel-element').style.display = 'flex';
-            const el = s.elements.find(x=>x.id===selElId);
-            document.getElementById('elX').value = Math.round(el.x); document.getElementById('elY').value = Math.round(el.y);
-            document.getElementById('elW').value = Math.round(el.w); document.getElementById('elH').value = Math.round(el.h);
-            document.getElementById('elOpacity').value = el.opacity;
-            
-            if(el.type === 'text') {
-                document.getElementById('text-props').style.display = 'flex'; document.getElementById('text-props').style.flexDirection = 'column'; document.getElementById('text-props').style.gap = '12px';
-                document.getElementById('elFont').value = el.fontFace; document.getElementById('elFontSize').value = el.fontSize;
-                const sideBold = document.getElementById('btnSideBold');
-                if (sideBold) sideBold.classList.toggle('active', !!el.bold);
-                const sideItalic = document.getElementById('btnSideItalic');
-                if (sideItalic) sideItalic.classList.toggle('active', !!el.italic);
-                document.getElementById('elColor').value = el.color; document.getElementById('elAlign').value = el.align;
-                document.getElementById('elShadow').value = el.shadow; document.getElementById('elStroke').value = el.stroke || 'none';
-            } else { document.getElementById('text-props').style.display = 'none'; }
-        }
-    }
-
-    window.updateSlideType = (val) => {
-        const s = slides[curSlideIdx]; s.type = val;
-        if(val === 'verse' && !s.elements.some(e => e.isRef)) s.elements.push(newTextEl('Nova Referência', true, 'verse'));
-        renderFilmstrip(); renderCanvas(); renderLayers();
-    };
-    window.updateSlideProp = (p, v) => { slides[curSlideIdx][p] = v; renderFilmstrip(); renderCanvas(); };
-    window.updateElProp = (p, v) => { 
-        const el = slides[curSlideIdx].elements.find(x=>x.id===selElId);
-        if(el) { el[p] = (p==='x'||p==='y'||p==='w'||p==='h'||p==='fontSize') ? Number(v) : v; renderCanvas(); updateSelection(); renderFilmstrip(); }
-    };
-    window.handleSlideBgUpload = (inp) => { const f = inp.files[0]; if(f) { const r = new FileReader(); r.onload=ev=>{ slides[curSlideIdx].bgImage = ev.target.result; renderCanvas(); renderFilmstrip(); }; r.readAsDataURL(f); } };
-    window.handleElImageUpload = (inp) => {
-        const f = inp.files[0]; if(!f || curSlideIdx<0) return;
-        const r = new FileReader(); r.onload=ev=>{ 
-            const img = new Image(); img.onload = () => {
-                let w = img.width; let h = img.height; const max = 300;
-                if(w>max||h>max) { const ratio = Math.min(max/w, max/h); w*=ratio; h*=ratio; }
-                const el = { id: genId(), type:'image', name:'Imagem Upload', content:ev.target.result, x: C_WIDTH/2 - w/2, y: C_HEIGHT/2 - h/2, w, h, rotation:0, opacity:1, locked:false, hidden:false };
-                slides[curSlideIdx].elements.push(el); selElId = el.id; renderCanvas(); renderFilmstrip();
-            }; img.src = ev.target.result;
-        }; r.readAsDataURL(f);
-    };
-
-    function commitText() {
-        if(selElId && curSlideIdx >= 0) {
-            const el = slides[curSlideIdx].elements.find(x=>x.id===selElId);
-            if(el && el.type === 'text') { const dom = document.getElementById(`ui_${el.id}`); if(dom) el.content = dom.querySelector('.el-text').innerText; }
-        }
-    }
-
-    // --- Transform (Estilo PowerPoint: Bordas Arrastáveis & Mini Toolbar) ---
-    slideCanvas.onmousedown = (e) => { 
-        if(e.target.closest('#floating-mini-bar')) return;
-        if(e.target === slideCanvas) { commitText(); selElId = null; updateSelection(); } 
-    };
-
-    function updateSelection() {
-        renderProps(); renderLayers(); 
-        const miniBar = document.getElementById('floating-mini-bar');
-        if(!selElId) { 
-            tfBox.style.display = 'none'; 
-            if(miniBar) miniBar.style.display = 'none';
-            return; 
-        }
-        const el = slides[curSlideIdx].elements.find(x=>x.id===selElId);
-        if(!el || el.hidden || el.locked) { 
-            tfBox.style.display = 'none'; 
-            if(miniBar) miniBar.style.display = 'none';
-            return; 
-        }
-        tfBox.style.display = 'block'; 
-        syncTfBox(el);
-        syncMiniBar(el);
-    }
-
-    function syncTfBox(el) { tfBox.style.left = el.x+'px'; tfBox.style.top = el.y+'px'; tfBox.style.width = el.w+'px'; tfBox.style.height = el.h+'px'; tfBox.style.transform = `rotate(${el.rotation||0}deg)`; }
-
-    let isDrag=false, dragAct=null, stX, stY, oX, oY, oW, oH;
-    tfBox.onmousedown = (e) => {
-        if(e.target.classList.contains('handle')) {
-            dragAct = e.target.dataset.dir;
-        } else {
-            dragAct = 'move';
-        }
-        isDrag = true; stX = e.clientX; stY = e.clientY;
-        const el = slides[curSlideIdx].elements.find(x=>x.id===selElId);
-        if (!el) return;
-        oX = el.x; oY = el.y; oW = el.w; oH = el.h;
-        e.preventDefault(); document.addEventListener('mousemove', onDrag); document.addEventListener('mouseup', endDrag);
-    };
-
-    function onDrag(e) {
-        if(!isDrag || !selElId) return;
-        const scale = slideCanvas.getBoundingClientRect().width / C_WIDTH;
-        const dx = (e.clientX - stX)/scale; const dy = (e.clientY - stY)/scale;
-        const el = slides[curSlideIdx].elements.find(x=>x.id===selElId);
-        if (!el) return;
-        if(dragAct === 'move') {
-            el.x = oX + dx; el.y = oY + dy; snapV.style.display = 'none'; snapH.style.display = 'none';
-            const cx = el.x + el.w/2; const cy = el.y + el.h/2;
-            if(Math.abs(cx - C_WIDTH/2) < 10) { el.x = C_WIDTH/2 - el.w/2; snapV.style.display = 'block'; snapV.style.left = (C_WIDTH/2)+'px'; }
-            if(Math.abs(cy - C_HEIGHT/2) < 10) { el.y = C_HEIGHT/2 - el.h/2; snapH.style.display = 'block'; snapH.style.top = (C_HEIGHT/2)+'px'; }
-        } else if (dragAct === 'rot') {
-            const rect = tfBox.getBoundingClientRect(); const cx = rect.left + rect.width/2; const cy = rect.top + rect.height/2;
-            const ang = Math.atan2(e.clientY - cy, e.clientX - cx) * 180 / Math.PI; el.rotation = ang + 90;
-            if(Math.abs(el.rotation % 45) < 5) el.rotation = Math.round(el.rotation/45)*45;
-        } else {
-            if(dragAct.includes('e')) el.w = Math.max(20, oW + dx); if(dragAct.includes('s')) el.h = Math.max(20, oH + dy);
-            if(dragAct.includes('w')) { const nw = Math.max(20, oW - dx); el.x = oX + (oW - nw); el.w = nw; }
-            if(dragAct.includes('n')) { const nh = Math.max(20, oH - dy); el.y = oY + (oH - nh); el.h = nh; }
-        }
-        syncTfBox(el); 
-        syncMiniBar(el);
-        const dom = document.getElementById(`ui_${el.id}`);
-        if(dom) { dom.style.left = el.x+'px'; dom.style.top = el.y+'px'; dom.style.width = el.w+'px'; dom.style.height = el.h+'px'; dom.style.transform = `rotate(${el.rotation||0}deg)`; }
-        renderProps();
-    }
-
-    function endDrag() { 
-        isDrag = false; 
-        dragAct = null; 
-        snapV.style.display = 'none'; 
-        snapH.style.display = 'none'; 
-        document.removeEventListener('mousemove', onDrag); 
-        document.removeEventListener('mouseup', endDrag); 
-        renderFilmstrip(); 
-    }
-
-    // Monitorar seleção de texto com mouse (comportamento nativo PowerPoint mini-toolbar)
-    document.addEventListener('selectionchange', () => {
-        if (!selElId || curSlideIdx < 0) return;
-        const sel = window.getSelection();
-        if (sel && !sel.isCollapsed && sel.toString().trim().length > 0) {
-            const dom = document.getElementById(`ui_${selElId}`);
-            if (dom && dom.contains(sel.anchorNode)) {
-                const el = slides[curSlideIdx].elements.find(x => x.id === selElId);
-                if (el && el.type === 'text') {
-                    syncMiniBar(el);
-                }
-            }
-        }
-    });
-
-    // Atalhos de teclado úteis (Ctrl+D para duplicar, Delete para excluir)
-    document.addEventListener('keydown', (e) => {
-        const tag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
-        const isEditing = tag === 'input' || tag === 'textarea' || (document.activeElement && document.activeElement.isContentEditable);
-
-        if (e.key === 'Escape') {
-            commitText();
-            selElId = null;
-            updateSelection();
-        } else if ((e.ctrlKey || e.metaKey) && (e.key === 'd' || e.key === 'D')) {
-            e.preventDefault();
-            cloneSelectedElement();
-        } else if ((e.key === 'Delete' || e.key === 'Backspace') && !isEditing && selElId) {
-            e.preventDefault();
-            deleteSelectedElement();
-        }
-    });
-
-    window.addElement = (type) => {
-        if(curSlideIdx<0) return; let el;
-        if(type==='text') { el = newTextEl("Novo Texto", false, 'reflection'); el.x = C_WIDTH/2 - el.w/2; el.y = C_HEIGHT/2 - el.h/2; el.name = "Texto"; }
-        if(type==='shape') { el = { id: genId(), type: 'shape', name: 'Forma', x: C_WIDTH/2 - 50, y: C_HEIGHT/2 - 50, w: 100, h: 100, rotation: 0, opacity: 1, color: '#8b5cf6', locked:false, hidden:false }; }
-        slides[curSlideIdx].elements.push(el); selElId = el.id; renderCanvas(); renderFilmstrip();
-    };
-    window.addBlankSlide = () => { slides.push(newSlide('reflection')); setSlide(slides.length-1); };
-    window.deleteCurrentSlide = () => { if(slides.length<=1) return alert('Último slide.'); slides.splice(curSlideIdx, 1); setSlide(Math.max(0, curSlideIdx-1)); };
-    window.deleteSelectedElement = () => { if(!selElId) return; slides[curSlideIdx].elements = slides[curSlideIdx].elements.filter(x=>x.id!==selElId); selElId = null; renderCanvas(); renderFilmstrip(); };
-    window.cloneSelectedElement = () => {
-        if(!selElId) return; const s = slides[curSlideIdx]; const orig = s.elements.find(x=>x.id===selElId); if(!orig) return;
-        const clone = JSON.parse(JSON.stringify(orig)); clone.id = genId(); clone.name += " (Cópia)"; clone.x += 20; clone.y += 20;
-        s.elements.push(clone); selElId = clone.id; renderCanvas(); renderFilmstrip();
-    };
-
-    // --- PPTX EXPORT ---
-    document.getElementById('btnExport').addEventListener('click', async () => {
-        commitText();
-        const btn = document.getElementById('btnExport');
-        const origHtml = btn.innerHTML;
-        btn.innerHTML = "⏳ Exportando...";
-        btn.disabled = true;
-        try {
-            const pptx = new PptxGenJS();
-            pptx.layout = 'LAYOUT_16x9';
-            for(const s of slides) {
-                const slide = pptx.addSlide();
-                if (s.type === 'pdf_page' && s.elements && s.elements[0] && s.elements[0].type === 'image') {
-                    slide.background = { color: '000000' };
-                    slide.addImage({
-                        data: s.elements[0].content,
-                        x: 0,
-                        y: 0,
-                        w: '100%',
-                        h: '100%',
-                        sizing: { type: 'contain', w: '100%', h: '100%' }
-                    });
-                    continue;
-                }
-                if(s.bgImage) {
-                    if(s.bgImage.startsWith('data:')) slide.background = { data: s.bgImage };
-                    else slide.background = { path: s.bgImage };
-                } else {
-                    slide.background = { color: (s.bgColor || '#000000').replace('#','') };
-                }
-                for(const el of s.elements) {
-                    if(el.hidden) continue;
-                    const opts = { x: el.x/96, y: el.y/96, w: el.w/96, h: el.h/96, rotate: el.rotation || 0, transparency: (1 - (el.opacity ?? 1)) * 100 };
-                    if(el.type === 'shape') {
-                        opts.fill = { color: (el.color || '#ffffff').replace('#','') };
-                        slide.addShape(pptx.ShapeType.rect, opts);
-                    } 
-                    else if(el.type === 'image') {
-                        if(el.content.startsWith('data:')) opts.data = el.content;
-                        else opts.path = el.content;
-                        slide.addImage(opts);
-                    }
-                    else if(el.type === 'text') {
-                        opts.valign = 'top';
-                        opts.align = el.align || 'left';
-                        opts.margin = 0;
-                        opts.wrap = true;
-                        if(el.shadow === 'dark') opts.shadow = { type: 'outer', angle: 90, blur: 4, offset: 3, opacity: 0.8, color: '000000' };
-                        else if(el.shadow === 'glow') opts.shadow = { type: 'outer', angle: 0, blur: 15, offset: 0, opacity: 0.9, color: 'FFFFFF' };
-                        if(el.stroke && el.stroke !== 'none') opts.outline = { size: 1.5, color: el.stroke === 'white' ? 'FFFFFF' : '000000' };
-                        
-                        const ff = el.fontFace && (el.fontFace.includes('Oswald') || el.fontFace.includes('Bahnschrift')) ? 'Bahnschrift SemiBold Condensed' : (el.fontFace && el.fontFace.includes('Arial') ? 'Arial' : 'Bebas Neue');
-                        
-                        let runs = [];
-                        if (el.isRef) {
-                            runs = [{ text: el.content, highlight: false }];
-                        } else if (el.content && el.content.includes('[HL]')) {
-                            const regex = /\[HL\](.*?)\[\/HL\]/gi;
-                            let lastIdx = 0;
-                            let m;
-                            while ((m = regex.exec(el.content)) !== null) {
-                                if (m.index > lastIdx) runs.push({ text: el.content.substring(lastIdx, m.index), highlight: false });
-                                runs.push({ text: m[1], highlight: true });
-                                lastIdx = m.index + m[0].length;
-                            }
-                            if (lastIdx < el.content.length) runs.push({ text: el.content.substring(lastIdx), highlight: false });
-                        } else {
-                            const kw = /(não temas,?\s*crê somente|quem me tocou\??|não o faria\??|não o confirmaria\??|angústia de espírito|tendo-os feito sair|teu coração|não se apóie|os teus bens|os teus celeiros|transbordarão|talitá cumi|prostrou-se|um dos principais da sinagoga|despendido tudo quanto tinha|não ajunteis tesouros|ajuntai tesouros|honra ao senhor|confia no senhor|obedecer é melhor|obedeça à palavra|palavra do senhor|casa do senhor|voluntariamente|transgressões|amor de mim|não me lembro|prosperarão|buscarei o teu bem|morar na casa do senhor|contemplar a formosura|inquirir no seu templo|senhor|jesus|deus)/gi;
-                            let lx = 0; let m;
-                            while((m = kw.exec(el.content || '')) !== null) { 
-                                if(m.index > lx) runs.push({ text: (el.content || '').substring(lx, m.index), highlight: false }); 
-                                runs.push({ text: m[0], highlight: true }); 
-                                lx = m.index + m[0].length; 
-                            }
-                            if(lx < (el.content || '').length) runs.push({ text: (el.content || '').substring(lx), highlight: false });
-                        }
-                        if (runs.length === 0) runs.push({ text: el.content || '', highlight: false });
-
-                        const pptRuns = runs.map(r => ({
-                            text: r.text,
-                            options: {
-                                fontFace: ff,
-                                fontSize: el.fontSize || 44,
-                                color: r.highlight ? 'E8B859' : (el.color || '#ffffff').replace('#',''),
-                                bold: !!el.bold,
-                                italic: !!el.italic
-                            }
-                        }));
-                        slide.addText(pptRuns, opts);
-                    }
-                }
-            }
-            let fName = document.getElementById('outFileName').value.trim() || 'Apresentacao.pptx';
-            if (!fName.toLowerCase().endsWith('.pptx')) fName += '.pptx';
-            await pptx.writeFile({ fileName: fName });
-        } catch(e) {
-            console.error("Erro na exportação PPTX:", e);
-            alert("Erro ao exportar PPTX:\n" + e.message);
-        } finally {
-            btn.innerHTML = origHtml;
-            btn.disabled = false;
-        }
-    });
-
-    // Controle do Hub Central Multimídia Church
-    function switchHubModule(mod) {
-        const isSlide = (mod === 'slidekiller');
-        document.getElementById('modSlidekillerBtn').className = isSlide ? 'btn' : 'btn btn-outline';
-        document.getElementById('modVideoBtn').className = !isSlide ? 'btn' : 'btn btn-outline';
-        document.getElementById('actionsSlidekiller').style.display = isSlide ? 'flex' : 'none';
-        document.getElementById('actionsVideoEditor').style.display = !isSlide ? 'flex' : 'none';
-        
-        if (isSlide) {
-            document.getElementById('hubModuleVideo').style.display = 'none';
-            if (slides.length > 0) {
-                document.getElementById('app').style.display = 'flex';
-                document.getElementById('setup').style.display = 'none';
-            } else {
-                document.getElementById('setup').style.display = 'block';
-                document.getElementById('app').style.display = 'none';
-            }
-        } else {
-            document.getElementById('setup').style.display = 'none';
-            document.getElementById('app').style.display = 'none';
-            document.getElementById('hubModuleVideo').style.display = 'flex';
-        }
-    }
-
-    function toggleVideoFullscreenRoot() {
-        const frame = document.getElementById('hubModuleVideo');
-        if (!document.fullscreenElement) {
-            frame.requestFullscreen().catch(() => {});
-        } else {
-            document.exitFullscreen().catch(() => {});
-        }
-    }
-
-    function openOpenCutEditor(preset) {
-        document.getElementById('videoHubWelcome').style.display = 'none';
-        document.getElementById('videoHubEditorWorkspace').style.display = 'flex';
-    }
-
-    function closeOpenCutEditor() {
-        document.getElementById('videoHubEditorWorkspace').style.display = 'none';
-        document.getElementById('videoHubWelcome').style.display = 'flex';
-    }
-</script>
+    <!-- Modal / Toast de Notificação -->
+    <div id="toast" class="toast"></div>
+  </main>
+
+  <script src="app.js?v=2.3.0"></script>
 </body>
 </html>

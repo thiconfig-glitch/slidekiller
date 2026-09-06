@@ -43,8 +43,8 @@ app.get('/api/health', (req, res) => {
   res.json({
     status: 'online',
     service: 'Central Multimídia Church',
-    version: '2.2.0',
-    modules: ['slidekiller', 'pdf-to-pptx', 'video-editor'],
+    version: '2.3.0',
+    modules: ['slidekiller', 'pdf-to-pptx', 'images-to-pptx', 'video-editor'],
     timestamp: new Date().toISOString()
   });
 });
