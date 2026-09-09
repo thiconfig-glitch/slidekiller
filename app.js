@@ -481,15 +481,26 @@ Retorne ESTRITAMENTE em formato JSON puro, sem crases ou markdown adicional:
       if (aiOcrProgressPercent) aiOcrProgressPercent.textContent = '40%';
       if (aiOcrProgressStatus) aiOcrProgressStatus.textContent = 'IA Gemini Vision interpretando fotos e versículos...';
 
-      const models = ['gemini-3.7-flash', 'gemini-3.5-flash-lite', 'gemini-3.6-flash', 'gemini-flash-latest'];
+      const models = [
+        'gemini-flash-lite-latest',
+        'gemini-flash-latest',
+        'gemini-3.1-flash-lite',
+        'gemini-3.5-flash-lite',
+        'gemini-3.6-flash',
+        'gemini-3.7-flash'
+      ];
       let responseJson = null;
       let lastError = null;
 
       for (const model of models) {
+        let timeoutId = null;
         try {
           if (aiOcrProgressStatus) aiOcrProgressStatus.textContent = `Consultando modelo de IA (${model})...`;
+          const controller = new AbortController();
+          timeoutId = setTimeout(() => controller.abort(), 20000);
           const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
             method: 'POST',
+            signal: controller.signal,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               contents: [{ parts }],
@@ -499,6 +510,7 @@ Retorne ESTRITAMENTE em formato JSON puro, sem crases ou markdown adicional:
               }
             })
           });
+          clearTimeout(timeoutId);
 
           const data = await res.json();
           if (data.error) {
@@ -513,6 +525,7 @@ Retorne ESTRITAMENTE em formato JSON puro, sem crases ou markdown adicional:
             break;
           }
         } catch (mErr) {
+          if (timeoutId) clearTimeout(timeoutId);
           console.warn(`Tentativa com modelo ${model} falhou:`, mErr);
           lastError = mErr.message;
         }
@@ -571,6 +584,158 @@ Retorne ESTRITAMENTE em formato JSON puro, sem crases ou markdown adicional:
     })
     .catch(() => {});
 
+  // Extração de texto de PDF no navegador caso backend offline
+  async function extractTextFromPdfInBrowser(file) {
+    if (typeof pdfjsLib === 'undefined') {
+      throw new Error('Biblioteca pdf.js não disponível no navegador.');
+    }
+    const arr = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arr }).promise;
+    let fullText = '';
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const tc = await page.getTextContent();
+      let lastY = null;
+      for (const item of tc.items) {
+        if (lastY !== null && Math.abs(item.transform[5] - lastY) > 5) fullText += '\n';
+        fullText += item.str;
+        lastY = item.transform[5];
+      }
+      fullText += '\n';
+    }
+    return fullText.trim();
+  }
+
+  // Parser com IA Gemini direto do navegador (fallback resiliente)
+  async function parseSermonWithGeminiBrowser(sermonText) {
+    const defaultKey = atob('QVEuQWI4Uk42Si1lTWMtdVdvWVlpMWpsVGw4WXVvZ3RTajhuTXE2VzdSdVl1Zk8zbi1LcXc=');
+    const apiKey = localStorage.getItem('GEMINI_API_KEY') || defaultKey;
+    const prompt = `Você é um especialista em design de slides de pregação e culto para projeção em igreja e telões de LED.
+Sua missão é transformar o texto de um sermão em uma sequência de SLIDES INDIVIDUAIS estruturados em JSON:
+1. QUEBRA DE VERSÍCULOS: 1 versículo por slide, entre aspas “ ... ”, com campo "reference" (ex: "Mateus 6:19").
+2. FRASES/TÓPICOS: Frases em maiúsculo ou princípios espirituais como type "topic". Frases de reflexão como type "reflection".
+3. PERGUNTAS: Perguntas curtas dramáticas como type "question_short".
+4. DESTAQUES: Divida em runs com highlight: true para palavras de ênfase.
+
+FORMATO DA RESPOSTA (ARRAY JSON):
+[
+  {
+    "type": "verse",
+    "reference": "Mateus 6:19",
+    "runs": [
+      { "text": "“Não ajunteis tesouros na terra... ", "highlight": false },
+      { "text": "onde os ladrões roubam;”", "highlight": true }
+    ]
+  }
+]
+
+TEXTO DO SERMÃO:
+${sermonText}`;
+
+    const models = [
+      'gemini-flash-lite-latest',
+      'gemini-flash-latest',
+      'gemini-3.1-flash-lite',
+      'gemini-3.5-flash-lite',
+      'gemini-3.6-flash',
+      'gemini-3.7-flash'
+    ];
+
+    let lastError = null;
+    for (const model of models) {
+      let timeoutId = null;
+      try {
+        const controller = new AbortController();
+        timeoutId = setTimeout(() => controller.abort(), 18000);
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+        const res = await fetch(url, {
+          method: 'POST',
+          signal: controller.signal,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            generationConfig: {
+              temperature: 0.1,
+              maxOutputTokens: 8192,
+              responseMimeType: 'application/json'
+            }
+          })
+        });
+        clearTimeout(timeoutId);
+        const data = await res.json();
+        if (data.error) {
+          lastError = data.error.message;
+          continue;
+        }
+        const rawJson = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (rawJson) {
+          const cleanJson = rawJson.replace(/```(?:json)?\s*/gi, '').replace(/```\s*$/g, '').trim();
+          const parsed = JSON.parse(cleanJson);
+          const list = Array.isArray(parsed) ? parsed : (parsed.slides || []);
+          if (list.length > 0) return list;
+        }
+      } catch (err) {
+        if (timeoutId) clearTimeout(timeoutId);
+        lastError = err.message;
+      }
+    }
+    throw new Error(lastError || 'Erro ao processar com IA Gemini');
+  }
+
+  // Parser offline local de sermão direto no navegador
+  function parseSermonOfflineBrowser(rawText) {
+    const lines = (rawText || '').split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+    const slides = [];
+    let curRef = '';
+
+    for (const line of lines) {
+      const refMatch = line.match(/^([1-3]?\s*[A-Za-zÀ-ÿ]+)\s+(\d+[:.,]\d+(?:[-–—]\d+)?)/i);
+      if (refMatch && line.length < 40) {
+        curRef = line;
+        continue;
+      }
+
+      const verseNumMatch = line.match(/^(\d{1,3})\s+(.*)/);
+      if (verseNumMatch) {
+        const num = verseNumMatch[1];
+        const vText = verseNumMatch[2].trim();
+        const baseBook = curRef ? curRef.split(/\s+\d+/)[0] : '';
+        const chapter = curRef ? (curRef.match(/\d+/) || [''])[0] : '';
+        const thisRef = baseBook && chapter ? `${baseBook} ${chapter}:${num}` : (curRef || '');
+
+        slides.push({
+          type: 'verse',
+          reference: thisRef,
+          runs: [{ text: `“${vText}”`, highlight: false }]
+        });
+        continue;
+      }
+
+      const lettersOnly = line.replace(/[^a-zA-ZÀ-ÿ]/g, '');
+      const uppercaseRatio = lettersOnly.length > 0 ? (line.match(/[A-ZÀ-Ý]/g) || []).length / lettersOnly.length : 0;
+      if (uppercaseRatio > 0.75 && line.length > 5) {
+        slides.push({
+          type: 'topic',
+          reference: '',
+          runs: [{ text: line, highlight: false }]
+        });
+        continue;
+      }
+
+      slides.push({
+        type: line.endsWith('?') ? 'question_short' : 'reflection',
+        reference: curRef,
+        runs: [{ text: line, highlight: false }]
+      });
+    }
+
+    return slides.length > 0 ? slides : [{
+      type: 'verse',
+      reference: 'Sermão',
+      runs: [{ text: rawText.substring(0, 200), highlight: false }]
+    }];
+  }
+
   // Ação de Geração de Slides
   if (btnGenerate) {
     btnGenerate.addEventListener('click', async () => {
@@ -608,7 +773,7 @@ Retorne ESTRITAMENTE em formato JSON puro, sem crases ou markdown adicional:
         const data = await res.json();
 
         if (!res.ok || data.error) {
-          throw new Error(data.error || 'Falha ao processar arquivo.');
+          throw new Error(data.error || 'Falha ao processar arquivo no servidor.');
         }
 
         currentSlides = data.slides || [];
@@ -618,18 +783,41 @@ Retorne ESTRITAMENTE em formato JSON puro, sem crases ou markdown adicional:
         renderResults();
 
       } catch (err) {
-        // Fallback local caso backend não esteja ativo (ex: GitHub Pages estático)
-        if (text && !currentFile) {
-          showToast('Modo estático: montando slides localmente...', 'info');
-          const lines = text.split('\n').filter(l => l.trim().length > 0);
-          currentSlides = lines.map(line => ({
-            type: 'versículo',
-            reference: 'Passagem Bíblica',
-            runs: [{ text: line.trim(), highlight: false }]
-          }));
+        console.warn('Backend indisponível ou falhou, ativando processamento local no navegador:', err.message);
+        showToast('Processando no navegador...', 'info');
+
+        try {
+          let extractedText = text;
+          if (currentFile) {
+            btnGenerate.innerHTML = '<span>📄</span> Extraindo texto do PDF no navegador...';
+            extractedText = await extractTextFromPdfInBrowser(currentFile);
+          }
+
+          if (!extractedText) {
+            throw new Error('Nenhum texto pôde ser extraído do PDF.');
+          }
+
+          if (checkUseAi && checkUseAi.checked) {
+            btnGenerate.innerHTML = '<span>🤖</span> IA Gemini validando estrutura dos slides...';
+            try {
+              currentSlides = await parseSermonWithGeminiBrowser(extractedText);
+              showToast(`🎉 ${currentSlides.length} slides validados com IA Gemini!`, 'success');
+            } catch (aiErr) {
+              console.warn('IA falhou, utilizando parser offline do navegador:', aiErr.message);
+              currentSlides = parseSermonOfflineBrowser(extractedText);
+              showToast(`⚡ ${currentSlides.length} slides montados pelo gerador offline!`, 'success');
+            }
+          } else {
+            currentSlides = parseSermonOfflineBrowser(extractedText);
+            showToast(`⚡ ${currentSlides.length} slides gerados instantaneamente!`, 'success');
+          }
+
+          currentDownloadUrl = null;
           renderResults();
-        } else {
-          showToast(err.message, 'error');
+
+        } catch (localErr) {
+          console.error('Erro no processamento local:', localErr);
+          showToast(localErr.message || 'Erro ao processar PDF.', 'error');
         }
       } finally {
         btnGenerate.disabled = false;

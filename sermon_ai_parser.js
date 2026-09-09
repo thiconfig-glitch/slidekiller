@@ -8,10 +8,19 @@ async function extractTextFromPdf(pdfBuffer) {
   return data.text;
 }
 
+const FALLBACK_MODELS = [
+  'gemini-flash-lite-latest',
+  'gemini-flash-latest',
+  'gemini-3.1-flash-lite',
+  'gemini-3.5-flash-lite',
+  'gemini-3.6-flash',
+  'gemini-3.7-flash'
+];
+
 /**
- * Parses sermon text into structured slide items using Gemini AI
+ * Parses sermon text into structured slide items using Gemini AI with resilient multi-model fallback
  */
-async function parseSermonWithGemini(sermonText, apiKey, model = 'gemini-3.7-flash') {
+async function parseSermonWithGemini(sermonText, apiKey, preferredModel = null) {
   const prompt = `Você é um especialista em design de slides de pregação e culto para projeção em igreja e telões de LED.
 Sua missão é transformar o texto/esboço de um sermão enviado pelo pastor em uma sequência de SLIDES INDIVIDUAIS estruturados em JSON, seguindo rigorosamente as seguintes REGRAS DE OURO:
 
@@ -65,39 +74,65 @@ Responda APENAS com um array JSON válido (sem blocos de código markdown adicio
 ${sermonText}
 `;
 
-  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  const models = preferredModel
+    ? [preferredModel, ...FALLBACK_MODELS.filter(m => m !== preferredModel)]
+    : FALLBACK_MODELS;
 
-  const res = await fetch(apiUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig: {
-        temperature: 0.2,
-        maxOutputTokens: 8192,
-        responseMimeType: 'application/json'
+  let lastError = null;
+
+  for (const model of models) {
+    let timeoutId = null;
+    try {
+      const controller = new AbortController();
+      timeoutId = setTimeout(() => controller.abort(), 20000);
+
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+      const res = await fetch(apiUrl, {
+        method: 'POST',
+        signal: controller.signal,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.1,
+            maxOutputTokens: 8192,
+            responseMimeType: 'application/json'
+          }
+        })
+      });
+
+      clearTimeout(timeoutId);
+
+      const data = await res.json();
+      if (data.error) {
+        console.warn(`[Gemini AI] Modelo ${model} retornou erro:`, data.error.message);
+        lastError = data.error.message;
+        continue;
       }
-    })
-  });
 
-  const data = await res.json();
-  if (data.error) {
-    throw new Error(data.error.message || 'Erro ao chamar a API Gemini');
+      const rawJson = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!rawJson) {
+        lastError = `Modelo ${model} retornou resposta vazia.`;
+        continue;
+      }
+
+      const cleanJson = rawJson.replace(/```(?:json)?\s*/gi, '').replace(/```\s*$/g, '').trim();
+      const parsed = JSON.parse(cleanJson);
+      const list = Array.isArray(parsed) ? parsed : (parsed.slides || []);
+
+      if (list.length > 0) {
+        console.log(`[Gemini AI] Sucesso com o modelo ${model}: ${list.length} slides estruturados.`);
+        return list;
+      }
+    } catch (err) {
+      if (timeoutId) clearTimeout(timeoutId);
+      console.warn(`[Gemini AI] Falha na tentativa com modelo ${model}:`, err.message);
+      lastError = err.message;
+    }
   }
 
-  const rawJson = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!rawJson) {
-    throw new Error('Nenhuma resposta recebida do modelo.');
-  }
-
-  try {
-    const parsed = JSON.parse(rawJson);
-    return Array.isArray(parsed) ? parsed : (parsed.slides || []);
-  } catch (err) {
-    // Fallback: extract json from codeblocks if any
-    const clean = rawJson.replace(/```json/g, '').replace(/```/g, '').trim();
-    return JSON.parse(clean);
-  }
+  throw new Error(lastError || 'Não foi possível validar os slides com a IA Gemini em nenhum dos modelos disponíveis.');
 }
 
 module.exports = { extractTextFromPdf, parseSermonWithGemini };
