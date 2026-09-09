@@ -1606,13 +1606,13 @@ ${rawExtractedSermonText || slides.map(s => s.elements.map(e => e.content).join(
     function fmtQuote(t) { let x=t.trim(); if(!x.startsWith('“')&&!x.startsWith('"')) x='“'+x; if(!x.endsWith('”')&&!x.endsWith('"')) x=x.replace(/[.]+$/,'')+'”'; return x; }
     function genId() { return 'el_' + Math.random().toString(36).substr(2,9); }
 
-    function newSlide(type) { return { id:'s_'+genId(), bgImage:globalBgData || 'assets/church_sermon_bg.jpg', bgColor:'#FFFFFF', type:type, elements:[] }; }
+    function newSlide(type) { return { id:'s_'+genId(), bgImage:globalBgData || 'assets/church_sermon_bg.jpg', bgColor:'#000000', type:type, elements:[] }; }
     function newTextEl(txt, isR, type) {
-        let fz=44, ff='Bahnschrift SemiBold Condensed', col='#000000', al='left', y=76, h=345, sh='none', strk='none';
+        let fz=44, ff='Bahnschrift SemiBold Condensed', col='#ffffff', al='left', y=76, h=345, sh='dark', strk='none';
         if(isR) { fz=42; ff='Bebas Neue'; col='#E8B859'; y=441; h=76; }
-        else if(type==='topic') { fz=64; ff='Bebas Neue'; col='#000000'; al='center'; y=180; h=180; }
-        else if(type==='reflection') { fz=56; ff='Bebas Neue'; col='#000000'; al='center'; y=150; }
-        else if(type==='question_short') { fz=90; ff='Bebas Neue'; col='#000000'; al='center'; y=150; }
+        else if(type==='topic') { fz=64; ff='Bebas Neue'; col='#ffffff'; al='center'; y=180; h=180; }
+        else if(type==='reflection') { fz=56; ff='Bebas Neue'; col='#ffffff'; al='center'; y=150; }
+        else if(type==='question_short') { fz=90; ff='Bebas Neue'; col='#ffffff'; al='center'; y=150; }
         else { if(txt.length<70) fz=52; else if(txt.length>160) fz=38; }
         return {
             id: genId(), type: 'text', name: isR ? 'Referência Bíblica' : (type==='topic' ? 'Título do Tópico' : 'Texto Principal'), content: txt,
@@ -2097,7 +2097,7 @@ ${rawExtractedSermonText || slides.map(s => s.elements.map(e => e.content).join(
                             options: {
                                 fontFace: ff,
                                 fontSize: el.fontSize || 44,
-                                color: r.highlight ? 'E8B859' : (el.color || '#000000').replace('#',''),
+                                color: r.highlight ? 'E8B859' : (el.color || '#ffffff').replace('#',''),
                                 bold: !!el.bold,
                                 italic: !!el.italic
                             }
