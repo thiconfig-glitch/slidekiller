@@ -597,7 +597,38 @@ Retorne ESTRITAMENTE em formato JSON puro, sem crases ou markdown adicional:
       const page = await pdf.getPage(i);
       const tc = await page.getTextContent();
 
-      // 1. Identificar a fonte principal do corpo de texto (a mais frequente na página)
+      // 1. Detectar cores explícitas (amarelo/dourado/laranja) do operador de desenho
+      const coloredStrings = new Set();
+      try {
+        const opList = await page.getOperatorList();
+        let curColor = [0, 0, 0];
+        for (let j = 0; j < opList.fnArray.length; j++) {
+          const fn = opList.fnArray[j];
+          const args = opList.argsArray[j];
+          if (fn === 59 || fn === 58 || fn === 54 || fn === 55 || fn === 52 || fn === 53) {
+            curColor = args;
+          } else if (fn === 44 || fn === 45) {
+            const isYellowOrGold = curColor && (
+              (curColor[0] > 110 && curColor[1] > 50 && (curColor[2] < 180 || curColor[0] > curColor[2])) ||
+              (curColor[0] > 0.40 && curColor[1] > 0.20 && (curColor[2] < 0.70 || curColor[0] > curColor[2]))
+            );
+            if (isYellowOrGold) {
+              let s = '';
+              if (Array.isArray(args[0])) {
+                s = args[0].map(it => (typeof it === 'object' ? (it.unicode || it.fontChar || '') : '')).join('');
+              } else if (typeof args[0] === 'string') {
+                s = args[0];
+              }
+              const clean = s.trim();
+              if (clean.length > 1 && !/^[⸻\-_\s:?.,;()0-9"“”'’/]+$/.test(clean)) {
+                coloredStrings.add(clean);
+              }
+            }
+          }
+        }
+      } catch (opErr) {}
+
+      // 2. Identificar a fonte principal do corpo de texto (a mais frequente na página)
       const fontCounts = {};
       tc.items.forEach(it => {
         if (!it.str.trim()) return;
@@ -623,7 +654,8 @@ Retorne ESTRITAMENTE em formato JSON puro, sem crases ou markdown adicional:
         const trimmed = item.str.trim();
         const isDivider = /^[⸻\-_\s]{3,}$/.test(trimmed);
         const isPunctuationOnly = /^[⸻\-_\s:?.,;()0-9"“”'’/]+$/.test(trimmed);
-        const isHighlight = (item.fontName !== mainFont) && trimmed.length > 0 && !isPunctuationOnly && !isDivider;
+        const isColoredByOp = coloredStrings.has(trimmed) || Array.from(coloredStrings).some(cs => cs.includes(trimmed) || (trimmed.length > 3 && trimmed.includes(cs)));
+        const isHighlight = ((item.fontName !== mainFont) || isColoredByOp) && trimmed.length > 0 && !isPunctuationOnly && !isDivider;
 
         if (isHighlight) {
           pageText += `[HL]${item.str}[/HL]`;
@@ -636,7 +668,7 @@ Retorne ESTRITAMENTE em formato JSON puro, sem crases ou markdown adicional:
       fullText += pageText + '\n';
     }
 
-    // 2. Normalizar tags: unir contíguas e resolver quebras de linha internas
+    // 3. Normalizar tags: unir contíguas e resolver quebras de linha internas
     let cleanText = fullText
       .replace(/\[\/HL\](\s*)\[HL\]/g, '$1')
       .replace(/\[HL\]([\s\S]*?)\[\/HL\]/g, (m, inner) => '[HL]' + inner.replace(/\r?\n/g, ' ') + '[/HL]');
