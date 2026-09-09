@@ -22,55 +22,57 @@ const FALLBACK_MODELS = [
  */
 async function parseSermonWithGemini(sermonText, apiKey, preferredModel = null) {
   const prompt = `Você é um especialista em design de slides de pregação e culto para projeção em igreja e telões de LED.
-Sua missão é transformar o texto/esboço de um sermão enviado pelo pastor em uma sequência de SLIDES INDIVIDUAIS estruturados em JSON, seguindo rigorosamente as seguintes REGRAS DE OURO:
+Sua missão é transformar o texto/esboço de um sermão enviado pelo pastor em uma sequência de SLIDES INDIVIDUAIS estruturados em JSON, seguindo rigorosamente as seguintes REGRAS:
 
-### REGRAS DE OURO:
+### REGRA CRÍTICA E OBRIGATÓRIA:
+NÃO OMITA, NÃO RESUMA E NÃO EXCLUA NENHUM PARÁGRAFO OU FRASE!
+Todo o conteúdo do sermão (introduções pastorais, reflexões, comentários, tópicos e versículos bíblicos) deve ser transformado em slides na íntegra.
+Se houver marcações [HL]...[/HL] no texto, você DEVE preservar esses trechos com "highlight": true.
+
 1. **QUEBRA DE VERSÍCULOS (1 VERSÍCULO POR SLIDE)**:
    - NUNCA coloque múltiplos versículos juntos em um único slide.
-   - Se o pastor escreveu "Mateus 6:19-21", você DEVE criar 3 slides distintos:
-     - Slide 1: Texto do versículo 19, com referência "Mateus 6:19"
-     - Slide 2: Texto do versículo 20, com referência "Mateus 6:20"
-     - Slide 3: Texto do versículo 21, com referência "Mateus 6:21"
+   - Se o pastor escreveu "Mateus 6:19-21", você DEVE criar 3 slides distintos com referência "Mateus 6:19", "Mateus 6:20", etc.
+   - Se o versículo vier antes da referência (ex: texto nas primeiras linhas e "Mateus 6:24" na linha seguinte), conecte a referência ao versículo.
    - Todo versículo DEVE começar e terminar com aspas tipográficas “ ... ”.
 
-2. **FRASES DE IMPACTO, TÓPICOS E PRINCÍPIOS (type: 'topic' ou 'reflection')**:
-   - Frases em CAIXA ALTA ou princípios espirituais (ex: "NÃO DEIXE A ANSIEDADE ROUBAR A CONFIANÇA:") devem ser slides do tipo "topic".
-   - Frases de reflexão curtas (ex: "Poucos conseguem manter a fé quando a situação piora.") devem ser slides do tipo "reflection".
+2. **FRASES DE IMPACTO, TÓPICOS E PRINCÍPIOS (type: 'topic')**:
+   - Títulos de seções, pontos numerados (ex: "8. O Servo no Reino de Deus") ou cabeçalhos em maiúsculo devem ser slides do tipo "topic".
 
-3. **PERGUNTAS CURTAS DE CHOQUE (type: 'question_short')**:
-   - Perguntas curtas dramáticas (ex: "E Jairo?") devem ter type "question_short".
+3. **COMENTÁRIOS E INTRODUÇÕES PASTORAIS (type: 'reflection')**:
+   - Todos os parágrafos explicativos e frases do pregador devem virar slides do tipo "reflection". Se o parágrafo for longo, divida em 2 slides para caber na tela, mas NUNCA resuma ou corte nenhuma palavra!
 
-4. **DESTAQUES EM PALAVRAS-CHAVE (highlight: true/false)**:
-   - Divida o texto de cada slide em 'runs' (fragmentos).
-   - Defina 'highlight: true' para as palavras que merecem ênfase (como termos em destaque pelo pastor, promessas, palavras de fé ou verbos fortes). As demais com 'highlight: false'.
-   - Para o tipo "verse", a propriedade 'reference' conterá a referência (ex: "Mateus 6:19" ou "PROVÉRBIOS 3:5").
+4. **PERGUNTAS CURTAS DE CHOQUE (type: 'question_short')**:
+   - Perguntas curtas dramáticas devem ter type "question_short".
+
+5. **DESTAQUES EM PALAVRAS-CHAVE (highlight: true/false)**:
+   - Divida o texto de cada slide em 'runs' (fragmentos), marcando palavras de ênfase (ou onde houver [HL]...[/HL]) com highlight: true.
 
 ### FORMATO DA RESPOSTA:
-Responda APENAS com um array JSON válido (sem blocos de código markdown adicionais se possível, ou dentro de [ ... ]), com a seguinte estrutura:
+Responda APENAS com um array JSON válido, com a seguinte estrutura:
 [
-  {
-    "type": "verse",
-    "reference": "Mateus 6:19",
-    "runs": [
-      { "text": "“Não ajunteis tesouros na terra, onde a traça e a ferrugem tudo consomem, e onde ", "highlight": false },
-      { "text": "os ladrões minam e roubam;”", "highlight": true }
-    ]
-  },
-  {
-    "type": "question_short",
-    "runs": [
-      { "text": "E Jairo?", "highlight": false }
-    ]
-  },
   {
     "type": "topic",
     "runs": [
-      { "text": "NÃO DEIXE A ANSIEDADE ROUBAR A CONFIANÇA:", "highlight": false }
+      { "text": "8. O Servo no Reino de Deus", "highlight": false }
+    ]
+  },
+  {
+    "type": "verse",
+    "reference": "Mateus 6:24",
+    "runs": [
+      { "text": "“Ninguém pode servir a dois senhores; porque ou há de odiar um e amar o outro... ", "highlight": false },
+      { "text": "Não podeis servir a Deus e a Mamom.”", "highlight": true }
+    ]
+  },
+  {
+    "type": "reflection",
+    "runs": [
+      { "text": "Quem pertence ao Reino de Deus não pode dividir o coração entre dois senhores.", "highlight": false }
     ]
   }
 ]
 
-### TEXTO DO SERMÃO DO PASTOR:
+### TEXTO COMPLETO DO SERMÃO DO PASTOR:
 ${sermonText}
 `;
 
@@ -120,8 +122,17 @@ ${sermonText}
       const cleanJson = rawJson.replace(/```(?:json)?\s*/gi, '').replace(/```\s*$/g, '').trim();
       const parsed = JSON.parse(cleanJson);
       const list = Array.isArray(parsed) ? parsed : (parsed.slides || []);
-
       if (list.length > 0) {
+        list.forEach(s => {
+          if (s.runs && Array.isArray(s.runs)) {
+            s.runs.forEach(r => {
+              if (r.text) {
+                if (r.text.includes('[HL]')) r.highlight = true;
+                r.text = r.text.replace(/\[\/?HL\]/g, '');
+              }
+            });
+          }
+        });
         console.log(`[Gemini AI] Sucesso com o modelo ${model}: ${list.length} slides estruturados.`);
         return list;
       }
