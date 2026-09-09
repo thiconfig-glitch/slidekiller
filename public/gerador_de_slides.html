@@ -913,6 +913,9 @@
                 }
                 fullText += "\n";
             }
+            fullText = fullText
+                .replace(/\[\/HL\](\s*)\[HL\]/g, '$1')
+                .replace(/\[HL\]([\s\S]*?)\[\/HL\]/g, (m, inner) => '[HL]' + inner.replace(/\r?\n/g, ' ') + '[/HL]');
             rawExtractedSermonText = fullText;
             slides = parseSermon(fullText);
             setup.style.display = 'none'; 
@@ -1590,6 +1593,7 @@ ${rawExtractedSermonText || slides.map(s => s.elements.map(e => e.content).join(
         if (trimmed.length < 3) return false;
         if (isRef(trimmed)) return false;
         if (trimmed.endsWith(':') && trimmed.length < 80) return true;
+        if (/^\d{1,2}[\.\)]\s+[A-ZÀ-Ý]/.test(trimmed) && trimmed.length < 85) return true;
         const letters = trimmed.replace(/[^a-zA-ZÀ-ÿ]/g, '');
         if (letters.length >= 4) {
             const up = (trimmed.match(/[A-ZÀ-Ý]/g) || []).length;
