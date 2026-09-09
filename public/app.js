@@ -584,7 +584,7 @@ Retorne ESTRITAMENTE em formato JSON puro, sem crases ou markdown adicional:
     })
     .catch(() => {});
 
-  // Extração de texto de PDF no navegador caso backend offline
+  // Extração de texto de PDF no navegador com detecção de destaques/cores originais
   async function extractTextFromPdfInBrowser(file) {
     if (typeof pdfjsLib === 'undefined') {
       throw new Error('Biblioteca pdf.js não disponível no navegador.');
@@ -592,18 +592,56 @@ Retorne ESTRITAMENTE em formato JSON puro, sem crases ou markdown adicional:
     const arr = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arr }).promise;
     let fullText = '';
+
     for (let i = 1; i <= pdf.numPages; i++) {
       const page = await pdf.getPage(i);
       const tc = await page.getTextContent();
+
+      // 1. Identificar a fonte principal do corpo de texto (a mais frequente na página)
+      const fontCounts = {};
+      tc.items.forEach(it => {
+        if (!it.str.trim()) return;
+        fontCounts[it.fontName] = (fontCounts[it.fontName] || 0) + it.str.length;
+      });
+
+      let mainFont = null;
+      let maxCount = -1;
+      for (const f in fontCounts) {
+        if (fontCounts[f] > maxCount) {
+          maxCount = fontCounts[f];
+          mainFont = f;
+        }
+      }
+
       let lastY = null;
+      let pageText = '';
       for (const item of tc.items) {
-        if (lastY !== null && Math.abs(item.transform[5] - lastY) > 5) fullText += '\n';
-        fullText += item.str;
+        if (lastY !== null && Math.abs(item.transform[5] - lastY) > 5) {
+          pageText += '\n';
+        }
+
+        const trimmed = item.str.trim();
+        const isDivider = /^[⸻\-_\s]{3,}$/.test(trimmed);
+        const isPunctuationOnly = /^[⸻\-_\s:?.,;()0-9"“”'’/]+$/.test(trimmed);
+        const isHighlight = (item.fontName !== mainFont) && trimmed.length > 0 && !isPunctuationOnly && !isDivider;
+
+        if (isHighlight) {
+          pageText += `[HL]${item.str}[/HL]`;
+        } else {
+          pageText += item.str;
+        }
         lastY = item.transform[5];
       }
-      fullText += '\n';
+
+      fullText += pageText + '\n';
     }
-    return fullText.trim();
+
+    // 2. Normalizar tags: unir contíguas e resolver quebras de linha internas
+    let cleanText = fullText
+      .replace(/\[\/HL\](\s*)\[HL\]/g, '$1')
+      .replace(/\[HL\]([\s\S]*?)\[\/HL\]/g, (m, inner) => '[HL]' + inner.replace(/\r?\n/g, ' ') + '[/HL]');
+
+    return cleanText.trim();
   }
 
   // Parser com IA Gemini direto do navegador (fallback resiliente)
@@ -712,10 +750,11 @@ ${sermonText}`;
   }
 
   function isHeadingOrTopic(line) {
-    const trimmed = (line || '').replace(/^[⸻\-_\s*#]+|[⸻\-_\s*#]+$/g, '').trim();
+    const trimmed = (line || '').replace(/\[\/?HL\]/g, '').replace(/^[⸻\-_\s*#]+|[⸻\-_\s*#]+$/g, '').trim();
     if (trimmed.length < 3) return false;
     if (isBibleRef(trimmed)) return false;
     if (trimmed.endsWith(':') && trimmed.length < 80) return true;
+    if (/^\d{1,2}[\.\)]\s+[A-ZÀ-Ý]/.test(trimmed) && trimmed.length < 85) return true;
     const letters = trimmed.replace(/[^a-zA-ZÀ-ÿ]/g, '');
     if (letters.length >= 4) {
       const uppercaseLetters = (trimmed.match(/[A-ZÀ-Ý]/g) || []).length;
@@ -746,6 +785,30 @@ ${sermonText}`;
     return t;
   }
 
+  function buildRunsFromText(text) {
+    if (!text) return [{ text: '', highlight: false }];
+    if (text.includes('[HL]')) {
+      const regex = /\[HL\](.*?)\[\/HL\]/gis;
+      const runs = [];
+      let lastIdx = 0;
+      let m;
+      while ((m = regex.exec(text)) !== null) {
+        if (m.index > lastIdx) {
+          runs.push({ text: text.substring(lastIdx, m.index), highlight: false });
+        }
+        if (m[1].length > 0) {
+          runs.push({ text: m[1], highlight: true });
+        }
+        lastIdx = m.index + m[0].length;
+      }
+      if (lastIdx < text.length) {
+        runs.push({ text: text.substring(lastIdx), highlight: false });
+      }
+      return runs.filter(r => r.text.length > 0);
+    }
+    return highlightKeywords(text);
+  }
+
   function highlightKeywords(text) {
     const highlightRegex = /(não temas,?\s*crê somente|quem me tocou\??|não o faria\??|não o confirmaria\??|angústia de espírito|tendo-os feito sair|teu coração|não se apóie|os teus bens|os teus celeiros|transbordarão|talitá cumi|prostrou-se|um dos principais da sinagoga|despendido tudo quanto tinha|não ajunteis tesouros|ajuntai tesouros|honra ao senhor|confia no senhor|obedecer é melhor|obedeça à palavra|palavra do senhor|casa do senhor|voluntariamente|transgressões|amor de mim|não me lembro|prosperarão|buscarei o teu bem|morar na casa do senhor|contemplar a formosura|inquirir no seu templo|senhor|jesus|deus)/gi;
     const runs = [];
@@ -769,7 +832,7 @@ ${sermonText}`;
     const rawLines = normalized
       .split(/\r?\n/)
       .map(l => l.replace(/^[⸻\-_\s]+|[⸻\-_\s]+$/g, '').trim())
-      .filter(l => l.length > 0);
+      .filter(l => l.length > 0 && !/^[⸻\-_\s]{3,}$/.test(l));
 
     const slides = [];
     let i = 0;
@@ -779,20 +842,21 @@ ${sermonText}`;
 
       // 1. Tópico / Cabeçalho
       if (isHeadingOrTopic(line)) {
-        const cleanTitle = line.replace(/^[⸻\-_\s*#]+|[⸻\-_\s*#]+$/g, '').trim();
+        const cleanTitle = line.replace(/\[\/?HL\]/g, '').replace(/^[⸻\-_\s*#]+|[⸻\-_\s*#]+$/g, '').trim();
         slides.push({
           type: 'topic',
-          runs: [{ text: cleanTitle, highlight: false }]
+          runs: buildRunsFromText(cleanTitle)
         });
         i++;
         continue;
       }
 
       // 2. Pergunta retórica curta
-      if (line.endsWith('?') && line.length <= 25 && !isBibleRef(line)) {
+      const strippedQ = line.replace(/\[\/?HL\]/g, '').trim();
+      if (strippedQ.endsWith('?') && strippedQ.length <= 35 && !isBibleRef(line)) {
         slides.push({
           type: 'question_short',
-          runs: [{ text: line, highlight: false }]
+          runs: buildRunsFromText(strippedQ)
         });
         i++;
         continue;
@@ -809,7 +873,7 @@ ${sermonText}`;
           i < rawLines.length &&
           !isPureBibleRefLine(rawLines[i]) &&
           !isHeadingOrTopic(rawLines[i]) &&
-          !(rawLines[i].endsWith('?') && rawLines[i].length <= 25)
+          !(rawLines[i].replace(/\[\/?HL\]/g, '').trim().endsWith('?') && rawLines[i].replace(/\[\/?HL\]/g, '').trim().length <= 35)
         ) {
           const emb = isBibleRef(rawLines[i]);
           if (emb && rawLines[i].length > emb.length + 12) break;
@@ -818,11 +882,11 @@ ${sermonText}`;
         }
 
         const combinedText = verseLines.join('\n');
-        const numberedRegex = /(?:^|\n)\s*(\d{1,3})\s+([A-ZÀ-Ý“"a-z])/;
+        const numberedRegex = /(?:^|\n)\s*(\d{1,3})\s+([A-ZÀ-Ý“"a-z\[])/;
         const hasNumberedVerses = numberedRegex.test(combinedText);
 
         if (hasNumberedVerses) {
-          const chunks = combinedText.split(/(?=(?:^|\n)\s*\d{1,3}\s+[A-ZÀ-Ý“"])/).filter(s => s.trim().length > 0);
+          const chunks = combinedText.split(/(?=(?:^|\n)\s*\d{1,3}\s+[A-ZÀ-Ý“"\[])/).filter(s => s.trim().length > 0);
           const bookAndChap = baseRef.split(/[:.,]/)[0];
 
           chunks.forEach(chunk => {
@@ -834,29 +898,38 @@ ${sermonText}`;
               slides.push({
                 type: 'verse',
                 reference: `${bookAndChap}:${vNum}`,
-                runs: highlightKeywords(vText)
+                runs: buildRunsFromText(vText)
               });
             } else {
               let vText = formatQuotes(chunk.replace(/\n+/g, ' ').trim());
               slides.push({
                 type: 'verse',
                 reference: baseRef,
-                runs: highlightKeywords(vText)
+                runs: buildRunsFromText(vText)
               });
             }
           });
         } else {
           if (verseLines.length > 0) {
-            verseLines.forEach(vL => {
-              let vText = formatQuotes(vL.trim());
-              if (vText.length > 3) {
-                slides.push({
-                  type: 'verse',
-                  reference: baseRef,
-                  runs: highlightKeywords(vText)
-                });
-              }
-            });
+            const joined = verseLines.join(' ').replace(/\s+/g, ' ').trim();
+            if (joined.length <= 260) {
+              slides.push({
+                type: 'verse',
+                reference: baseRef,
+                runs: buildRunsFromText(formatQuotes(joined))
+              });
+            } else {
+              verseLines.forEach(vL => {
+                let vText = formatQuotes(vL.trim());
+                if (vText.length > 15) {
+                  slides.push({
+                    type: 'verse',
+                    reference: baseRef,
+                    runs: buildRunsFromText(vText)
+                  });
+                }
+              });
+            }
           }
         }
         continue;
@@ -869,7 +942,7 @@ ${sermonText}`;
         slides.push({
           type: 'verse',
           reference: normalizeBibleRefName(trailingRef),
-          runs: highlightKeywords(vText)
+          runs: buildRunsFromText(vText)
         });
         i++;
         continue;
@@ -878,7 +951,7 @@ ${sermonText}`;
       // 5. Linha de reflexão / texto livre
       slides.push({
         type: 'reflection',
-        runs: highlightKeywords(line)
+        runs: buildRunsFromText(line)
       });
       i++;
     }
