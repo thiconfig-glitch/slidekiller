@@ -885,7 +885,38 @@
                 const page = await pdf.getPage(i);
                 const tc = await page.getTextContent();
                 
-                // Contar frequência de cada fonte para identificar o corpo de texto principal
+                // 1. Detectar cores explícitas (amarelo/dourado/laranja) do operador de desenho
+                const coloredStrings = new Set();
+                try {
+                    const opList = await page.getOperatorList();
+                    let curColor = [0, 0, 0];
+                    for (let j = 0; j < opList.fnArray.length; j++) {
+                        const fn = opList.fnArray[j];
+                        const args = opList.argsArray[j];
+                        if (fn === 59 || fn === 58 || fn === 54 || fn === 55 || fn === 52 || fn === 53) {
+                            curColor = args;
+                        } else if (fn === 44 || fn === 45) {
+                            const isYellowOrGold = curColor && (
+                                (curColor[0] > 110 && curColor[1] > 50 && (curColor[2] < 180 || curColor[0] > curColor[2])) ||
+                                (curColor[0] > 0.40 && curColor[1] > 0.20 && (curColor[2] < 0.70 || curColor[0] > curColor[2]))
+                            );
+                            if (isYellowOrGold) {
+                                let s = '';
+                                if (Array.isArray(args[0])) {
+                                    s = args[0].map(it => (typeof it === 'object' ? (it.unicode || it.fontChar || '') : '')).join('');
+                                } else if (typeof args[0] === 'string') {
+                                    s = args[0];
+                                }
+                                const clean = s.trim();
+                                if (clean.length > 1 && !/^[⸻\-_\s:?.,;()0-9"“”'’/]+$/.test(clean)) {
+                                    coloredStrings.add(clean);
+                                }
+                            }
+                        }
+                    }
+                } catch (opErr) {}
+
+                // 2. Contar frequência de cada fonte para identificar o corpo de texto principal
                 const fontCounts = {};
                 tc.items.forEach(it => {
                     if (!it.str.trim()) return;
@@ -903,7 +934,10 @@
                 let lastY = null;
                 for(let item of tc.items) {
                     if(lastY !== null && Math.abs(item.transform[5] - lastY) > 5) fullText += "\n";
-                    const isHL = item.fontName !== mainFont && item.str.trim().length > 1 && !/^[⸻\-_\s:?.,;]+$/.test(item.str);
+                    const trimmed = item.str.trim();
+                    const isPunctuationOnly = /^[⸻\-_\s:?.,;()0-9"“”'’/]+$/.test(trimmed);
+                    const isColoredByOp = coloredStrings.has(trimmed) || Array.from(coloredStrings).some(cs => cs.includes(trimmed) || (trimmed.length > 3 && trimmed.includes(cs)));
+                    const isHL = ((item.fontName !== mainFont) || isColoredByOp) && trimmed.length > 0 && !isPunctuationOnly;
                     if (isHL) {
                         fullText += `[HL]${item.str}[/HL]`;
                     } else {
