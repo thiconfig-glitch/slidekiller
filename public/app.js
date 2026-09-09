@@ -648,7 +648,7 @@ Retorne ESTRITAMENTE em formato JSON puro, sem crases ou markdown adicional:
       let pageText = '';
       for (const item of tc.items) {
         if (lastY !== null && Math.abs(item.transform[5] - lastY) > 5) {
-          pageText += '\n';
+          pageText += (Math.abs(item.transform[5] - lastY) > 16) ? '\n\n' : '\n';
         }
 
         const trimmed = item.str.trim();
@@ -665,7 +665,7 @@ Retorne ESTRITAMENTE em formato JSON puro, sem crases ou markdown adicional:
         lastY = item.transform[5];
       }
 
-      fullText += pageText + '\n';
+      fullText += pageText + '\n\n';
     }
 
     // 3. Normalizar tags: unir contíguas e resolver quebras de linha internas
@@ -681,25 +681,44 @@ Retorne ESTRITAMENTE em formato JSON puro, sem crases ou markdown adicional:
     const defaultKey = atob('QVEuQWI4Uk42Si1lTWMtdVdvWVlpMWpsVGw4WXVvZ3RTajhuTXE2VzdSdVl1Zk8zbi1LcXc=');
     const apiKey = localStorage.getItem('GEMINI_API_KEY') || defaultKey;
     const prompt = `Você é um especialista em design de slides de pregação e culto para projeção em igreja e telões de LED.
-Sua missão é transformar o texto de um sermão em uma sequência de SLIDES INDIVIDUAIS estruturados em JSON:
-1. QUEBRA DE VERSÍCULOS: 1 versículo por slide, entre aspas “ ... ”, com campo "reference" (ex: "Mateus 6:19").
-2. FRASES/TÓPICOS: Frases em maiúsculo ou princípios espirituais como type "topic". Frases de reflexão como type "reflection".
-3. PERGUNTAS: Perguntas curtas dramáticas como type "question_short".
-4. DESTAQUES: Divida em runs com highlight: true para palavras de ênfase.
+Sua missão é transformar o texto de um sermão em uma sequência de SLIDES INDIVIDUAIS estruturados em JSON.
+
+REGRA MÁXIMA E OBRIGATÓRIA:
+NÃO OMITA, NÃO RESUMA E NÃO EXCLUA NENHUM PARÁGRAFO OU FRASE!
+Todo o conteúdo do sermão (introduções pastorais, reflexões, comentários, tópicos e versículos bíblicos) deve ser transformado em slides na íntegra.
+Se houver marcações [HL]...[/HL] no texto, você DEVE preservar esses trechos com "highlight": true.
+
+1. QUEBRA DE VERSÍCULOS: 1 versículo por slide, entre aspas “ ... ”, com campo "reference" (ex: "Mateus 6:19"). Se houver versículos com a referência bíblica na linha seguinte, conecte-os ao versículo!
+2. TÓPICOS E TÍTULOS: Títulos de seções, pontos numerados ou cabeçalhos (ex: "Armadura do Reino de Deus (8)", "8. O Servo no Reino de Deus") como type "topic".
+3. PARÁGRAFOS E REFLEXÕES: Todas as frases, introduções e comentários do pregador como type "reflection" (se o parágrafo for longo, divida em 2 slides para caber na tela, mas NUNCA resuma ou exclua nenhuma palavra!).
+4. PERGUNTAS: Perguntas reflexivas curtas como type "question_short".
+5. DESTAQUES: Divida em runs com highlight: true para palavras de ênfase (ou onde houver [HL]...[/HL]).
 
 FORMATO DA RESPOSTA (ARRAY JSON):
 [
   {
-    "type": "verse",
-    "reference": "Mateus 6:19",
+    "type": "topic",
     "runs": [
-      { "text": "“Não ajunteis tesouros na terra... ", "highlight": false },
-      { "text": "onde os ladrões roubam;”", "highlight": true }
+      { "text": "8. O Servo no Reino de Deus", "highlight": false }
+    ]
+  },
+  {
+    "type": "verse",
+    "reference": "Mateus 6:24",
+    "runs": [
+      { "text": "“Ninguém pode servir a dois senhores; porque ou há de odiar um e amar o outro, ou se dedicará a um e desprezará o outro. ", "highlight": false },
+      { "text": "Não podeis servir a Deus e a Mamom.”", "highlight": true }
+    ]
+  },
+  {
+    "type": "reflection",
+    "runs": [
+      { "text": "Quem pertence ao Reino de Deus não pode dividir o coração entre dois senhores.", "highlight": false }
     ]
   }
 ]
 
-TEXTO DO SERMÃO:
+TEXTO COMPLETO DO SERMÃO:
 ${sermonText}`;
 
     const models = [
@@ -742,7 +761,20 @@ ${sermonText}`;
           const cleanJson = rawJson.replace(/```(?:json)?\s*/gi, '').replace(/```\s*$/g, '').trim();
           const parsed = JSON.parse(cleanJson);
           const list = Array.isArray(parsed) ? parsed : (parsed.slides || []);
-          if (list.length > 0) return list;
+          if (list.length > 0) {
+            // Sanitize runs: ensure [HL] tags are cleanly stripped from text
+            list.forEach(s => {
+              if (s.runs && Array.isArray(s.runs)) {
+                s.runs.forEach(r => {
+                  if (r.text) {
+                    if (r.text.includes('[HL]')) r.highlight = true;
+                    r.text = r.text.replace(/\[\/?HL\]/g, '');
+                  }
+                });
+              }
+            });
+            return list;
+          }
         }
       } catch (err) {
         if (timeoutId) clearTimeout(timeoutId);
@@ -787,12 +819,57 @@ ${sermonText}`;
     if (isBibleRef(trimmed)) return false;
     if (trimmed.endsWith(':') && trimmed.length < 80) return true;
     if (/^\d{1,2}[\.\)]\s+[A-ZÀ-Ý]/.test(trimmed) && trimmed.length < 85) return true;
+    if (!trimmed.endsWith('.') && trimmed.length <= 45 && !/[;:,]/.test(trimmed)) {
+      return true;
+    }
     const letters = trimmed.replace(/[^a-zA-ZÀ-ÿ]/g, '');
     if (letters.length >= 4) {
       const uppercaseLetters = (trimmed.match(/[A-ZÀ-Ý]/g) || []).length;
-      if (uppercaseLetters / letters.length >= 0.75) return true;
+      if (uppercaseLetters / letters.length >= 0.70) return true;
     }
     return false;
+  }
+
+  function splitParagraphIntoSlides(fullText, maxChars = 220) {
+    const stripped = fullText.replace(/\[\/?HL\]/g, '').trim();
+    if (stripped.length <= maxChars) {
+      return [fullText.trim()];
+    }
+    const sents = fullText.split(/(?<=[.!?](?:\[\/HL\]|["”'’\)])*)\s+/).filter(p => p.trim().length > 0);
+    if (sents.length <= 1) {
+      return [fullText.trim()];
+    }
+
+    const slides = [];
+    let curChunk = '';
+    let insideHl = false;
+
+    for (const sent of sents) {
+      const candidate = (curChunk ? curChunk + ' ' : '') + sent;
+      const candidateLen = candidate.replace(/\[\/?HL\]/g, '').length;
+
+      if (candidateLen > maxChars && curChunk.length > 0) {
+        let chunkStr = curChunk.trim();
+        const opens = (chunkStr.match(/\[HL\]/g) || []).length;
+        const closes = (chunkStr.match(/\[\/HL\]/g) || []).length;
+        if (opens > closes) {
+          chunkStr += '[/HL]';
+          insideHl = true;
+        } else {
+          insideHl = false;
+        }
+        slides.push(chunkStr);
+        curChunk = insideHl ? '[HL]' + sent.trim() : sent.trim();
+      } else {
+        curChunk = candidate;
+      }
+    }
+
+    if (curChunk.trim().length > 0) {
+      slides.push(curChunk.trim());
+    }
+
+    return slides;
   }
 
   function normalizeBibleRefName(ref) {
@@ -860,132 +937,155 @@ ${sermonText}`;
   }
 
   function parseSermonOfflineBrowser(rawText) {
-    const normalized = (rawText || '').replace(/\u00A0/g, ' ');
-    const rawLines = normalized
-      .split(/\r?\n/)
-      .map(l => l.replace(/^[⸻\-_\s]+|[⸻\-_\s]+$/g, '').trim())
-      .filter(l => l.length > 0 && !/^[⸻\-_\s]{3,}$/.test(l));
+    const normalized = (rawText || '')
+      .replace(/\u00A0/g, ' ')
+      .replace(/\r\n/g, '\n');
+
+    // 1. Divide em blocos lógicos preservando parágrafos, tópicos e versículos
+    const initialParagraphs = normalized.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
+    const blocks = [];
+
+    for (const p of initialParagraphs) {
+      const rawLines = p.split('\n').map(l => l.trim()).filter(Boolean);
+      let curBlock = [];
+
+      for (let i = 0; i < rawLines.length; i++) {
+        const line = rawLines[i];
+        const isHeading = isHeadingOrTopic(line);
+        const isPureRef = isPureBibleRefLine(line);
+
+        if (isHeading) {
+          if (curBlock.length > 0) {
+            blocks.push(curBlock);
+            curBlock = [];
+          }
+          blocks.push([line]);
+          continue;
+        }
+
+        if (isPureRef) {
+          // Se já havia texto e não era apenas uma referência, esta linha pode ser a referência final do versículo
+          if (curBlock.length > 0 && !isPureBibleRefLine(curBlock[0])) {
+            curBlock.push(line);
+            blocks.push(curBlock);
+            curBlock = [];
+          } else {
+            // Referência no topo de um novo versículo
+            if (curBlock.length > 0) {
+              blocks.push(curBlock);
+              curBlock = [];
+            }
+            curBlock.push(line);
+          }
+          continue;
+        }
+
+        curBlock.push(line);
+      }
+      if (curBlock.length > 0) {
+        blocks.push(curBlock);
+      }
+    }
 
     const slides = [];
-    let i = 0;
 
-    while (i < rawLines.length) {
-      let line = rawLines[i];
-
-      // 1. Tópico / Cabeçalho
-      if (isHeadingOrTopic(line)) {
-        const cleanTitle = line.replace(/\[\/?HL\]/g, '').replace(/^[⸻\-_\s*#]+|[⸻\-_\s*#]+$/g, '').trim();
+    for (const lines of blocks) {
+      // Caso 1: Tópico / Cabeçalho isolado
+      if (lines.length === 1 && isHeadingOrTopic(lines[0])) {
+        const cleanTitle = lines[0].replace(/\[\/?HL\]/g, '').replace(/^[⸻\-_\s*#]+|[⸻\-_\s*#]+$/g, '').trim();
         slides.push({
           type: 'topic',
           runs: buildRunsFromText(cleanTitle)
         });
-        i++;
         continue;
       }
 
-      // 2. Pergunta retórica curta
-      const strippedQ = line.replace(/\[\/?HL\]/g, '').trim();
-      if (strippedQ.endsWith('?') && strippedQ.length <= 35 && !isBibleRef(line)) {
-        slides.push({
-          type: 'question_short',
-          runs: buildRunsFromText(strippedQ)
-        });
-        i++;
-        continue;
-      }
-
-      // 3. Linha com referência bíblica pura (ex: "Mateus 6:19-21")
-      if (isPureBibleRefLine(line)) {
-        const rawRef = isBibleRef(line);
-        const baseRef = normalizeBibleRefName(rawRef);
-        i++;
-
-        const verseLines = [];
-        while (
-          i < rawLines.length &&
-          !isPureBibleRefLine(rawLines[i]) &&
-          !isHeadingOrTopic(rawLines[i]) &&
-          !(rawLines[i].replace(/\[\/?HL\]/g, '').trim().endsWith('?') && rawLines[i].replace(/\[\/?HL\]/g, '').trim().length <= 35)
-        ) {
-          const emb = isBibleRef(rawLines[i]);
-          if (emb && rawLines[i].length > emb.length + 12) break;
-          verseLines.push(rawLines[i]);
-          i++;
+      // Caso 2: Pergunta retórica curta
+      if (lines.length === 1) {
+        const strippedQ = lines[0].replace(/\[\/?HL\]/g, '').trim();
+        if (strippedQ.endsWith('?') && strippedQ.length <= 35 && !isBibleRef(lines[0])) {
+          slides.push({
+            type: 'question_short',
+            runs: buildRunsFromText(strippedQ)
+          });
+          continue;
         }
+      }
 
-        const combinedText = verseLines.join('\n');
+      // Caso 3: Versículo com referência bíblica no final (última linha)
+      if (lines.length > 1 && isPureBibleRefLine(lines[lines.length - 1])) {
+        const ref = normalizeBibleRefName(isBibleRef(lines[lines.length - 1]));
+        const verseText = lines.slice(0, lines.length - 1).join(' ').replace(/\s+/g, ' ');
+        slides.push({
+          type: 'verse',
+          reference: ref,
+          runs: buildRunsFromText(formatQuotes(verseText))
+        });
+        continue;
+      }
+
+      // Caso 4: Versículo com referência bíblica no início (primeira linha)
+      if (isPureBibleRefLine(lines[0])) {
+        const ref = normalizeBibleRefName(isBibleRef(lines[0]));
+        const restLines = lines.slice(1);
+        const combined = restLines.join('\n');
         const numberedRegex = /(?:^|\n)\s*(\d{1,3})\s+([A-ZÀ-Ý“"a-z\[])/;
-        const hasNumberedVerses = numberedRegex.test(combinedText);
 
-        if (hasNumberedVerses) {
-          const chunks = combinedText.split(/(?=(?:^|\n)\s*\d{1,3}\s+[A-ZÀ-Ý“"\[])/).filter(s => s.trim().length > 0);
-          const bookAndChap = baseRef.split(/[:.,]/)[0];
-
+        if (numberedRegex.test(combined)) {
+          const chunks = combined.split(/(?=(?:^|\n)\s*\d{1,3}\s+[A-ZÀ-Ý“"\[])/).filter(s => s.trim().length > 0);
+          const bookAndChap = ref.split(/[:.,]/)[0];
           chunks.forEach(chunk => {
             const m = chunk.trim().match(/^(\d{1,3})\s+(.*)$/s);
             if (m) {
               const vNum = m[1];
               let vText = m[2].replace(/\n+/g, ' ').trim();
-              vText = formatQuotes(vText);
               slides.push({
                 type: 'verse',
                 reference: `${bookAndChap}:${vNum}`,
-                runs: buildRunsFromText(vText)
+                runs: buildRunsFromText(formatQuotes(vText))
               });
             } else {
-              let vText = formatQuotes(chunk.replace(/\n+/g, ' ').trim());
               slides.push({
                 type: 'verse',
-                reference: baseRef,
-                runs: buildRunsFromText(vText)
+                reference: ref,
+                runs: buildRunsFromText(formatQuotes(chunk.replace(/\n+/g, ' ').trim()))
               });
             }
           });
         } else {
-          if (verseLines.length > 0) {
-            const joined = verseLines.join(' ').replace(/\s+/g, ' ').trim();
-            if (joined.length <= 260) {
-              slides.push({
-                type: 'verse',
-                reference: baseRef,
-                runs: buildRunsFromText(formatQuotes(joined))
-              });
-            } else {
-              verseLines.forEach(vL => {
-                let vText = formatQuotes(vL.trim());
-                if (vText.length > 15) {
-                  slides.push({
-                    type: 'verse',
-                    reference: baseRef,
-                    runs: buildRunsFromText(vText)
-                  });
-                }
-              });
-            }
-          }
+          const joined = restLines.join(' ').replace(/\s+/g, ' ');
+          slides.push({
+            type: 'verse',
+            reference: ref,
+            runs: buildRunsFromText(formatQuotes(joined))
+          });
         }
         continue;
       }
 
-      // 4. Linha com referência embutida no final
-      const trailingRef = isBibleRef(line);
-      if (trailingRef && line.length > trailingRef.length + 8) {
-        const vText = formatQuotes(line.replace(trailingRef, '').replace(/[()]/g, '').trim());
+      // Caso 5: Referência embutida no final do texto (ex: "(Mateus 6:24)")
+      const trailingRef = isBibleRef(lines[lines.length - 1]);
+      if (trailingRef && lines[lines.length - 1].length > trailingRef.length + 8) {
+        const fullP = lines.join(' ').replace(/\s+/g, ' ');
+        const vText = fullP.replace(trailingRef, '').replace(/[()]/g, '').trim();
         slides.push({
           type: 'verse',
           reference: normalizeBibleRefName(trailingRef),
-          runs: buildRunsFromText(vText)
+          runs: buildRunsFromText(formatQuotes(vText))
         });
-        i++;
         continue;
       }
 
-      // 5. Linha de reflexão / texto livre
-      slides.push({
-        type: 'reflection',
-        runs: buildRunsFromText(line)
+      // Caso 6: Parágrafos de reflexão / comentários pastorais
+      // NUNCA OMITA! Divide com elegância em múltiplos slides mantendo frases inteiras e tags [HL]
+      const fullText = lines.join(' ').replace(/\s+/g, ' ');
+      const chunks = splitParagraphIntoSlides(fullText, 220);
+      chunks.forEach(chunk => {
+        slides.push({
+          type: 'reflection',
+          runs: buildRunsFromText(chunk)
+        });
       });
-      i++;
     }
 
     return slides.length > 0 ? slides : [{
@@ -1339,8 +1439,36 @@ ${sermonText}`;
             wrap: true
           });
 
+        } else if (type === 'reflection') {
+          const textLength = (item.runs || []).reduce((acc, r) => acc + (r.text || '').length, 0);
+          let fontSize = 48;
+          if (textLength < 70) fontSize = 54;
+          else if (textLength > 160) fontSize = 44;
+
+          const runs = (item.runs || []).map(r => ({
+            text: r.text,
+            options: {
+              fontFace: 'Bahnschrift SemiBold Condensed',
+              fontSize: fontSize,
+              color: r.highlight ? 'E8B859' : 'FFFFFF',
+              bold: !!r.highlight,
+              shadow: { type: 'outer', angle: 90, blur: 4, offset: 3, opacity: 0.45, color: '000000' }
+            }
+          }));
+
+          slide.addText(runs, {
+            x: 0.8,
+            y: 1.6,
+            w: 11.7,
+            h: 4.2,
+            valign: 'middle',
+            align: 'center',
+            margin: 0,
+            wrap: true
+          });
+
         } else {
-          // topic / reflection
+          // topic / títulos de seção
           const textLength = (item.runs || []).reduce((acc, r) => acc + (r.text || '').length, 0);
           let fontSize = 70;
           if (textLength < 40) fontSize = 84;
