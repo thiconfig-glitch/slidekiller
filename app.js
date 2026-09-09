@@ -1132,7 +1132,8 @@ ${sermonText}`;
 
     try {
       const pptx = new PptxGenJS();
-      pptx.layout = 'LAYOUT_16x9';
+      pptx.defineLayout({ name: 'CHURCH_FULL_HD', width: 13.333, height: 7.5 });
+      pptx.layout = 'CHURCH_FULL_HD';
 
       const bgUrl = (templateSelect && templateSelect.value) ? templateSelect.value : 'assets/church_sermon_bg.jpg';
 
@@ -1170,42 +1171,44 @@ ${sermonText}`;
 
         if (type === 'verse') {
           const textLength = (item.runs || []).reduce((acc, r) => acc + (r.text || '').length, 0);
-          let fontSize = 54;
-          if (textLength < 70) fontSize = 66;
+          let fontSize = 52;
+          if (textLength < 70) fontSize = 60;
           else if (textLength > 160) fontSize = 46;
-          else if (textLength > 120) fontSize = 50;
+          else if (textLength > 120) fontSize = 48;
 
           const runs = (item.runs || []).map(r => ({
             text: r.text,
             options: {
               fontFace: 'Bahnschrift SemiBold Condensed',
               fontSize: fontSize,
-              color: r.highlight ? 'E8B859' : '000000',
-              shadow: { type: 'outer', angle: 90, blur: 3, offset: 2, opacity: 0.35, color: '000000' }
+              color: r.highlight ? 'E8B859' : 'FFFFFF',
+              bold: !!r.highlight,
+              shadow: { type: 'outer', angle: 90, blur: 4, offset: 3, opacity: 0.45, color: '000000' }
             }
           }));
 
           slide.addText(runs, {
-            x: 0.8,
-            y: 1.4,
-            w: 11.7,
+            x: 0.6,
+            y: 1.5,
+            w: 12.1,
             h: 3.8,
-            valign: 'middle',
+            valign: 'top',
             align: 'left',
-            paraSpaceAfter: 10
+            margin: 0,
+            wrap: true
           });
 
           if (item.reference) {
             slide.addText(item.reference, {
-              x: 0.8,
-              y: 5.4,
-              w: 11.7,
-              h: 0.8,
+              x: 0.6,
+              y: 5.6,
+              w: 8.0,
+              h: 0.9,
               fontFace: 'Bebas Neue',
-              fontSize: 42,
+              fontSize: 44,
               color: 'E8B859',
               align: 'left',
-              shadow: { type: 'outer', angle: 90, blur: 3, offset: 2, opacity: 0.35, color: '000000' }
+              shadow: { type: 'outer', angle: 90, blur: 4, offset: 3, opacity: 0.45, color: '000000' }
             });
           }
 
@@ -1215,24 +1218,26 @@ ${sermonText}`;
             options: {
               fontFace: 'Bebas Neue',
               fontSize: 140,
-              color: r.highlight ? 'E8B859' : '000000',
-              shadow: { type: 'outer', angle: 90, blur: 4, offset: 3, opacity: 0.35, color: '000000' }
+              color: r.highlight ? 'E8B859' : 'FFFFFF',
+              shadow: { type: 'outer', angle: 90, blur: 4, offset: 3, opacity: 0.45, color: '000000' }
             }
           }));
 
           slide.addText(runs, {
-            x: 0.8,
+            x: 0.5,
             y: 1.8,
-            w: 11.7,
-            h: 3.8,
+            w: 12.3,
+            h: 4.0,
             valign: 'middle',
-            align: 'center'
+            align: 'center',
+            margin: 0,
+            wrap: true
           });
 
         } else {
           // topic / reflection
           const textLength = (item.runs || []).reduce((acc, r) => acc + (r.text || '').length, 0);
-          let fontSize = 72;
+          let fontSize = 70;
           if (textLength < 40) fontSize = 84;
           else if (textLength > 90) fontSize = 56;
 
@@ -1241,18 +1246,20 @@ ${sermonText}`;
             options: {
               fontFace: 'Bebas Neue',
               fontSize: fontSize,
-              color: r.highlight ? 'E8B859' : '000000',
-              shadow: { type: 'outer', angle: 90, blur: 4, offset: 3, opacity: 0.35, color: '000000' }
+              color: r.highlight ? 'E8B859' : 'FFFFFF',
+              shadow: { type: 'outer', angle: 90, blur: 4, offset: 3, opacity: 0.45, color: '000000' }
             }
           }));
 
           slide.addText(runs, {
-            x: 0.8,
-            y: 1.8,
-            w: 11.7,
-            h: 3.8,
+            x: 0.5,
+            y: 1.9,
+            w: 12.3,
+            h: 3.6,
             valign: 'middle',
-            align: 'center'
+            align: 'center',
+            margin: 0,
+            wrap: true
           });
         }
       }
@@ -1341,7 +1348,7 @@ ${sermonText}`;
         const lineHeight = fontSize * 1.45;
 
         for (const run of (item.runs || [])) {
-          ctx.fillStyle = run.highlight ? '#E8B859' : '#000000';
+          ctx.fillStyle = run.highlight ? '#E8B859' : '#FFFFFF';
           const words = run.text.split(/(\s+)/);
 
           for (const w of words) {
@@ -1359,7 +1366,7 @@ ${sermonText}`;
         if (item.reference) {
           ctx.font = `bold 44px 'Bebas Neue', 'Inter', sans-serif`;
           ctx.fillStyle = '#E8B859';
-          ctx.fillText(item.reference, startX, baseH - 160);
+          ctx.fillText(item.reference, startX, baseH - 180);
         }
 
         const slideImgData = canvas.toDataURL('image/jpeg', 0.92);
