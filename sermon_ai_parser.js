@@ -32,7 +32,7 @@ Se houver marcações [HL]...[/HL] no texto, você DEVE preservar esses trechos 
 1. **QUEBRA DE VERSÍCULOS (LIMITE DE 220 CARACTERES)**:
    - NUNCA coloque múltiplos versículos juntos em um único slide.
    - Se o pastor escreveu "Mateus 6:19-21", você DEVE criar slides distintos para cada versículo.
-   - Se um versículo ou passagem bíblica for longo (> 220 caracteres), DIVIDA-O em slides no ponto final (.) ou ponto e vírgula (;). Mantenha frases completas e repita a referência bíblica em cada slide. Nunca quebre no meio de expressões curtas.
+   - Se um versículo ou passagem bíblica for longo (> 220 caracteres), DIVIDA-O em slides no ponto final (.) ou ponto e vírgula (;). Mantenha frases completas e REPITA OBRIGATORIAMENTE A REFERÊNCIA BÍBLICA EM CADA SLIDE DO VERSÍCULO. Nunca deixe nenhum slide de versículo sem o campo "reference" preenchido! Nunca quebre no meio de expressões curtas.
    - Se o versículo vier antes da referência (ex: texto nas primeiras linhas e "Mateus 6:24" na linha seguinte), conecte a referência ao versículo.
    - Todo versículo DEVE começar e terminar com aspas tipográficas “ ... ”.
 

@@ -648,7 +648,16 @@ Retorne ESTRITAMENTE em formato JSON puro, sem crases ou markdown adicional:
       let pageText = '';
       for (const item of tc.items) {
         if (lastY !== null && Math.abs(item.transform[5] - lastY) > 5) {
-          pageText += (Math.abs(item.transform[5] - lastY) > 26) ? '\n\n' : '\n';
+          const yDiff = Math.abs(item.transform[5] - lastY);
+          const trimmedPageText = pageText.trim();
+          const endsWithSentenceTerminator = /[.!?:\;]["”'’\)]*(?:\[\/HL\])?$/.test(trimmedPageText);
+          const nextIsRefOrHeading = isPureBibleRefLine(item.str) || isHeadingOrTopic(item.str);
+
+          if (yDiff > 36 || (yDiff > 22 && (endsWithSentenceTerminator || nextIsRefOrHeading))) {
+            pageText += '\n\n';
+          } else {
+            pageText += '\n';
+          }
         }
 
         const trimmed = item.str.trim();
@@ -688,7 +697,7 @@ NÃO OMITA, NÃO RESUMA E NÃO EXCLUA NENHUM PARÁGRAFO OU FRASE!
 Todo o conteúdo do sermão (introduções pastorais, reflexões, comentários, tópicos e versículos bíblicos) deve ser transformado em slides na íntegra.
 Se houver marcações [HL]...[/HL] no texto, você DEVE preservar esses trechos com "highlight": true.
 
-1. QUEBRA DE VERSÍCULOS (LIMITE DE 220 CARACTERES): 1 versículo por slide, entre aspas “ ... ”, com campo "reference" (ex: "Mateus 6:19"). Se um versículo ou passagem bíblica for longo (> 220 caracteres), DIVIDA-O em slides no ponto final (.) ou ponto e vírgula (;). Mantenha frases completas e repita a referência em cada slide. Se houver versículos com a referência bíblica na linha seguinte, conecte-os ao versículo!
+1. QUEBRA DE VERSÍCULOS (LIMITE DE 220 CARACTERES): 1 versículo por slide, entre aspas “ ... ”, com campo "reference" (ex: "Mateus 6:19"). Se um versículo ou passagem bíblica for longo (> 220 caracteres), DIVIDA-O em slides no ponto final (.) ou ponto e vírgula (;). Mantenha frases completas e REPITA OBRIGATORIAMENTE O CAMPO 'reference' EM TODOS OS SLIDES DA PASSAGEM BÍBLICA! NUNCA DEIXE NENHUM SLIDE DE VERSÍCULO SEM O CAMPO 'reference'. Se houver versículos com a referência bíblica na linha seguinte, conecte-os ao versículo!
 2. TÓPICOS E TÍTULOS: Títulos de seções, pontos numerados ou cabeçalhos (ex: "Armadura do Reino de Deus (8)", "8. O Servo no Reino de Deus") como type "topic".
 3. PARÁGRAFOS E REFLEXÕES: Todas as frases, introduções e comentários do pregador como type "reflection" (se o parágrafo for longo, divida no ponto final (.) em slides de até 220 caracteres para caber na tela sem poluição visual, mas NUNCA resuma ou exclua nenhuma palavra!).
 4. PERGUNTAS: Perguntas reflexivas curtas como type "question_short".
@@ -993,50 +1002,52 @@ ${sermonText}`;
       .replace(/\u00A0/g, ' ')
       .replace(/\r\n/g, '\n');
 
-    // 1. Divide em blocos lógicos preservando parágrafos, tópicos e versículos
-    const initialParagraphs = normalized.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
+    // 1. Divide em linhas eliminando linhas decorativas
+    const allLines = normalized
+      .split('\n')
+      .map(l => l.trim())
+      .filter(Boolean)
+      .filter(l => !/^[⸻\-_\s]{3,}$/.test(l));
+
+    // 2. Agrupa em blocos lógicos preservando seções, tópicos e passagens bíblicas completas
     const blocks = [];
+    let curBlock = [];
 
-    for (const p of initialParagraphs) {
-      const rawLines = p.split('\n').map(l => l.trim()).filter(Boolean);
-      let curBlock = [];
+    for (let i = 0; i < allLines.length; i++) {
+      const line = allLines[i];
+      const isHeading = isHeadingOrTopic(line);
+      const isPureRef = isPureBibleRefLine(line);
 
-      for (let i = 0; i < rawLines.length; i++) {
-        const line = rawLines[i];
-        const isHeading = isHeadingOrTopic(line);
-        const isPureRef = isPureBibleRefLine(line);
+      if (isHeading) {
+        if (curBlock.length > 0) {
+          blocks.push(curBlock);
+          curBlock = [];
+        }
+        blocks.push([line]);
+        continue;
+      }
 
-        if (isHeading) {
+      if (isPureRef) {
+        // Se curBlock já tinha texto e a primeira linha não era apenas outra referência bíblica
+        if (curBlock.length > 0 && !isPureBibleRefLine(curBlock[0])) {
+          curBlock.push(line);
+          blocks.push(curBlock);
+          curBlock = [];
+        } else {
+          // Referência no topo de um novo versículo
           if (curBlock.length > 0) {
             blocks.push(curBlock);
             curBlock = [];
           }
-          blocks.push([line]);
-          continue;
+          curBlock.push(line);
         }
-
-        if (isPureRef) {
-          // Se já havia texto e não era apenas uma referência, esta linha pode ser a referência final do versículo
-          if (curBlock.length > 0 && !isPureBibleRefLine(curBlock[0])) {
-            curBlock.push(line);
-            blocks.push(curBlock);
-            curBlock = [];
-          } else {
-            // Referência no topo de um novo versículo
-            if (curBlock.length > 0) {
-              blocks.push(curBlock);
-              curBlock = [];
-            }
-            curBlock.push(line);
-          }
-          continue;
-        }
-
-        curBlock.push(line);
+        continue;
       }
-      if (curBlock.length > 0) {
-        blocks.push(curBlock);
-      }
+
+      curBlock.push(line);
+    }
+    if (curBlock.length > 0) {
+      blocks.push(curBlock);
     }
 
     const slides = [];
