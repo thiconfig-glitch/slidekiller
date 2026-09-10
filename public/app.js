@@ -648,7 +648,7 @@ Retorne ESTRITAMENTE em formato JSON puro, sem crases ou markdown adicional:
       let pageText = '';
       for (const item of tc.items) {
         if (lastY !== null && Math.abs(item.transform[5] - lastY) > 5) {
-          pageText += (Math.abs(item.transform[5] - lastY) > 16) ? '\n\n' : '\n';
+          pageText += (Math.abs(item.transform[5] - lastY) > 26) ? '\n\n' : '\n';
         }
 
         const trimmed = item.str.trim();
@@ -688,9 +688,9 @@ NÃO OMITA, NÃO RESUMA E NÃO EXCLUA NENHUM PARÁGRAFO OU FRASE!
 Todo o conteúdo do sermão (introduções pastorais, reflexões, comentários, tópicos e versículos bíblicos) deve ser transformado em slides na íntegra.
 Se houver marcações [HL]...[/HL] no texto, você DEVE preservar esses trechos com "highlight": true.
 
-1. QUEBRA DE VERSÍCULOS: 1 versículo por slide, entre aspas “ ... ”, com campo "reference" (ex: "Mateus 6:19"). Se houver versículos com a referência bíblica na linha seguinte, conecte-os ao versículo!
+1. QUEBRA DE VERSÍCULOS (LIMITE DE 120 CARACTERES): 1 versículo por slide, entre aspas “ ... ”, com campo "reference" (ex: "Mateus 6:19"). Se um versículo for longo (> 120 caracteres) ou contiver múltiplos versículos juntos, DIVIDA-O em slides consecutivos de no máximo 120 caracteres cada, quebrando sempre no ponto final (.) ou pontuação natural (; , ? !). Repita a referência em cada slide. Se houver versículos com a referência bíblica na linha seguinte, conecte-os ao versículo!
 2. TÓPICOS E TÍTULOS: Títulos de seções, pontos numerados ou cabeçalhos (ex: "Armadura do Reino de Deus (8)", "8. O Servo no Reino de Deus") como type "topic".
-3. PARÁGRAFOS E REFLEXÕES: Todas as frases, introduções e comentários do pregador como type "reflection" (se o parágrafo for longo, divida em 2 slides para caber na tela, mas NUNCA resuma ou exclua nenhuma palavra!).
+3. PARÁGRAFOS E REFLEXÕES: Todas as frases, introduções e comentários do pregador como type "reflection" (se o parágrafo for longo, divida no ponto final (.) em slides de até 130 caracteres para não estourar a tela, mas NUNCA resuma ou exclua nenhuma palavra!).
 4. PERGUNTAS: Perguntas reflexivas curtas como type "question_short".
 5. DESTAQUES: Divida em runs com highlight: true para palavras de ênfase (ou onde houver [HL]...[/HL]).
 
@@ -830,26 +830,58 @@ ${sermonText}`;
     return false;
   }
 
-  function splitParagraphIntoSlides(fullText, maxChars = 220) {
-    const stripped = fullText.replace(/\[\/?HL\]/g, '').trim();
+  function splitTextByPunctuation(text, maxChars = 120) {
+    const stripped = text.replace(/\[\/?HL\]/g, '').replace(/^[“"']|[”"']$/g, '').trim();
     if (stripped.length <= maxChars) {
-      return [fullText.trim()];
-    }
-    const sents = fullText.split(/(?<=[.!?](?:\[\/HL\]|["”'’\)])*)\s+/).filter(p => p.trim().length > 0);
-    if (sents.length <= 1) {
-      return [fullText.trim()];
+      return [text.trim()];
     }
 
+    // 1. Pontuação primária: ponto final, exclamação e interrogação (. ! ?)
+    const primaryParts = text
+      .split(/(?<=[.!?](?:\[\/HL\]|["”'’\)])*)\s+/)
+      .map(s => s.trim())
+      .filter(s => s.length > 0);
+
+    const subChunks = [];
+    for (const part of primaryParts) {
+      const partLen = part.replace(/\[\/?HL\]/g, '').length;
+      if (partLen <= maxChars) {
+        subChunks.push(part);
+      } else {
+        // 2. Se uma oração ultrapassar maxChars, divide na pontuação secundária (; ou ,)
+        const secondaryParts = part
+          .split(/(?<=[;,](?:\[\/HL\]|["”'’\)])*)\s+/)
+          .map(s => s.trim())
+          .filter(s => s.length > 0);
+
+        let cur = '';
+        for (const sp of secondaryParts) {
+          const candidate = (cur ? cur + ' ' : '') + sp;
+          const candidateLen = candidate.replace(/\[\/?HL\]/g, '').length;
+          if (candidateLen > maxChars && cur.length > 0) {
+            subChunks.push(cur.trim());
+            cur = sp;
+          } else {
+            cur = candidate;
+          }
+        }
+        if (cur.trim().length > 0) {
+          subChunks.push(cur.trim());
+        }
+      }
+    }
+
+    // Agrupa os fragmentos respeitando estritamente o limite de maxChars (120)
     const slides = [];
-    let curChunk = '';
+    let curSlide = '';
     let insideHl = false;
 
-    for (const sent of sents) {
-      const candidate = (curChunk ? curChunk + ' ' : '') + sent;
+    for (const chunk of subChunks) {
+      const candidate = (curSlide ? curSlide + ' ' : '') + chunk;
       const candidateLen = candidate.replace(/\[\/?HL\]/g, '').length;
 
-      if (candidateLen > maxChars && curChunk.length > 0) {
-        let chunkStr = curChunk.trim();
+      if (candidateLen > maxChars && curSlide.length > 0) {
+        let chunkStr = curSlide.trim();
         const opens = (chunkStr.match(/\[HL\]/g) || []).length;
         const closes = (chunkStr.match(/\[\/HL\]/g) || []).length;
         if (opens > closes) {
@@ -859,14 +891,14 @@ ${sermonText}`;
           insideHl = false;
         }
         slides.push(chunkStr);
-        curChunk = insideHl ? '[HL]' + sent.trim() : sent.trim();
+        curSlide = insideHl ? '[HL]' + chunk.trim() : chunk.trim();
       } else {
-        curChunk = candidate;
+        curSlide = candidate;
       }
     }
 
-    if (curChunk.trim().length > 0) {
-      slides.push(curChunk.trim());
+    if (curSlide.trim().length > 0) {
+      slides.push(curSlide.trim());
     }
 
     return slides;
@@ -1016,10 +1048,13 @@ ${sermonText}`;
       if (lines.length > 1 && isPureBibleRefLine(lines[lines.length - 1])) {
         const ref = normalizeBibleRefName(isBibleRef(lines[lines.length - 1]));
         const verseText = lines.slice(0, lines.length - 1).join(' ').replace(/\s+/g, ' ');
-        slides.push({
-          type: 'verse',
-          reference: ref,
-          runs: buildRunsFromText(formatQuotes(verseText))
+        const verseChunks = splitTextByPunctuation(verseText, 120);
+        verseChunks.forEach(chunk => {
+          slides.push({
+            type: 'verse',
+            reference: ref,
+            runs: buildRunsFromText(formatQuotes(chunk))
+          });
         });
         continue;
       }
@@ -1039,25 +1074,34 @@ ${sermonText}`;
             if (m) {
               const vNum = m[1];
               let vText = m[2].replace(/\n+/g, ' ').trim();
-              slides.push({
-                type: 'verse',
-                reference: `${bookAndChap}:${vNum}`,
-                runs: buildRunsFromText(formatQuotes(vText))
+              const vChunks = splitTextByPunctuation(vText, 120);
+              vChunks.forEach(vc => {
+                slides.push({
+                  type: 'verse',
+                  reference: `${bookAndChap}:${vNum}`,
+                  runs: buildRunsFromText(formatQuotes(vc))
+                });
               });
             } else {
-              slides.push({
-                type: 'verse',
-                reference: ref,
-                runs: buildRunsFromText(formatQuotes(chunk.replace(/\n+/g, ' ').trim()))
+              const vChunks = splitTextByPunctuation(chunk.replace(/\n+/g, ' ').trim(), 120);
+              vChunks.forEach(vc => {
+                slides.push({
+                  type: 'verse',
+                  reference: ref,
+                  runs: buildRunsFromText(formatQuotes(vc))
+                });
               });
             }
           });
         } else {
           const joined = restLines.join(' ').replace(/\s+/g, ' ');
-          slides.push({
-            type: 'verse',
-            reference: ref,
-            runs: buildRunsFromText(formatQuotes(joined))
+          const vChunks = splitTextByPunctuation(joined, 120);
+          vChunks.forEach(vc => {
+            slides.push({
+              type: 'verse',
+              reference: ref,
+              runs: buildRunsFromText(formatQuotes(vc))
+            });
           });
         }
         continue;
@@ -1068,18 +1112,21 @@ ${sermonText}`;
       if (trailingRef && lines[lines.length - 1].length > trailingRef.length + 8) {
         const fullP = lines.join(' ').replace(/\s+/g, ' ');
         const vText = fullP.replace(trailingRef, '').replace(/[()]/g, '').trim();
-        slides.push({
-          type: 'verse',
-          reference: normalizeBibleRefName(trailingRef),
-          runs: buildRunsFromText(formatQuotes(vText))
+        const vChunks = splitTextByPunctuation(vText, 120);
+        vChunks.forEach(vc => {
+          slides.push({
+            type: 'verse',
+            reference: normalizeBibleRefName(trailingRef),
+            runs: buildRunsFromText(formatQuotes(vc))
+          });
         });
         continue;
       }
 
       // Caso 6: Parágrafos de reflexão / comentários pastorais
-      // NUNCA OMITA! Divide com elegância em múltiplos slides mantendo frases inteiras e tags [HL]
+      // Divide de forma elegante nos pontos (. ! ?) e pontuações naturais
       const fullText = lines.join(' ').replace(/\s+/g, ' ');
-      const chunks = splitParagraphIntoSlides(fullText, 220);
+      const chunks = splitTextByPunctuation(fullText, 130);
       chunks.forEach(chunk => {
         slides.push({
           type: 'reflection',
