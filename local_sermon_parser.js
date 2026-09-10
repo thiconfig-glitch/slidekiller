@@ -75,7 +75,7 @@ function normalizeBibleRefName(ref) {
     .replace(/^Terceir[oa]\s+/i, '3 ');
 }
 
-function splitTextByPunctuation(text, maxChars = 120) {
+function splitTextByPunctuation(text, maxChars = 220) {
   const stripped = text.replace(/\[\/?HL\]/g, '').replace(/^[“"']|[”"']$/g, '').trim();
   if (stripped.length <= maxChars) {
     return [text.trim()];
@@ -93,7 +93,7 @@ function splitTextByPunctuation(text, maxChars = 120) {
       subChunks.push(part);
     } else {
       const secondaryParts = part
-        .split(/(?<=[;,](?:\[\/HL\]|["”'’\)])*)\s+/)
+        .split(/(?<=[;:](?:\[\/HL\]|["”'’\)])*)\s+/)
         .map(s => s.trim())
         .filter(s => s.length > 0);
 
@@ -109,7 +109,26 @@ function splitTextByPunctuation(text, maxChars = 120) {
         }
       }
       if (cur.trim().length > 0) {
-        subChunks.push(cur.trim());
+        const curLen = cur.replace(/\[\/?HL\]/g, '').length;
+        if (curLen > maxChars) {
+          const commaParts = cur
+            .split(/(?<=[,](?:\[\/HL\]|["”'’\)])*)\s+/)
+            .map(s => s.trim())
+            .filter(s => s.length > 0);
+          let cCur = '';
+          for (const cp of commaParts) {
+            const cCand = (cCur ? cCur + ' ' : '') + cp;
+            if (cCand.replace(/\[\/?HL\]/g, '').length > maxChars && cCur.length > 0) {
+              subChunks.push(cCur.trim());
+              cCur = cp;
+            } else {
+              cCur = cCand;
+            }
+          }
+          if (cCur.trim().length > 0) subChunks.push(cCur.trim());
+        } else {
+          subChunks.push(cur.trim());
+        }
       }
     }
   }
@@ -244,7 +263,7 @@ function parseSermonTextOffline(rawText) {
     if (lines.length > 1 && isPureBibleRefLine(lines[lines.length - 1])) {
       const ref = normalizeBibleRefName(isBibleRef(lines[lines.length - 1]));
       const verseText = lines.slice(0, lines.length - 1).join(' ').replace(/\s+/g, ' ');
-      const verseChunks = splitTextByPunctuation(verseText, 120);
+      const verseChunks = splitTextByPunctuation(verseText, 220);
       verseChunks.forEach(chunk => {
         slides.push({
           type: 'verse',
@@ -269,7 +288,7 @@ function parseSermonTextOffline(rawText) {
           if (m) {
             const vNum = m[1];
             let vText = m[2].replace(/\n+/g, ' ').trim();
-            const vChunks = splitTextByPunctuation(vText, 120);
+            const vChunks = splitTextByPunctuation(vText, 220);
             vChunks.forEach(vc => {
               slides.push({
                 type: 'verse',
@@ -278,7 +297,7 @@ function parseSermonTextOffline(rawText) {
               });
             });
           } else {
-            const vChunks = splitTextByPunctuation(chunk.replace(/\n+/g, ' ').trim(), 120);
+            const vChunks = splitTextByPunctuation(chunk.replace(/\n+/g, ' ').trim(), 220);
             vChunks.forEach(vc => {
               slides.push({
                 type: 'verse',
@@ -290,7 +309,7 @@ function parseSermonTextOffline(rawText) {
         });
       } else {
         const joined = restLines.join(' ').replace(/\s+/g, ' ');
-        const vChunks = splitTextByPunctuation(joined, 120);
+        const vChunks = splitTextByPunctuation(joined, 220);
         vChunks.forEach(vc => {
           slides.push({
             type: 'verse',
@@ -306,7 +325,7 @@ function parseSermonTextOffline(rawText) {
     if (trailingRef && lines[lines.length - 1].length > trailingRef.length + 8) {
       const fullP = lines.join(' ').replace(/\s+/g, ' ');
       const vText = fullP.replace(trailingRef, '').replace(/[()]/g, '').trim();
-      const vChunks = splitTextByPunctuation(vText, 120);
+      const vChunks = splitTextByPunctuation(vText, 220);
       vChunks.forEach(vc => {
         slides.push({
           type: 'verse',
@@ -318,7 +337,7 @@ function parseSermonTextOffline(rawText) {
     }
 
     const fullText = lines.join(' ').replace(/\s+/g, ' ');
-    const chunks = splitTextByPunctuation(fullText, 130);
+    const chunks = splitTextByPunctuation(fullText, 220);
     chunks.forEach(chunk => {
       slides.push({
         type: 'reflection',
