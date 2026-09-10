@@ -52,12 +52,6 @@
         <span class="module-label">Imagens / ZIP ➔ PPTX</span>
         <span class="module-pill pill-purple">Organizador</span>
       </button>
-
-      <button class="nav-module-btn" data-module="video-editor">
-        <span class="module-icon">🎬</span>
-        <span class="module-label">Editor de Vídeo</span>
-        <span class="module-pill pill-cyan">OpenCut</span>
-      </button>
     </nav>
 
     <div class="header-right">
@@ -83,16 +77,6 @@
         <button class="btn btn-primary" id="btn-download-images-top" style="display: none;">
           <span>📥</span> Baixar PowerPoint (.pptx)
         </button>
-      </div>
-
-      <!-- Ações do Módulo Editor de Vídeo -->
-      <div class="module-actions" id="actions-video-editor" style="display: none;">
-        <button class="btn btn-secondary" id="btn-video-fullscreen" title="Expandir editor para tela cheia">
-          <span>⛶</span> Tela Cheia
-        </button>
-        <a href="https://opencut.app" target="_blank" rel="noopener noreferrer" class="btn btn-primary" id="btn-open-video-external">
-          <span>↗</span> Abrir no Navegador
-        </a>
       </div>
 
       <!-- Botão Global: Tarefas em Andamento (Celular / PC) -->
@@ -507,102 +491,6 @@
         <!-- Grid de Cards de Imagens Reordenáveis (Drag and Drop + Botões) -->
         <div class="images-reorder-grid" id="images-reorder-grid"></div>
       </section>
-    </div>
-
-    <!-- ========================================== -->
-    <!-- MÓDULO 4: EDITOR DE VÍDEO (OPENCUT)         -->
-    <!-- ========================================== -->
-    <div class="module-view" id="view-video-editor">
-      <!-- Tela de Entrada com Identidade da Igreja -->
-      <div id="video-welcome-screen" class="video-welcome-container">
-        <div class="module-header-badge">
-          <span class="badge-dot" style="background-color: var(--accent-cyan); box-shadow: 0 0 8px var(--accent-cyan);"></span>
-          <span>CENTRAL MULTIMÍDIA CHURCH • VÍDEO STUDIO</span>
-        </div>
-        <h2>Estúdio de Edição & Cortes de Culto</h2>
-        <p class="section-desc">Crie cortes de pregações, reels para redes sociais e clipes de louvor direto no navegador, com timeline profissional, sem filas e sem marcas d'água.</p>
-
-        <!-- Cards de Presets da Igreja -->
-        <div class="video-presets-grid">
-          <div class="preset-card" onclick="openPublicVideoEditor('pregação')">
-            <div class="preset-icon">✂️</div>
-            <h3>Cortes de Pregação (16:9)</h3>
-            <p>Formato widescreen para YouTube, avisos e melhores momentos da mensagem pastoral.</p>
-          </div>
-
-          <div class="preset-card" onclick="openPublicVideoEditor('reels')">
-            <div class="preset-icon">📱</div>
-            <h3>Reels & Shorts (9:16)</h3>
-            <p>Formato vertical otimizado para Instagram, TikTok e stories com frases fortes de fé.</p>
-          </div>
-
-          <div class="preset-card" onclick="openPublicVideoEditor('louvor')">
-            <div class="preset-icon">🎵</div>
-            <h3>Música & Louvor</h3>
-            <p>Edição de solos, introduções de ministração, louvores e testemunhos.</p>
-          </div>
-        </div>
-
-        <!-- Botão Principal -->
-        <div style="margin-top: 24px;">
-          <button class="btn btn-action" onclick="openPublicVideoEditor('geral')" style="max-width: 360px; margin: 0 auto; display: flex;">
-            <span>🚀</span> Abrir Estúdio de Edição Completo
-          </button>
-        </div>
-
-        <div class="video-welcome-features">
-          <span>🔒 100% no seu Navegador</span>
-          <span>•</span>
-          <span>🎞️ Exportação Full HD</span>
-          <span>•</span>
-          <span>⚡ Sem Marcas d'água</span>
-        </div>
-      </div>
-
-      <!-- Workspace com Submenu e Editor OpenCut -->
-      <div class="video-module-container" id="video-container" style="display: none;">
-        <!-- Barra de Status e Controles do Editor de Vídeo -->
-        <div class="video-toolbar">
-          <div class="toolbar-info">
-            <button class="btn btn-secondary" id="btn-back-to-video-welcome" style="padding: 4px 10px; font-size: 12px;">
-              <span>⬅</span> Voltar ao Painel
-            </button>
-            <div class="video-brand-badge">
-              <span class="rec-dot"></span>
-              <strong>Central Multimídia Church Studio</strong>
-              <span class="oss-tag">OpenCut OSS</span>
-            </div>
-            <div class="toolbar-tips">
-              <span>✂️ Timeline Multi-pistas</span>
-              <span>⚡ Sem marcas d'água</span>
-            </div>
-          </div>
-          <div class="toolbar-controls">
-            <button class="btn-icon-control" id="btn-reload-video" title="Recarregar Editor">
-              🔄 Recarregar
-            </button>
-            <button class="btn-icon-control" id="btn-expand-canvas" title="Modo Foco / Maximizar">
-              ⛶ Maximizar
-            </button>
-          </div>
-        </div>
-
-        <!-- Iframe do Editor OpenCut -->
-        <div class="video-frame-wrapper" id="video-frame-wrapper">
-          <iframe 
-            id="opencut-iframe" 
-            src="https://opencut.app" 
-            title="OpenCut Video Editor"
-            allow="camera; microphone; display-capture; autoplay; clipboard-read; clipboard-write; fullscreen"
-            sandbox="allow-scripts allow-same-origin allow-forms allow-downloads allow-modals allow-popups"
-            loading="lazy">
-          </iframe>
-          <div class="iframe-loading-overlay" id="iframe-loading">
-            <div class="spinner"></div>
-            <p>Carregando OpenCut Video Studio...</p>
-          </div>
-        </div>
-      </div>
     </div>
 
     <!-- Modal Inserir Versículo Bíblico -->
