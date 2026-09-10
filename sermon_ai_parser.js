@@ -29,9 +29,10 @@ NÃO OMITA, NÃO RESUMA E NÃO EXCLUA NENHUM PARÁGRAFO OU FRASE!
 Todo o conteúdo do sermão (introduções pastorais, reflexões, comentários, tópicos e versículos bíblicos) deve ser transformado em slides na íntegra.
 Se houver marcações [HL]...[/HL] no texto, você DEVE preservar esses trechos com "highlight": true.
 
-1. **QUEBRA DE VERSÍCULOS (1 VERSÍCULO POR SLIDE)**:
+1. **QUEBRA DE VERSÍCULOS (LIMITE DE 120 CARACTERES)**:
    - NUNCA coloque múltiplos versículos juntos em um único slide.
-   - Se o pastor escreveu "Mateus 6:19-21", você DEVE criar 3 slides distintos com referência "Mateus 6:19", "Mateus 6:20", etc.
+   - Se o pastor escreveu "Mateus 6:19-21", você DEVE criar slides distintos para cada versículo.
+   - Se um versículo ou passagem bíblica ultrapassar 120 caracteres, DIVIDA-O em slides consecutivos de no máximo 120 caracteres cada, quebrando sempre no ponto final (.) ou pontuação natural (; , ? !). Repita a referência bíblica em cada slide.
    - Se o versículo vier antes da referência (ex: texto nas primeiras linhas e "Mateus 6:24" na linha seguinte), conecte a referência ao versículo.
    - Todo versículo DEVE começar e terminar com aspas tipográficas “ ... ”.
 
@@ -39,7 +40,7 @@ Se houver marcações [HL]...[/HL] no texto, você DEVE preservar esses trechos 
    - Títulos de seções, pontos numerados (ex: "8. O Servo no Reino de Deus") ou cabeçalhos em maiúsculo devem ser slides do tipo "topic".
 
 3. **COMENTÁRIOS E INTRODUÇÕES PASTORAIS (type: 'reflection')**:
-   - Todos os parágrafos explicativos e frases do pregador devem virar slides do tipo "reflection". Se o parágrafo for longo, divida em 2 slides para caber na tela, mas NUNCA resuma ou corte nenhuma palavra!
+   - Todos os parágrafos explicativos e frases do pregador devem virar slides do tipo "reflection". Se o parágrafo for longo, divida no ponto final (.) em slides de até 130 caracteres para caber na tela sem poluição visual, mas NUNCA resuma ou corte nenhuma palavra!
 
 4. **PERGUNTAS CURTAS DE CHOQUE (type: 'question_short')**:
    - Perguntas curtas dramáticas devem ter type "question_short".

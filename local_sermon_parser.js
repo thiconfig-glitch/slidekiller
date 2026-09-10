@@ -75,26 +75,55 @@ function normalizeBibleRefName(ref) {
     .replace(/^Terceir[oa]\s+/i, '3 ');
 }
 
-function splitParagraphIntoSlides(fullText, maxChars = 220) {
-  const stripped = fullText.replace(/\[\/?HL\]/g, '').trim();
+function splitTextByPunctuation(text, maxChars = 120) {
+  const stripped = text.replace(/\[\/?HL\]/g, '').replace(/^[“"']|[”"']$/g, '').trim();
   if (stripped.length <= maxChars) {
-    return [fullText.trim()];
+    return [text.trim()];
   }
-  const sents = fullText.split(/(?<=[.!?](?:\[\/HL\]|["”'’\)])*)\s+/).filter(p => p.trim().length > 0);
-  if (sents.length <= 1) {
-    return [fullText.trim()];
+
+  const primaryParts = text
+    .split(/(?<=[.!?](?:\[\/HL\]|["”'’\)])*)\s+/)
+    .map(s => s.trim())
+    .filter(s => s.length > 0);
+
+  const subChunks = [];
+  for (const part of primaryParts) {
+    const partLen = part.replace(/\[\/?HL\]/g, '').length;
+    if (partLen <= maxChars) {
+      subChunks.push(part);
+    } else {
+      const secondaryParts = part
+        .split(/(?<=[;,](?:\[\/HL\]|["”'’\)])*)\s+/)
+        .map(s => s.trim())
+        .filter(s => s.length > 0);
+
+      let cur = '';
+      for (const sp of secondaryParts) {
+        const candidate = (cur ? cur + ' ' : '') + sp;
+        const candidateLen = candidate.replace(/\[\/?HL\]/g, '').length;
+        if (candidateLen > maxChars && cur.length > 0) {
+          subChunks.push(cur.trim());
+          cur = sp;
+        } else {
+          cur = candidate;
+        }
+      }
+      if (cur.trim().length > 0) {
+        subChunks.push(cur.trim());
+      }
+    }
   }
 
   const slides = [];
-  let curChunk = '';
+  let curSlide = '';
   let insideHl = false;
 
-  for (const sent of sents) {
-    const candidate = (curChunk ? curChunk + ' ' : '') + sent;
+  for (const chunk of subChunks) {
+    const candidate = (curSlide ? curSlide + ' ' : '') + chunk;
     const candidateLen = candidate.replace(/\[\/?HL\]/g, '').length;
 
-    if (candidateLen > maxChars && curChunk.length > 0) {
-      let chunkStr = curChunk.trim();
+    if (candidateLen > maxChars && curSlide.length > 0) {
+      let chunkStr = curSlide.trim();
       const opens = (chunkStr.match(/\[HL\]/g) || []).length;
       const closes = (chunkStr.match(/\[\/HL\]/g) || []).length;
       if (opens > closes) {
@@ -104,14 +133,14 @@ function splitParagraphIntoSlides(fullText, maxChars = 220) {
         insideHl = false;
       }
       slides.push(chunkStr);
-      curChunk = insideHl ? '[HL]' + sent.trim() : sent.trim();
+      curSlide = insideHl ? '[HL]' + chunk.trim() : chunk.trim();
     } else {
-      curChunk = candidate;
+      curSlide = candidate;
     }
   }
 
-  if (curChunk.trim().length > 0) {
-    slides.push(curChunk.trim());
+  if (curSlide.trim().length > 0) {
+    slides.push(curSlide.trim());
   }
 
   return slides;
@@ -215,10 +244,13 @@ function parseSermonTextOffline(rawText) {
     if (lines.length > 1 && isPureBibleRefLine(lines[lines.length - 1])) {
       const ref = normalizeBibleRefName(isBibleRef(lines[lines.length - 1]));
       const verseText = lines.slice(0, lines.length - 1).join(' ').replace(/\s+/g, ' ');
-      slides.push({
-        type: 'verse',
-        reference: ref,
-        runs: buildRunsFromText(formatQuotes(verseText))
+      const verseChunks = splitTextByPunctuation(verseText, 120);
+      verseChunks.forEach(chunk => {
+        slides.push({
+          type: 'verse',
+          reference: ref,
+          runs: buildRunsFromText(formatQuotes(chunk))
+        });
       });
       continue;
     }
@@ -237,25 +269,34 @@ function parseSermonTextOffline(rawText) {
           if (m) {
             const vNum = m[1];
             let vText = m[2].replace(/\n+/g, ' ').trim();
-            slides.push({
-              type: 'verse',
-              reference: `${bookAndChap}:${vNum}`,
-              runs: buildRunsFromText(formatQuotes(vText))
+            const vChunks = splitTextByPunctuation(vText, 120);
+            vChunks.forEach(vc => {
+              slides.push({
+                type: 'verse',
+                reference: `${bookAndChap}:${vNum}`,
+                runs: buildRunsFromText(formatQuotes(vc))
+              });
             });
           } else {
-            slides.push({
-              type: 'verse',
-              reference: ref,
-              runs: buildRunsFromText(formatQuotes(chunk.replace(/\n+/g, ' ').trim()))
+            const vChunks = splitTextByPunctuation(chunk.replace(/\n+/g, ' ').trim(), 120);
+            vChunks.forEach(vc => {
+              slides.push({
+                type: 'verse',
+                reference: ref,
+                runs: buildRunsFromText(formatQuotes(vc))
+              });
             });
           }
         });
       } else {
         const joined = restLines.join(' ').replace(/\s+/g, ' ');
-        slides.push({
-          type: 'verse',
-          reference: ref,
-          runs: buildRunsFromText(formatQuotes(joined))
+        const vChunks = splitTextByPunctuation(joined, 120);
+        vChunks.forEach(vc => {
+          slides.push({
+            type: 'verse',
+            reference: ref,
+            runs: buildRunsFromText(formatQuotes(vc))
+          });
         });
       }
       continue;
@@ -265,16 +306,19 @@ function parseSermonTextOffline(rawText) {
     if (trailingRef && lines[lines.length - 1].length > trailingRef.length + 8) {
       const fullP = lines.join(' ').replace(/\s+/g, ' ');
       const vText = fullP.replace(trailingRef, '').replace(/[()]/g, '').trim();
-      slides.push({
-        type: 'verse',
-        reference: normalizeBibleRefName(trailingRef),
-        runs: buildRunsFromText(formatQuotes(vText))
+      const vChunks = splitTextByPunctuation(vText, 120);
+      vChunks.forEach(vc => {
+        slides.push({
+          type: 'verse',
+          reference: normalizeBibleRefName(trailingRef),
+          runs: buildRunsFromText(formatQuotes(vc))
+        });
       });
       continue;
     }
 
     const fullText = lines.join(' ').replace(/\s+/g, ' ');
-    const chunks = splitParagraphIntoSlides(fullText, 220);
+    const chunks = splitTextByPunctuation(fullText, 130);
     chunks.forEach(chunk => {
       slides.push({
         type: 'reflection',
