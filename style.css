@@ -543,6 +543,66 @@ textarea:focus {
   border-color: var(--border-focus);
 }
 
+/* Seletor de Plano de Fundo e Anexo Customizado */
+.bg-selector-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.custom-bg-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 8px 3px 4px;
+  background: rgba(232, 184, 89, 0.12);
+  border: 1px solid rgba(232, 184, 89, 0.35);
+  border-radius: 6px;
+  animation: fadeInBgBadge 0.2s ease;
+}
+
+@keyframes fadeInBgBadge {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.custom-bg-thumb {
+  width: 38px;
+  height: 22px;
+  border-radius: 4px;
+  object-fit: cover;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.custom-bg-filename {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--primary);
+  max-width: 130px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.btn-remove-bg {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.btn-remove-bg:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
 .checkbox-container {
   display: flex;
   align-items: center;
