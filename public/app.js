@@ -688,9 +688,9 @@ NÃO OMITA, NÃO RESUMA E NÃO EXCLUA NENHUM PARÁGRAFO OU FRASE!
 Todo o conteúdo do sermão (introduções pastorais, reflexões, comentários, tópicos e versículos bíblicos) deve ser transformado em slides na íntegra.
 Se houver marcações [HL]...[/HL] no texto, você DEVE preservar esses trechos com "highlight": true.
 
-1. QUEBRA DE VERSÍCULOS (LIMITE DE 120 CARACTERES): 1 versículo por slide, entre aspas “ ... ”, com campo "reference" (ex: "Mateus 6:19"). Se um versículo for longo (> 120 caracteres) ou contiver múltiplos versículos juntos, DIVIDA-O em slides consecutivos de no máximo 120 caracteres cada, quebrando sempre no ponto final (.) ou pontuação natural (; , ? !). Repita a referência em cada slide. Se houver versículos com a referência bíblica na linha seguinte, conecte-os ao versículo!
+1. QUEBRA DE VERSÍCULOS (LIMITE DE 220 CARACTERES): 1 versículo por slide, entre aspas “ ... ”, com campo "reference" (ex: "Mateus 6:19"). Se um versículo ou passagem bíblica for longo (> 220 caracteres), DIVIDA-O em slides no ponto final (.) ou ponto e vírgula (;). Mantenha frases completas e repita a referência em cada slide. Se houver versículos com a referência bíblica na linha seguinte, conecte-os ao versículo!
 2. TÓPICOS E TÍTULOS: Títulos de seções, pontos numerados ou cabeçalhos (ex: "Armadura do Reino de Deus (8)", "8. O Servo no Reino de Deus") como type "topic".
-3. PARÁGRAFOS E REFLEXÕES: Todas as frases, introduções e comentários do pregador como type "reflection" (se o parágrafo for longo, divida no ponto final (.) em slides de até 130 caracteres para não estourar a tela, mas NUNCA resuma ou exclua nenhuma palavra!).
+3. PARÁGRAFOS E REFLEXÕES: Todas as frases, introduções e comentários do pregador como type "reflection" (se o parágrafo for longo, divida no ponto final (.) em slides de até 220 caracteres para caber na tela sem poluição visual, mas NUNCA resuma ou exclua nenhuma palavra!).
 4. PERGUNTAS: Perguntas reflexivas curtas como type "question_short".
 5. DESTAQUES: Divida em runs com highlight: true para palavras de ênfase (ou onde houver [HL]...[/HL]).
 
@@ -830,7 +830,7 @@ ${sermonText}`;
     return false;
   }
 
-  function splitTextByPunctuation(text, maxChars = 120) {
+  function splitTextByPunctuation(text, maxChars = 220) {
     const stripped = text.replace(/\[\/?HL\]/g, '').replace(/^[“"']|[”"']$/g, '').trim();
     if (stripped.length <= maxChars) {
       return [text.trim()];
@@ -848,9 +848,9 @@ ${sermonText}`;
       if (partLen <= maxChars) {
         subChunks.push(part);
       } else {
-        // 2. Se uma oração ultrapassar maxChars, divide na pontuação secundária (; ou ,)
+        // 2. Se uma oração ultrapassar maxChars, divide em ponto e vírgula ou dois pontos (; ou :)
         const secondaryParts = part
-          .split(/(?<=[;,](?:\[\/HL\]|["”'’\)])*)\s+/)
+          .split(/(?<=[;:](?:\[\/HL\]|["”'’\)])*)\s+/)
           .map(s => s.trim())
           .filter(s => s.length > 0);
 
@@ -866,12 +866,32 @@ ${sermonText}`;
           }
         }
         if (cur.trim().length > 0) {
-          subChunks.push(cur.trim());
+          const curLen = cur.replace(/\[\/?HL\]/g, '').length;
+          if (curLen > maxChars) {
+            // 3. Apenas se ainda for maior que 220, divide na vírgula (,)
+            const commaParts = cur
+              .split(/(?<=[,](?:\[\/HL\]|["”'’\)])*)\s+/)
+              .map(s => s.trim())
+              .filter(s => s.length > 0);
+            let cCur = '';
+            for (const cp of commaParts) {
+              const cCand = (cCur ? cCur + ' ' : '') + cp;
+              if (cCand.replace(/\[\/?HL\]/g, '').length > maxChars && cCur.length > 0) {
+                subChunks.push(cCur.trim());
+                cCur = cp;
+              } else {
+                cCur = cCand;
+              }
+            }
+            if (cCur.trim().length > 0) subChunks.push(cCur.trim());
+          } else {
+            subChunks.push(cur.trim());
+          }
         }
       }
     }
 
-    // Agrupa os fragmentos respeitando estritamente o limite de maxChars (120)
+    // Agrupa os fragmentos respeitando o limite confortável de até 220 caracteres
     const slides = [];
     let curSlide = '';
     let insideHl = false;
@@ -1048,7 +1068,7 @@ ${sermonText}`;
       if (lines.length > 1 && isPureBibleRefLine(lines[lines.length - 1])) {
         const ref = normalizeBibleRefName(isBibleRef(lines[lines.length - 1]));
         const verseText = lines.slice(0, lines.length - 1).join(' ').replace(/\s+/g, ' ');
-        const verseChunks = splitTextByPunctuation(verseText, 120);
+        const verseChunks = splitTextByPunctuation(verseText, 220);
         verseChunks.forEach(chunk => {
           slides.push({
             type: 'verse',
@@ -1074,7 +1094,7 @@ ${sermonText}`;
             if (m) {
               const vNum = m[1];
               let vText = m[2].replace(/\n+/g, ' ').trim();
-              const vChunks = splitTextByPunctuation(vText, 120);
+              const vChunks = splitTextByPunctuation(vText, 220);
               vChunks.forEach(vc => {
                 slides.push({
                   type: 'verse',
@@ -1083,7 +1103,7 @@ ${sermonText}`;
                 });
               });
             } else {
-              const vChunks = splitTextByPunctuation(chunk.replace(/\n+/g, ' ').trim(), 120);
+              const vChunks = splitTextByPunctuation(chunk.replace(/\n+/g, ' ').trim(), 220);
               vChunks.forEach(vc => {
                 slides.push({
                   type: 'verse',
@@ -1095,7 +1115,7 @@ ${sermonText}`;
           });
         } else {
           const joined = restLines.join(' ').replace(/\s+/g, ' ');
-          const vChunks = splitTextByPunctuation(joined, 120);
+          const vChunks = splitTextByPunctuation(joined, 220);
           vChunks.forEach(vc => {
             slides.push({
               type: 'verse',
@@ -1112,7 +1132,7 @@ ${sermonText}`;
       if (trailingRef && lines[lines.length - 1].length > trailingRef.length + 8) {
         const fullP = lines.join(' ').replace(/\s+/g, ' ');
         const vText = fullP.replace(trailingRef, '').replace(/[()]/g, '').trim();
-        const vChunks = splitTextByPunctuation(vText, 120);
+        const vChunks = splitTextByPunctuation(vText, 220);
         vChunks.forEach(vc => {
           slides.push({
             type: 'verse',
@@ -1126,7 +1146,7 @@ ${sermonText}`;
       // Caso 6: Parágrafos de reflexão / comentários pastorais
       // Divide de forma elegante nos pontos (. ! ?) e pontuações naturais
       const fullText = lines.join(' ').replace(/\s+/g, ' ');
-      const chunks = splitTextByPunctuation(fullText, 130);
+      const chunks = splitTextByPunctuation(fullText, 220);
       chunks.forEach(chunk => {
         slides.push({
           type: 'reflection',
