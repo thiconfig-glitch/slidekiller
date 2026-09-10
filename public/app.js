@@ -40,8 +40,55 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.addEventListener('click', () => {
       const targetModule = btn.dataset.module;
       switchModule(targetModule);
+      moveNavGelPill(btn);   // desliza a pílula gel
     });
   });
+
+  // ──────────────────────────────────────────────────
+  // GEL PILL — Navegação topo
+  // ──────────────────────────────────────────────────
+  const navGelPill = document.getElementById('nav-gel-pill');
+  const hubNav     = document.getElementById('hub-nav');
+
+  function moveNavGelPill(targetBtn, instant) {
+    if (!navGelPill || !hubNav || !targetBtn) return;
+    const navRect = hubNav.getBoundingClientRect();
+    const btnRect = targetBtn.getBoundingClientRect();
+    const left  = btnRect.left - navRect.left;
+    const width = btnRect.width;
+    if (instant) {
+      navGelPill.style.transition = 'none';
+      navGelPill.style.left  = left  + 'px';
+      navGelPill.style.width = width + 'px';
+      // Restaura transição após frame
+      requestAnimationFrame(() => {
+        navGelPill.style.transition = '';
+      });
+    } else {
+      navGelPill.style.left  = left  + 'px';
+      navGelPill.style.width = width + 'px';
+    }
+  }
+
+  // Hover: pré-visualização translúcida da pílula
+  navModuleBtns.forEach(btn => {
+    btn.addEventListener('mouseenter', () => {
+      if (!btn.classList.contains('active')) {
+        navGelPill.style.opacity = '0.45';
+        moveNavGelPill(btn);
+      }
+    });
+    btn.addEventListener('mouseleave', () => {
+      navGelPill.style.opacity = '1';
+      // Volta para o botão ativo
+      const activeBtn = hubNav.querySelector('.nav-module-btn.active');
+      if (activeBtn) moveNavGelPill(activeBtn);
+    });
+  });
+
+  // Posiciona a pílula no botão ativo ao carregar (instantâneo)
+  const initialNavBtn = hubNav ? hubNav.querySelector('.nav-module-btn.active') : null;
+  if (initialNavBtn) moveNavGelPill(initialNavBtn, true);
 
   // ==========================================
   // MÓDULO 1: SLIDE KILLER
@@ -103,6 +150,7 @@ document.addEventListener('DOMContentLoaded', () => {
       activeSlideKillerTab = btn.dataset.tab;
       const target = document.getElementById(btn.dataset.tab);
       if (target) target.classList.add('active');
+      moveTabGelPill(btn);   // desliza a pílula gel das abas
 
       if (activeSlideKillerTab === 'tab-images-ocr') {
         if (optionBibleVersion) optionBibleVersion.style.display = 'flex';
@@ -119,6 +167,49 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   });
+
+  // ──────────────────────────────────────────────────
+  // GEL PILL — Abas internas (Slide Killer)
+  // ──────────────────────────────────────────────────
+  const tabGelPill = document.getElementById('tab-gel-pill');
+  const mainTabs   = document.getElementById('main-tabs');
+
+  function moveTabGelPill(targetBtn, instant) {
+    if (!tabGelPill || !mainTabs || !targetBtn) return;
+    const containerRect = mainTabs.getBoundingClientRect();
+    const btnRect = targetBtn.getBoundingClientRect();
+    const left  = btnRect.left - containerRect.left;
+    const width = btnRect.width;
+    if (instant) {
+      tabGelPill.style.transition = 'none';
+      tabGelPill.style.left  = left  + 'px';
+      tabGelPill.style.width = width + 'px';
+      requestAnimationFrame(() => { tabGelPill.style.transition = ''; });
+    } else {
+      tabGelPill.style.left  = left  + 'px';
+      tabGelPill.style.width = width + 'px';
+    }
+  }
+
+  // Hover: pré-visualização translúcida nas abas
+  tabBtns.forEach(btn => {
+    btn.addEventListener('mouseenter', () => {
+      if (!btn.classList.contains('active')) {
+        tabGelPill.style.opacity = '0.4';
+        moveTabGelPill(btn);
+      }
+    });
+    btn.addEventListener('mouseleave', () => {
+      tabGelPill.style.opacity = '1';
+      const activeTabBtn = mainTabs ? mainTabs.querySelector('.tab-btn.active') : null;
+      if (activeTabBtn) moveTabGelPill(activeTabBtn);
+    });
+  });
+
+  // Posiciona no botão ativo ao carregar (instantâneo)
+  const initialTabBtn = mainTabs ? mainTabs.querySelector('.tab-btn.active') : null;
+  if (initialTabBtn) moveTabGelPill(initialTabBtn, true);
+
 
   // Dropzone events (PDF Original)
   if (dropzone) {
