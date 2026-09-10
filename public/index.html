@@ -170,11 +170,25 @@
 
           <!-- Opções Extras -->
           <div class="options-bar">
-            <div class="option-item">
+            <div class="option-item option-bg-selector">
               <label for="template-select">Plano de Fundo:</label>
-              <select id="template-select" class="form-select">
-                <option value="assets/church_sermon_bg.jpg">Fundo Oficial da Igreja</option>
-              </select>
+              <div class="bg-selector-wrapper">
+                <select id="template-select" class="form-select">
+                  <option value="assets/church_sermon_bg.jpg">🏛️ Fundo Oficial da Igreja (Padrão)</option>
+                  <option value="__custom__">➕ Anexar Fundo Personalizado...</option>
+                </select>
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-attach-custom-bg" title="Anexar imagem de fundo personalizada">
+                  <span>🖼️</span> Anexar Fundo
+                </button>
+                <input type="file" id="custom-bg-input" accept="image/png, image/jpeg, image/jpg, image/webp" style="display: none;">
+                
+                <!-- Miniatura e status do fundo anexado -->
+                <div id="custom-bg-preview-badge" class="custom-bg-badge" style="display: none;">
+                  <img id="custom-bg-thumb" class="custom-bg-thumb" alt="Prévia Fundo">
+                  <span id="custom-bg-filename" class="custom-bg-filename" title="Imagem personalizada">custom.png</span>
+                  <button type="button" id="btn-remove-custom-bg" class="btn-remove-bg" title="Restaurar fundo oficial estático">✕</button>
+                </div>
+              </div>
             </div>
             <div class="option-item" id="option-bible-version" style="display: none;">
               <label for="bible-version-select">Validação Bíblica (IA):</label>
@@ -221,6 +235,7 @@
           <div class="results-actions" style="flex-wrap: wrap; gap: 8px;">
             <button class="btn btn-outline-gold" id="btn-open-verse-modal">📖 Inserir Versículo</button>
             <button class="btn btn-secondary" id="btn-add-slide">+ Novo Slide</button>
+            <button class="btn btn-secondary" id="btn-change-bg-results" title="Alterar ou anexar imagem de fundo dos slides">🖼️ Trocar Fundo</button>
             <button class="btn btn-secondary" id="btn-rebuild">💾 Salvar Edições</button>
             <button class="btn btn-secondary" id="btn-download-pdf-sk" title="Baixar slides em PDF">📄 Baixar PDF</button>
             <button class="btn btn-primary" id="btn-download-main">📥 Baixar .pptx</button>

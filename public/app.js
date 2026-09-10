@@ -135,11 +135,24 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnAddSlide = document.getElementById('btn-add-slide');
   const toast = document.getElementById('toast');
 
+  // Elementos para Fundo Personalizado
+  const btnAttachCustomBg = document.getElementById('btn-attach-custom-bg');
+  const customBgInput = document.getElementById('custom-bg-input');
+  const customBgPreviewBadge = document.getElementById('custom-bg-preview-badge');
+  const customBgThumb = document.getElementById('custom-bg-thumb');
+  const customBgFilename = document.getElementById('custom-bg-filename');
+  const btnRemoveCustomBg = document.getElementById('btn-remove-custom-bg');
+  const btnChangeBgResults = document.getElementById('btn-change-bg-results');
+
   let currentFile = null;
   let currentSlides = [];
   let currentDownloadUrl = null;
   let sermonImageFiles = [];
   let activeSlideKillerTab = 'tab-pdf';
+
+  let customBgDataUrl = null;
+  let customBgFile = null;
+  let customBgServerUrl = null;
 
   // Tabs internas do Slide Killer
   tabBtns.forEach(btn => {
@@ -589,11 +602,157 @@ Retorne ESTRITAMENTE em formato JSON puro, sem crases ou markdown adicional:
     }
   }
 
-  // Carregar templates oficiais de fundo
+  // ========================================================
+  // GERENCIAMENTO DE PLANO DE FUNDO (OFICIAL ESTÁTICO & PERSONALIZADO)
+  // ========================================================
+  function getActiveBackgroundUrl() {
+    if (customBgDataUrl && templateSelect && templateSelect.value === '__custom_active__') {
+      return customBgDataUrl;
+    }
+    if (templateSelect && templateSelect.value && !templateSelect.value.startsWith('__custom')) {
+      return templateSelect.value;
+    }
+    return 'assets/church_sermon_bg.jpg';
+  }
+
+  function updateAllSlidePreviewsBackground(bgUrl) {
+    if (!bgUrl) return;
+    const containers = document.querySelectorAll('.slide-preview-container');
+    containers.forEach(container => {
+      container.style.backgroundImage = `url("${bgUrl}")`;
+    });
+  }
+
+  async function uploadCustomBgToServer(file) {
+    try {
+      const fd = new FormData();
+      fd.append('bgImage', file);
+      const res = await fetch('/api/slides/upload-bg', {
+        method: 'POST',
+        body: fd
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.url) {
+          customBgServerUrl = data.url;
+        }
+      }
+    } catch (e) {
+      // Modo offline/estático sem servidor local ativo
+    }
+  }
+
+  function handleCustomBgSelected(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      showToast('Por favor, selecione um arquivo de imagem válido (.jpg, .png, .webp).', 'error');
+      if (customBgInput) customBgInput.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      customBgDataUrl = event.target.result;
+      customBgFile = file;
+
+      if (customBgThumb) customBgThumb.src = customBgDataUrl;
+      if (customBgFilename) customBgFilename.textContent = file.name;
+      if (customBgPreviewBadge) customBgPreviewBadge.style.display = 'inline-flex';
+
+      // Atualizar ou adicionar opção no select
+      if (templateSelect) {
+        let customOpt = templateSelect.querySelector('option[data-custom="true"]');
+        if (!customOpt) {
+          customOpt = document.createElement('option');
+          customOpt.setAttribute('data-custom', 'true');
+          customOpt.value = '__custom_active__';
+          const attachOpt = templateSelect.querySelector('option[value="__custom__"]');
+          if (attachOpt) {
+            templateSelect.insertBefore(customOpt, attachOpt);
+          } else {
+            templateSelect.appendChild(customOpt);
+          }
+        }
+        customOpt.textContent = `🖼️ Personalizado: ${file.name.length > 25 ? file.name.substring(0, 22) + '...' : file.name}`;
+        customOpt.selected = true;
+      }
+
+      // Se os slides já estiverem visíveis na tela, atualizar todos os previews imediatamente
+      updateAllSlidePreviewsBackground(customBgDataUrl);
+
+      showToast('Imagem de fundo personalizada aplicada!', 'success');
+
+      // Enviar em segundo plano para o servidor se estiver rodando
+      uploadCustomBgToServer(file);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function restoreOfficialBg() {
+    customBgDataUrl = null;
+    customBgFile = null;
+    customBgServerUrl = null;
+    if (customBgInput) customBgInput.value = '';
+    if (customBgPreviewBadge) customBgPreviewBadge.style.display = 'none';
+
+    if (templateSelect) {
+      const customOpt = templateSelect.querySelector('option[data-custom="true"]');
+      if (customOpt) customOpt.remove();
+
+      // Selecionar o primeiro template oficial estático disponível
+      const officialOpt = templateSelect.querySelector('option:not([value="__custom__"])');
+      if (officialOpt) {
+        officialOpt.selected = true;
+      } else {
+        templateSelect.value = 'assets/church_sermon_bg.jpg';
+      }
+    }
+
+    const officialBgUrl = getActiveBackgroundUrl();
+    updateAllSlidePreviewsBackground(officialBgUrl);
+    showToast('Fundo oficial estático restaurado.', 'info');
+  }
+
+  function handleTemplateSelectChange() {
+    if (!templateSelect) return;
+    if (templateSelect.value === '__custom__') {
+      if (customBgInput) customBgInput.click();
+    } else if (templateSelect.value === '__custom_active__') {
+      if (customBgDataUrl) {
+        if (customBgPreviewBadge) customBgPreviewBadge.style.display = 'inline-flex';
+        updateAllSlidePreviewsBackground(customBgDataUrl);
+      }
+    } else {
+      // Usuário escolheu um template oficial estático
+      const bgUrl = templateSelect.value;
+      updateAllSlidePreviewsBackground(bgUrl);
+    }
+  }
+
+  if (btnAttachCustomBg && customBgInput) {
+    btnAttachCustomBg.addEventListener('click', () => customBgInput.click());
+  }
+  if (btnChangeBgResults && customBgInput) {
+    btnChangeBgResults.addEventListener('click', () => customBgInput.click());
+  }
+  if (customBgInput) {
+    customBgInput.addEventListener('change', handleCustomBgSelected);
+  }
+  if (btnRemoveCustomBg) {
+    btnRemoveCustomBg.addEventListener('click', restoreOfficialBg);
+  }
+  if (templateSelect) {
+    templateSelect.addEventListener('change', handleTemplateSelectChange);
+  }
+
+  // Carregar templates oficiais de fundo preservando a opção de anexo
   fetch('/api/slides/templates')
     .then(res => res.json())
     .then(data => {
       if (data && data.templates && templateSelect) {
+        const currentVal = templateSelect.value;
         templateSelect.innerHTML = '';
         data.templates.forEach(t => {
           const opt = document.createElement('option');
@@ -601,6 +760,26 @@ Retorne ESTRITAMENTE em formato JSON puro, sem crases ou markdown adicional:
           opt.textContent = t.name;
           templateSelect.appendChild(opt);
         });
+
+        // Se houver imagem customizada ativa, reinserir
+        if (customBgDataUrl && customBgFile) {
+          const customOpt = document.createElement('option');
+          customOpt.setAttribute('data-custom', 'true');
+          customOpt.value = '__custom_active__';
+          customOpt.textContent = `🖼️ Personalizado: ${customBgFile.name.length > 25 ? customBgFile.name.substring(0, 22) + '...' : customBgFile.name}`;
+          templateSelect.appendChild(customOpt);
+          if (currentVal === '__custom_active__') customOpt.selected = true;
+        }
+
+        // Opção para anexar fundo novo
+        const attachOpt = document.createElement('option');
+        attachOpt.value = '__custom__';
+        attachOpt.textContent = '➕ Anexar Fundo Personalizado...';
+        templateSelect.appendChild(attachOpt);
+
+        if (currentVal && currentVal !== '__custom__' && templateSelect.querySelector(`option[value="${currentVal}"]`)) {
+          templateSelect.value = currentVal;
+        }
       }
     })
     .catch(() => {});
@@ -1270,6 +1449,9 @@ ${sermonText}`;
       if (currentFile) formData.append('pdfFile', currentFile);
       if (text) formData.append('sermonText', text);
       formData.append('useAi', checkUseAi.checked);
+      if (customBgFile && templateSelect && templateSelect.value === '__custom_active__') {
+        formData.append('bgImage', customBgFile);
+      }
 
       try {
         const res = await fetch('/api/slides/upload-pdf', {
@@ -1314,7 +1496,7 @@ ${sermonText}`;
     slideCountBadge.textContent = `${currentSlides.length} slides`;
     slidesGrid.innerHTML = '';
 
-    const bgUrl = (templateSelect && templateSelect.value) ? templateSelect.value : 'assets/church_sermon_bg.jpg';
+    const bgUrl = getActiveBackgroundUrl();
 
     currentSlides.forEach((slide, index) => {
       const card = document.createElement('div');
@@ -1396,12 +1578,17 @@ ${sermonText}`;
       btnRebuild.textContent = 'Salvando...';
 
       try {
+        const activeBgUrl = getActiveBackgroundUrl();
+        const selectedBgVal = (customBgServerUrl && templateSelect && templateSelect.value === '__custom_active__')
+          ? customBgServerUrl
+          : activeBgUrl;
+
         const res = await fetch('/api/slides/rebuild', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             slides: currentSlides,
-            selectedBg: templateSelect ? templateSelect.value : 'assets/church_sermon_bg.jpg'
+            selectedBg: selectedBgVal
           })
         });
         const data = await res.json();
@@ -1439,29 +1626,33 @@ ${sermonText}`;
       pptx.defineLayout({ name: 'CHURCH_FULL_HD', width: 13.333, height: 7.5 });
       pptx.layout = 'CHURCH_FULL_HD';
 
-      const bgUrl = (templateSelect && templateSelect.value) ? templateSelect.value : 'assets/church_sermon_bg.jpg';
+      const bgUrl = getActiveBackgroundUrl();
 
       // Pré-carregar imagem de fundo para garantir embutimento perfeito e leve em qualquer dispositivo
       let bgBase64 = null;
-      try {
-        const bgImg = new Image();
-        bgImg.crossOrigin = 'anonymous';
-        await new Promise((resolve) => {
-          bgImg.onload = () => {
-            try {
-              const cv = document.createElement('canvas');
-              cv.width = 1920;
-              cv.height = 1080;
-              const cx = cv.getContext('2d');
-              cx.drawImage(bgImg, 0, 0, 1920, 1080);
-              bgBase64 = cv.toDataURL('image/jpeg', 0.88);
-            } catch(e) {}
-            resolve();
-          };
-          bgImg.onerror = () => resolve();
-          bgImg.src = bgUrl;
-        });
-      } catch (e) {}
+      if (customBgDataUrl && templateSelect && templateSelect.value === '__custom_active__') {
+        bgBase64 = customBgDataUrl;
+      } else {
+        try {
+          const bgImg = new Image();
+          bgImg.crossOrigin = 'anonymous';
+          await new Promise((resolve) => {
+            bgImg.onload = () => {
+              try {
+                const cv = document.createElement('canvas');
+                cv.width = 1920;
+                cv.height = 1080;
+                const cx = cv.getContext('2d');
+                cx.drawImage(bgImg, 0, 0, 1920, 1080);
+                bgBase64 = cv.toDataURL('image/jpeg', 0.88);
+              } catch(e) {}
+              resolve();
+            };
+            bgImg.onerror = () => resolve();
+            bgImg.src = bgUrl;
+          });
+        } catch (e) {}
+      }
 
       for (const item of currentSlides) {
         const slide = pptx.addSlide();
@@ -1631,7 +1822,7 @@ ${sermonText}`;
         hotfixes: ['px_scaling']
       });
 
-      const bgUrl = (templateSelect && templateSelect.value) ? templateSelect.value : 'assets/church_sermon_bg.jpg';
+      const bgUrl = getActiveBackgroundUrl();
       const bgImg = new Image();
       bgImg.crossOrigin = 'anonymous';
 

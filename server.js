@@ -127,8 +127,13 @@ app.post('/api/slides/rebuild', async (req, res) => {
     }
 
     let bgPath = path.join(__dirname, 'public/assets/church_sermon_bg.png');
-    if (selectedBg && fs.existsSync(path.join(__dirname, 'public', selectedBg))) {
-      bgPath = path.join(__dirname, 'public', selectedBg);
+    if (selectedBg) {
+      if (selectedBg.startsWith('/downloads/')) {
+        const potentialPath = path.join(downloadsDir, path.basename(selectedBg));
+        if (fs.existsSync(potentialPath)) bgPath = potentialPath;
+      } else if (fs.existsSync(path.join(__dirname, 'public', selectedBg))) {
+        bgPath = path.join(__dirname, 'public', selectedBg);
+      }
     }
 
     const fileName = `SLIDES_EDITADOS_${Date.now()}.pptx`;
@@ -156,7 +161,7 @@ app.post('/api/slides/rebuild', async (req, res) => {
 app.get('/api/slides/templates', (req, res) => {
   const assetsDir = path.join(__dirname, 'public/assets');
   const templates = [
-    { id: 'church_default', name: 'Fundo Oficial da Igreja (Full HD)', url: '/assets/church_sermon_bg.png' }
+    { id: 'church_default', name: '🏛️ Fundo Oficial da Igreja (Full HD)', url: '/assets/church_sermon_bg.png' }
   ];
 
   if (fs.existsSync(assetsDir)) {
@@ -173,6 +178,29 @@ app.get('/api/slides/templates', (req, res) => {
   }
 
   res.json({ templates });
+});
+
+/**
+ * 4. Upload de imagem de fundo customizada
+ */
+app.post('/api/slides/upload-bg', upload.single('bgImage'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'Nenhuma imagem de fundo enviada.' });
+    }
+    const ext = path.extname(req.file.originalname) || '.png';
+    const customBgName = `custom_bg_${Date.now()}${ext}`;
+    const customBgPath = path.join(downloadsDir, customBgName);
+    fs.writeFileSync(customBgPath, req.file.buffer);
+    res.json({
+      status: 'success',
+      url: `/downloads/${customBgName}`,
+      path: customBgPath,
+      fileName: customBgName
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.listen(PORT, () => {
