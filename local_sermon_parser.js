@@ -194,47 +194,52 @@ function parseSermonTextOffline(rawText) {
     .replace(/\u00A0/g, ' ')
     .replace(/\r\n/g, '\n');
 
-  const initialParagraphs = normalized.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
+  // 1. Divide em linhas eliminando linhas decorativas
+  const allLines = normalized
+    .split('\n')
+    .map(l => l.trim())
+    .filter(Boolean)
+    .filter(l => !/^[⸻\-_\s]{3,}$/.test(l));
+
+  // 2. Agrupa em blocos lógicos preservando seções, tópicos e passagens bíblicas completas
   const blocks = [];
+  let curBlock = [];
 
-  for (const p of initialParagraphs) {
-    const rawLines = p.split('\n').map(l => l.trim()).filter(Boolean);
-    let curBlock = [];
+  for (let i = 0; i < allLines.length; i++) {
+    const line = allLines[i];
+    const isHeading = isHeadingOrTopic(line);
+    const isPureRef = isPureBibleRefLine(line);
 
-    for (let i = 0; i < rawLines.length; i++) {
-      const line = rawLines[i];
-      const isHeading = isHeadingOrTopic(line);
-      const isPureRef = isPureBibleRefLine(line);
+    if (isHeading) {
+      if (curBlock.length > 0) {
+        blocks.push(curBlock);
+        curBlock = [];
+      }
+      blocks.push([line]);
+      continue;
+    }
 
-      if (isHeading) {
+    if (isPureRef) {
+      // Se curBlock já tinha texto e a primeira linha não era apenas outra referência bíblica
+      if (curBlock.length > 0 && !isPureBibleRefLine(curBlock[0])) {
+        curBlock.push(line);
+        blocks.push(curBlock);
+        curBlock = [];
+      } else {
+        // Referência no topo de um novo versículo
         if (curBlock.length > 0) {
           blocks.push(curBlock);
           curBlock = [];
         }
-        blocks.push([line]);
-        continue;
+        curBlock.push(line);
       }
-
-      if (isPureRef) {
-        if (curBlock.length > 0 && !isPureBibleRefLine(curBlock[0])) {
-          curBlock.push(line);
-          blocks.push(curBlock);
-          curBlock = [];
-        } else {
-          if (curBlock.length > 0) {
-            blocks.push(curBlock);
-            curBlock = [];
-          }
-          curBlock.push(line);
-        }
-        continue;
-      }
-
-      curBlock.push(line);
+      continue;
     }
-    if (curBlock.length > 0) {
-      blocks.push(curBlock);
-    }
+
+    curBlock.push(line);
+  }
+  if (curBlock.length > 0) {
+    blocks.push(curBlock);
   }
 
   const slides = [];
