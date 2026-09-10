@@ -6,14 +6,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const moduleViews = {
     'slidekiller': document.getElementById('view-slidekiller'),
     'pdf-to-pptx': document.getElementById('view-pdf-to-pptx'),
-    'images-to-pptx': document.getElementById('view-images-to-pptx'),
-    'video-editor': document.getElementById('view-video-editor')
+    'images-to-pptx': document.getElementById('view-images-to-pptx')
   };
   const moduleActions = {
     'slidekiller': document.getElementById('actions-slidekiller'),
     'pdf-to-pptx': document.getElementById('actions-pdf-to-pptx'),
-    'images-to-pptx': document.getElementById('actions-images-to-pptx'),
-    'video-editor': document.getElementById('actions-video-editor')
+    'images-to-pptx': document.getElementById('actions-images-to-pptx')
   };
 
   let currentActiveModule = 'slidekiller';
@@ -43,74 +41,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const targetModule = btn.dataset.module;
       switchModule(targetModule);
     });
-  });
-
-  // ==========================================
-  // MÓDULO 2: EDITOR DE VÍDEO (OPENCUT)
-  // ==========================================
-  const opencutIframe = document.getElementById('opencut-iframe');
-  const iframeLoading = document.getElementById('iframe-loading');
-  const btnReloadVideo = document.getElementById('btn-reload-video');
-  const btnVideoFullscreen = document.getElementById('btn-video-fullscreen');
-  const btnExpandCanvas = document.getElementById('btn-expand-canvas');
-  const videoContainer = document.getElementById('video-container');
-
-  if (opencutIframe) {
-    opencutIframe.addEventListener('load', () => {
-      if (iframeLoading) iframeLoading.classList.add('hidden');
-    });
-
-    // Fallback de segurança para esconder o loading após 4s
-    setTimeout(() => {
-      if (iframeLoading) iframeLoading.classList.add('hidden');
-    }, 4000);
-  }
-
-  if (btnReloadVideo && opencutIframe) {
-    btnReloadVideo.addEventListener('click', () => {
-      if (iframeLoading) iframeLoading.classList.remove('hidden');
-      opencutIframe.src = opencutIframe.src;
-    });
-  }
-
-  function toggleVideoFullscreen() {
-    if (!videoContainer) return;
-    videoContainer.classList.toggle('fullscreen-focus');
-    const isFull = videoContainer.classList.contains('fullscreen-focus');
-    if (btnVideoFullscreen) {
-      btnVideoFullscreen.innerHTML = isFull ? '<span>✕</span> Fechar Foco' : '<span>⛶</span> Tela Cheia';
-    }
-    if (btnExpandCanvas) {
-      btnExpandCanvas.innerHTML = isFull ? '✕ Fechar' : '⛶ Maximizar';
-    }
-  }
-
-  if (btnVideoFullscreen) btnVideoFullscreen.addEventListener('click', toggleVideoFullscreen);
-  if (btnExpandCanvas) btnExpandCanvas.addEventListener('click', toggleVideoFullscreen);
-
-  // Alternância entre tela de boas-vindas da igreja e editor ativo
-  const videoWelcomeScreen = document.getElementById('video-welcome-screen');
-  const btnBackToVideoWelcome = document.getElementById('btn-back-to-video-welcome');
-
-  window.openPublicVideoEditor = function(preset) {
-    if (videoWelcomeScreen) videoWelcomeScreen.style.display = 'none';
-    if (videoContainer) videoContainer.style.display = 'flex';
-  };
-
-  window.closePublicVideoEditor = function() {
-    if (videoContainer) videoContainer.style.display = 'none';
-    if (videoWelcomeScreen) videoWelcomeScreen.style.display = 'flex';
-  };
-
-  if (btnBackToVideoWelcome) {
-    btnBackToVideoWelcome.addEventListener('click', window.closePublicVideoEditor);
-  }
-
-  // Tecla ESC para sair do modo foco no vídeo
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && videoContainer && videoContainer.classList.contains('fullscreen-focus')) {
-      toggleVideoFullscreen();
-    }
   });
 
   // ==========================================
