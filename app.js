@@ -657,8 +657,12 @@ Retorne ESTRITAMENTE em formato JSON puro, sem crases ou markdown adicional:
   function updateAllSlidePreviewsBackground(bgUrl) {
     if (!bgUrl) return;
     const containers = document.querySelectorAll('.slide-preview-container');
-    containers.forEach(container => {
-      container.style.backgroundImage = `url("${bgUrl}")`;
+    containers.forEach((container, idx) => {
+      if (currentSlides[idx] && currentSlides[idx].bgImage) {
+        container.style.backgroundImage = `url("${currentSlides[idx].bgImage}")`;
+      } else {
+        container.style.backgroundImage = `url("${bgUrl}")`;
+      }
     });
   }
 
@@ -1712,12 +1716,13 @@ ${sermonText}`;
     slideCountBadge.textContent = `${currentSlides.length} slides`;
     slidesGrid.innerHTML = '';
 
-    const bgUrl = getActiveBackgroundUrl();
+    const globalBgUrl = getActiveBackgroundUrl();
 
     currentSlides.forEach((slide, index) => {
       const card = document.createElement('div');
       card.className = 'slide-card';
 
+      const slideBgUrl = slide.bgImage || globalBgUrl;
       const fullText = (slide.runs || []).map(r => r.text).join('');
       const previewHtml = (slide.runs || []).map(r => {
         return r.highlight ? `<span class="highlight">${escapeHtml(r.text)}</span>` : escapeHtml(r.text);
@@ -1726,9 +1731,12 @@ ${sermonText}`;
       card.innerHTML = `
         <div class="slide-card-header">
           <span>SLIDE ${index + 1}</span>
-          <span class="slide-type-tag">${slide.type || 'versículo'}</span>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            ${slide.bgImage ? '<span class="slide-custom-bg-tag" title="Este slide possui um fundo personalizado individual">🖼️ Fundo Próprio</span>' : ''}
+            <span class="slide-type-tag">${slide.type || 'versículo'}</span>
+          </div>
         </div>
-        <div class="slide-preview-container" style="background-image: url('${bgUrl}');">
+        <div class="slide-preview-container" style="background-image: url('${slideBgUrl}');">
           <div class="slide-preview-content">
             <div class="slide-preview-text">${previewHtml}</div>
             ${slide.reference ? `<div class="slide-preview-ref">${escapeHtml(slide.reference)}</div>` : ''}
@@ -1738,7 +1746,18 @@ ${sermonText}`;
           <textarea class="slide-text-edit" data-index="${index}" placeholder="Texto do slide...">${escapeHtml(fullText)}</textarea>
           <div class="slide-editor-row">
             <input type="text" class="slide-ref-edit" data-index="${index}" placeholder="Referência (ex: Mateus 6:19)" value="${escapeHtml(slide.reference || '')}">
-            <button class="btn-delete-slide" data-index="${index}">🗑️ Excluir</button>
+            <div class="slide-editor-actions">
+              <input type="file" class="slide-bg-input" accept="image/*" style="display: none;">
+              <button type="button" class="btn-slide-bg" title="Trocar imagem de fundo deste slide específico">
+                🖼️ Fundo
+              </button>
+              ${slide.bgImage ? `
+                <button type="button" class="btn-reset-slide-bg" title="Restaurar fundo padrão da apresentação">
+                  ↩️ Padrão
+                </button>
+              ` : ''}
+              <button type="button" class="btn-delete-slide" data-index="${index}" title="Excluir este slide">🗑️</button>
+            </div>
           </div>
         </div>
       `;
@@ -1749,22 +1768,56 @@ ${sermonText}`;
       const btnDelete = card.querySelector('.btn-delete-slide');
       const previewText = card.querySelector('.slide-preview-text');
       const previewRef = card.querySelector('.slide-preview-ref');
+      const bgInput = card.querySelector('.slide-bg-input');
+      const btnBg = card.querySelector('.btn-slide-bg');
+      const btnResetBg = card.querySelector('.btn-reset-slide-bg');
 
       textEdit.addEventListener('input', (e) => {
         const val = e.target.value;
         currentSlides[index].runs = [{ text: val, highlight: false }];
         if (previewText) previewText.textContent = val;
+        currentDownloadUrl = null;
       });
 
       refEdit.addEventListener('input', (e) => {
         currentSlides[index].reference = e.target.value;
         if (previewRef) previewRef.textContent = e.target.value;
+        currentDownloadUrl = null;
       });
 
       btnDelete.addEventListener('click', () => {
         currentSlides.splice(index, 1);
         renderResults();
       });
+
+      if (btnBg && bgInput) {
+        btnBg.addEventListener('click', () => bgInput.click());
+        bgInput.addEventListener('change', (e) => {
+          const file = e.target.files && e.target.files[0];
+          if (!file) return;
+          if (!file.type.startsWith('image/')) {
+            showToast('Por favor, selecione uma imagem válida (.jpg, .png, .webp).', 'error');
+            return;
+          }
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            currentSlides[index].bgImage = ev.target.result;
+            currentDownloadUrl = null;
+            renderResults();
+            showToast(`Fundo do Slide ${index + 1} alterado com sucesso!`, 'success');
+          };
+          reader.readAsDataURL(file);
+        });
+      }
+
+      if (btnResetBg) {
+        btnResetBg.addEventListener('click', () => {
+          delete currentSlides[index].bgImage;
+          currentDownloadUrl = null;
+          renderResults();
+          showToast(`Fundo do Slide ${index + 1} voltou para o padrão!`, 'info');
+        });
+      }
 
       slidesGrid.appendChild(card);
     });
@@ -1872,7 +1925,13 @@ ${sermonText}`;
 
       for (const item of currentSlides) {
         const slide = pptx.addSlide();
-        if (bgBase64) {
+        if (item.bgImage) {
+          if (item.bgImage.startsWith('data:')) {
+            slide.background = { data: item.bgImage };
+          } else {
+            slide.background = { path: item.bgImage };
+          }
+        } else if (bgBase64) {
           slide.background = { data: bgBase64 };
         } else {
           slide.background = { path: bgUrl };
@@ -2058,9 +2117,23 @@ ${sermonText}`;
 
         const item = currentSlides[i];
 
-        // Fundo
-        if (bgImg.complete && bgImg.naturalWidth > 0) {
-          ctx.drawImage(bgImg, 0, 0, baseW, baseH);
+        // Fundo (suporta fundo específico por slide ou padrão global)
+        let slideBgDrawable = bgImg;
+        if (item.bgImage) {
+          const itemImg = new Image();
+          itemImg.crossOrigin = 'anonymous';
+          await new Promise((resolve) => {
+            itemImg.onload = resolve;
+            itemImg.onerror = resolve;
+            itemImg.src = item.bgImage;
+          });
+          if (itemImg.complete && itemImg.naturalWidth > 0) {
+            slideBgDrawable = itemImg;
+          }
+        }
+
+        if (slideBgDrawable && slideBgDrawable.complete && slideBgDrawable.naturalWidth > 0) {
+          ctx.drawImage(slideBgDrawable, 0, 0, baseW, baseH);
         } else {
           ctx.fillStyle = '#FFFFFF';
           ctx.fillRect(0, 0, baseW, baseH);

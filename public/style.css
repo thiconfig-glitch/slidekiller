@@ -816,16 +816,81 @@ textarea:focus {
   justify-content: space-between;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .slide-editor-row input {
   flex: 1;
+  min-width: 140px;
   background: #1e293b;
   border: 1px solid var(--border);
   color: #fff;
   padding: 5px 8px;
   border-radius: 4px;
   font-size: 12px;
+}
+
+.slide-editor-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-slide-bg {
+  background: rgba(232, 184, 89, 0.12);
+  border: 1px solid rgba(232, 184, 89, 0.3);
+  color: var(--primary);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-slide-bg:hover {
+  background: rgba(232, 184, 89, 0.24);
+  border-color: var(--primary);
+}
+
+.btn-reset-slide-bg {
+  background: rgba(148, 163, 184, 0.12);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  color: var(--text-muted);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-reset-slide-bg:hover {
+  background: rgba(148, 163, 184, 0.25);
+  color: #fff;
+}
+
+.slide-custom-bg-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: rgba(6, 182, 212, 0.15);
+  border: 1px solid rgba(6, 182, 212, 0.35);
+  color: var(--accent-cyan);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
 }
 
 .btn-delete-slide {
