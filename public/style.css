@@ -513,71 +513,100 @@ textarea:focus {
 
 /* Configuração do Formato de Texto (Esboço vs Direção Teams) */
 .text-mode-config-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
-  padding: 8px 12px;
-  background: rgba(19, 27, 46, 0.6);
-  border: 1px solid var(--border);
-  border-radius: 10px;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  margin-bottom: 12px !important;
+  padding: 8px 12px !important;
+  background: rgba(15, 23, 42, 0.75) !important;
+  border: 1px solid rgba(255, 255, 255, 0.09) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
 }
 
 .text-format-group, .teams-options-container {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
 }
 
 .text-config-label {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  color: #94a3b8 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.6px !important;
+  user-select: none !important;
 }
 
 .format-pill-group, .teams-pill-group {
-  display: inline-flex;
-  background: rgba(9, 13, 22, 0.8);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 3px;
-  gap: 3px;
+  display: inline-flex !important;
+  background: rgba(8, 12, 22, 0.95) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 9px !important;
+  padding: 3px !important;
+  gap: 4px !important;
 }
 
 .format-pill-btn, .teams-option-btn {
-  background: transparent;
-  border: none;
-  color: var(--text-muted);
-  font-size: 12px;
-  font-weight: 600;
-  padding: 5px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  transition: all 0.2s ease;
-  font-family: inherit;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  outline: none !important;
+  color: #94a3b8 !important;
+  font-size: 12.5px !important;
+  font-weight: 500 !important;
+  padding: 6px 14px !important;
+  border-radius: 7px !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  font-family: inherit !important;
+  line-height: 1.2 !important;
+  user-select: none !important;
 }
 
 .format-pill-btn:hover, .teams-option-btn:hover {
-  color: var(--text-main);
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.06) !important;
 }
 
 .format-pill-btn.active {
-  background: rgba(232, 184, 89, 0.18);
-  color: var(--primary);
-  box-shadow: 0 0 0 1px rgba(232, 184, 89, 0.35);
+  background: linear-gradient(135deg, rgba(232, 184, 89, 0.22), rgba(202, 154, 62, 0.12)) !important;
+  color: #e8b859 !important;
+  font-weight: 700 !important;
+  border: 1px solid rgba(232, 184, 89, 0.4) !important;
+  box-shadow: 0 2px 8px rgba(232, 184, 89, 0.15) !important;
+}
+
+.format-pill-btn[data-text-mode="teams"].active {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.28), rgba(139, 92, 246, 0.2)) !important;
+  color: #c4b5fd !important;
+  font-weight: 700 !important;
+  border: 1px solid rgba(139, 92, 246, 0.5) !important;
+  box-shadow: 0 2px 10px rgba(139, 92, 246, 0.22) !important;
 }
 
 .teams-option-btn.active {
-  background: rgba(6, 182, 212, 0.18);
-  color: var(--accent-cyan);
-  box-shadow: 0 0 0 1px rgba(6, 182, 212, 0.35);
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.25), rgba(14, 165, 233, 0.16)) !important;
+  color: #38bdf8 !important;
+  font-weight: 700 !important;
+  border: 1px solid rgba(6, 182, 212, 0.45) !important;
+  box-shadow: 0 2px 8px rgba(6, 182, 212, 0.18) !important;
+}
+
+.pill-icon {
+  font-size: 13px !important;
+  line-height: 1 !important;
+  display: inline-flex !important;
+  align-items: center !important;
 }
 
 /* Opções Extras */
