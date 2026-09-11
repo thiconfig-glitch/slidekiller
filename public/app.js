@@ -154,6 +154,45 @@ document.addEventListener('DOMContentLoaded', () => {
   let customBgFile = null;
   let customBgServerUrl = null;
 
+  // Elementos do seletor de formato de texto (Esboço vs Direção Teams)
+  const formatPillBtns = document.querySelectorAll('.format-pill-btn');
+  const teamsOptionsContainer = document.getElementById('teams-options-container');
+  const teamsOptionBtns = document.querySelectorAll('.teams-option-btn');
+
+  let activeTextMode = 'standard'; // 'standard' | 'teams'
+  let activeTeamsOption = 'only-verses'; // 'only-verses' | 'with-explanations'
+
+  if (formatPillBtns.length > 0) {
+    formatPillBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        formatPillBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        activeTextMode = btn.dataset.textMode;
+        if (activeTextMode === 'teams') {
+          if (teamsOptionsContainer) teamsOptionsContainer.style.display = 'inline-flex';
+          if (sermonTextInput) {
+            sermonTextInput.placeholder = 'Cole aqui o texto ou mensagem da Direção Teams com as passagens bíblicas e orientações...';
+          }
+        } else {
+          if (teamsOptionsContainer) teamsOptionsContainer.style.display = 'none';
+          if (sermonTextInput) {
+            sermonTextInput.placeholder = 'Cole aqui o texto ou anotações do pastor com as referências bíblicas (ex: Mateus 6:19-21)...';
+          }
+        }
+      });
+    });
+  }
+
+  if (teamsOptionBtns.length > 0) {
+    teamsOptionBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        teamsOptionBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        activeTeamsOption = btn.dataset.teamsOption;
+      });
+    });
+  }
+
   // Tabs internas do Slide Killer
   tabBtns.forEach(btn => {
     btn.addEventListener('click', () => {
@@ -1373,6 +1412,177 @@ ${sermonText}`;
     }];
   }
 
+  // --- MOTOR ESPECIALIZADO DE SERMÃO / ROTEIRO DO TEAMS ---
+  function parseTeamsDirectionTextBrowser(rawText, options = { onlyVerses: true }) {
+    const onlyVerses = options.onlyVerses !== false;
+
+    const normalized = (rawText || '')
+      .replace(/\u00A0/g, ' ')
+      .replace(/\r\n/g, '\n');
+
+    const rawParagraphs = normalized
+      .split(/\n\s*\n+/)
+      .map(p => p.trim())
+      .filter(Boolean);
+
+    const parsedItems = [];
+
+    const isAdministrativeNoise = (text) => {
+      const t = text.trim();
+      if (/não compartilhar fora do teams/i.test(t)) return true;
+      if (/^_{3,}$/.test(t)) return true;
+      if (/^(?:segunda|terça|quarta|quinta|sexta|sábado|domingo)[-–—\s\w/]+/i.test(t) && t.length < 50) return true;
+      if (/^📌\s*(?:sugestão|vamos|domingo|25\/\d{2}|ajuda para a obra)/i.test(t)) return true;
+      if (/^(?:podemos chamar|uma vez diante|vamos trabalhar|vamos orar|vamos entregar|vamos recolher)/i.test(t)) return true;
+      return false;
+    };
+
+    for (let i = 0; i < rawParagraphs.length; i++) {
+      const p = rawParagraphs[i];
+
+      if (/^_{3,}$/.test(p)) continue;
+
+      // Padrão 1: “Versículo...” Referência (com citação entre aspas terminando na referência)
+      const inlineQuoteAndRef = p.match(/^[“"']\s*(.+?)\s*[”"']\s*([A-Za-z0-9À-ÿ\s.:,-]+)$/s);
+      if (inlineQuoteAndRef) {
+        const vText = inlineQuoteAndRef[1].replace(/\s+/g, ' ').trim();
+        const possibleRef = inlineQuoteAndRef[2].trim();
+        const refMatch = isBibleRef(possibleRef);
+        if (refMatch) {
+          parsedItems.push({
+            type: 'verse',
+            reference: normalizeBibleRefName(refMatch),
+            text: vText
+          });
+          continue;
+        }
+      }
+
+      const lines = p.split('\n').map(l => l.trim()).filter(Boolean);
+      const lastLine = lines[lines.length - 1];
+
+      // Padrão 2: Última linha do parágrafo é PURAMENTE uma referência bíblica
+      if (lines.length > 1 && isPureBibleRefLine(lastLine)) {
+        const refMatch = isBibleRef(lastLine);
+        const vText = lines.slice(0, lines.length - 1).join(' ').replace(/^[“"']|[”"']$/g, '').replace(/\s+/g, ' ').trim();
+        parsedItems.push({
+          type: 'verse',
+          reference: normalizeBibleRefName(refMatch),
+          text: vText
+        });
+        continue;
+      }
+
+      // Padrão 3: Versículo em P[i] e próximo parágrafo P[i+1] é uma referência isolada
+      if (i + 1 < rawParagraphs.length && isPureBibleRefLine(rawParagraphs[i + 1])) {
+        const refMatch = isBibleRef(rawParagraphs[i + 1]);
+        const vText = p.replace(/^[“"']|[”"']$/g, '').replace(/\s+/g, ' ').trim();
+        parsedItems.push({
+          type: 'verse',
+          reference: normalizeBibleRefName(refMatch),
+          text: vText
+        });
+        i++;
+        continue;
+      }
+
+      // Padrão 4: Referência bíblica no final da última linha
+      const trailingRefMatch = isBibleRef(lastLine);
+      if (trailingRefMatch && !lastLine.startsWith('(') && !lastLine.startsWith('•') && !lastLine.startsWith('📌')) {
+        const isDirective = /^(?:vamos|podemos|oração|sugestão|ajuda)/i.test(p);
+        if (!isDirective) {
+          const cleanRef = trailingRefMatch;
+          const pWithoutRef = p.replace(new RegExp(`\\s*${cleanRef.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}\\s*$`, 'i'), '').trim();
+          const vText = pWithoutRef.replace(/^[“"']|[”"']$/g, '').replace(/\s+/g, ' ').trim();
+          if (vText.length > 5) {
+            parsedItems.push({
+              type: 'verse',
+              reference: normalizeBibleRefName(cleanRef),
+              text: vText
+            });
+            continue;
+          }
+        }
+      }
+
+      // Se NÃO for versículo, e a opção "Manter Explicações" estiver selecionada:
+      if (!onlyVerses) {
+        if (isAdministrativeNoise(p)) {
+          continue;
+        }
+
+        if (p.includes('•')) {
+          const bulletLines = lines.filter(l => l.startsWith('•') || l.startsWith('-'));
+          for (const bl of bulletLines) {
+            const cleanBullet = bl.replace(/^[•\-\s]+/, '').trim();
+            if (cleanBullet.length > 5 && !isAdministrativeNoise(cleanBullet)) {
+              parsedItems.push({
+                type: 'reflection',
+                text: cleanBullet
+              });
+            }
+          }
+          continue;
+        }
+
+        if (p.startsWith('🔴') || (p.endsWith('?') && p.length < 80)) {
+          const cleanHeading = p.replace(/^🔴\s*/, '').replace(/\(Palavra\)/i, '').trim();
+          parsedItems.push({
+            type: cleanHeading.endsWith('?') ? 'question_short' : 'topic',
+            text: cleanHeading
+          });
+          continue;
+        }
+
+        if (p.length > 20) {
+          parsedItems.push({
+            type: 'reflection',
+            text: p
+          });
+        }
+      }
+    }
+
+    const slides = [];
+
+    for (const item of parsedItems) {
+      if (item.type === 'verse') {
+        const chunks = splitTextByPunctuation(item.text, 220);
+        chunks.forEach(chunk => {
+          slides.push({
+            type: 'verse',
+            reference: item.reference,
+            runs: buildRunsFromText(formatQuotes(chunk))
+          });
+        });
+      } else if (item.type === 'question_short') {
+        slides.push({
+          type: 'question_short',
+          runs: buildRunsFromText(item.text)
+        });
+      } else if (item.type === 'topic') {
+        slides.push({
+          type: 'topic',
+          runs: buildRunsFromText(item.text)
+        });
+      } else {
+        const chunks = splitTextByPunctuation(item.text, 220);
+        chunks.forEach(chunk => {
+          slides.push({
+            type: 'reflection',
+            runs: buildRunsFromText(chunk)
+          });
+        });
+      }
+    }
+
+    return slides.length > 0 ? slides : [{
+      type: 'verse',
+      reference: 'Direção Teams',
+      runs: [{ text: rawText.substring(0, 200), highlight: false }]
+    }];
+  }
+
   // Ação de Geração de Slides
   if (btnGenerate) {
     btnGenerate.addEventListener('click', async () => {
@@ -1409,7 +1619,11 @@ ${sermonText}`;
           throw new Error('Nenhum texto pôde ser lido do arquivo.');
         }
 
-        if (checkUseAi && checkUseAi.checked) {
+        if (activeSlideKillerTab === 'tab-text' && activeTextMode === 'teams') {
+          currentSlides = parseTeamsDirectionTextBrowser(extractedText, { onlyVerses: activeTeamsOption === 'only-verses' });
+          const desc = activeTeamsOption === 'only-verses' ? 'apenas versículos' : 'com explicações';
+          showToast(`💬 ${currentSlides.length} slides da Direção Teams (${desc}) gerados!`, 'success');
+        } else if (checkUseAi && checkUseAi.checked) {
           btnGenerate.innerHTML = '<span>🤖</span> IA Gemini refinando estrutura...';
           try {
             currentSlides = await parseSermonWithGeminiBrowser(extractedText);
@@ -1449,6 +1663,8 @@ ${sermonText}`;
       if (currentFile) formData.append('pdfFile', currentFile);
       if (text) formData.append('sermonText', text);
       formData.append('useAi', checkUseAi.checked);
+      formData.append('textMode', activeTextMode);
+      formData.append('teamsOption', activeTeamsOption);
       if (customBgFile && templateSelect && templateSelect.value === '__custom_active__') {
         formData.append('bgImage', customBgFile);
       }
