@@ -26,8 +26,37 @@ async function buildSermonPptx(slidesData, bgImagePath, outputFilePath) {
   for (const item of slidesData) {
     const slide = pptx.addSlide();
 
-    // 1. Background image (16:9 full slide cover)
-    if (bgImagePath && fs.existsSync(bgImagePath)) {
+    // 1. Background image (16:9 full slide cover, suportando fundo específico por slide)
+    const itemBg = item.bgImage || item.backgroundImage;
+    if (itemBg) {
+      if (itemBg.startsWith('data:')) {
+        slide.background = { data: itemBg };
+      } else if (fs.existsSync(itemBg)) {
+        slide.background = { path: itemBg };
+      } else if (itemBg.startsWith('/downloads/')) {
+        const potentialPath = path.join(__dirname, 'downloads', path.basename(itemBg));
+        if (fs.existsSync(potentialPath)) {
+          slide.background = { path: potentialPath };
+        } else if (bgImagePath && fs.existsSync(bgImagePath)) {
+          slide.background = { path: bgImagePath };
+        } else {
+          slide.background = { color: 'FFFFFF' };
+        }
+      } else if (itemBg.startsWith('/assets/')) {
+        const potentialPath = path.join(__dirname, 'public', itemBg);
+        if (fs.existsSync(potentialPath)) {
+          slide.background = { path: potentialPath };
+        } else if (bgImagePath && fs.existsSync(bgImagePath)) {
+          slide.background = { path: bgImagePath };
+        } else {
+          slide.background = { color: 'FFFFFF' };
+        }
+      } else if (bgImagePath && fs.existsSync(bgImagePath)) {
+        slide.background = { path: bgImagePath };
+      } else {
+        slide.background = { color: 'FFFFFF' };
+      }
+    } else if (bgImagePath && fs.existsSync(bgImagePath)) {
       slide.background = { path: bgImagePath };
     } else {
       slide.background = { color: 'FFFFFF' };
