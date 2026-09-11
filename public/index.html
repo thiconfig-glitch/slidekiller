@@ -136,6 +136,34 @@
 
           <!-- Aba 2: Colar Texto -->
           <div class="tab-content" id="tab-text">
+            <!-- Barra de Seleção de Formato de Texto -->
+            <div class="text-mode-config-bar">
+              <div class="text-format-group">
+                <span class="text-config-label">Formato:</span>
+                <div class="format-pill-group" id="format-pill-group">
+                  <button type="button" class="format-pill-btn active" data-text-mode="standard">
+                    <span>📝</span> Esboço Padrão
+                  </button>
+                  <button type="button" class="format-pill-btn" data-text-mode="teams">
+                    <span>💬</span> Direção Teams
+                  </button>
+                </div>
+              </div>
+
+              <!-- Opções do Modo Direção Teams -->
+              <div class="teams-options-container" id="teams-options-container" style="display: none;">
+                <span class="text-config-label">Modo:</span>
+                <div class="teams-pill-group" id="teams-pill-group">
+                  <button type="button" class="teams-option-btn active" data-teams-option="only-verses" title="Extrai e gera slides somente das passagens bíblicas citadas">
+                    <span>📖</span> Apenas Versículos
+                  </button>
+                  <button type="button" class="teams-option-btn" data-teams-option="with-explanations" title="Gera slides dos versículos e também das reflexões, tópicos e anotações">
+                    <span>💡</span> Manter Explicações
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <textarea id="sermon-text-input" placeholder="Cole aqui o texto ou anotações do pastor com as referências bíblicas (ex: Mateus 6:19-21)..." rows="9"></textarea>
           </div>
 

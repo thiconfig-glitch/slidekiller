@@ -511,6 +511,75 @@ textarea:focus {
   border-color: var(--border-focus);
 }
 
+/* Configuração do Formato de Texto (Esboço vs Direção Teams) */
+.text-mode-config-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  background: rgba(19, 27, 46, 0.6);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.text-format-group, .teams-options-container {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.text-config-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.format-pill-group, .teams-pill-group {
+  display: inline-flex;
+  background: rgba(9, 13, 22, 0.8);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 3px;
+  gap: 3px;
+}
+
+.format-pill-btn, .teams-option-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.format-pill-btn:hover, .teams-option-btn:hover {
+  color: var(--text-main);
+}
+
+.format-pill-btn.active {
+  background: rgba(232, 184, 89, 0.18);
+  color: var(--primary);
+  box-shadow: 0 0 0 1px rgba(232, 184, 89, 0.35);
+}
+
+.teams-option-btn.active {
+  background: rgba(6, 182, 212, 0.18);
+  color: var(--accent-cyan);
+  box-shadow: 0 0 0 1px rgba(6, 182, 212, 0.35);
+}
+
 /* Opções Extras */
 .options-bar {
   display: flex;

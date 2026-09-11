@@ -5,7 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
 const { buildSermonPptx } = require('./sermon_slide_engine');
-const { extractTextFromPdf, parseSermonTextOffline } = require('./local_sermon_parser');
+const { extractTextFromPdf, parseSermonTextOffline, parseTeamsDirectionText } = require('./local_sermon_parser');
 const { parseSermonWithGemini } = require('./sermon_ai_parser');
 
 const upload = multer({ 
@@ -81,9 +81,15 @@ app.post('/api/slides/upload-pdf', upload.fields([
       bgPath = customBgPath;
     }
 
+    const textMode = req.body.textMode || 'standard';
+    const teamsOption = req.body.teamsOption || 'only-verses';
+
     let slides = [];
 
-    if (useAi && apiKey) {
+    if (textMode === 'teams') {
+      console.log(`💬 Processando Formato Direção Teams (${teamsOption})... (${sermonText.length} caracteres)`);
+      slides = parseTeamsDirectionText(sermonText, { onlyVerses: teamsOption !== 'with-explanations' });
+    } else if (useAi && apiKey) {
       console.log(`🤖 Processando via Inteligência Artificial Gemini... (${sermonText.length} caracteres)`);
       try {
         slides = await parseSermonWithGemini(sermonText, apiKey);
