@@ -3,21 +3,21 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Central Multimídia Church — Hub de Produção e Mídia</title>
+  <title>Central MultimÃ­dia Church â€” Hub de ProduÃ§Ã£o e MÃ­dia</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/libs/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/dist/pptxgen.min.js"></script>
-  <!-- jsPDF para exportação instantânea em PDF no navegador -->
+  <!-- jsPDF para exportaÃ§Ã£o instantÃ¢nea em PDF no navegador -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <!-- Firebase SDKs para sincronização Celular ➔ PC -->
+  <!-- Firebase SDKs para sincronizaÃ§Ã£o Celular âž” PC -->
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
   <link rel="stylesheet" href="style.css?v=2.5.0">
   <style>
-    /* Estilos imediatos garantidos para os botões de formato (Esboço vs Direção Teams) */
+    /* Estilos imediatos garantidos para os botÃµes de formato (EsboÃ§o vs DireÃ§Ã£o Teams) */
     .text-mode-config-bar {
       display: flex !important;
       flex-wrap: wrap !important;
@@ -108,73 +108,73 @@
   </style>
 </head>
 <body>
-  <!-- Cabeçalho Principal do Hub -->
+  <!-- CabeÃ§alho Principal do Hub -->
   <header class="app-header">
     <div class="header-left">
       <div class="church-brand">
-        <span class="brand-icon">🏛️</span>
+        <span class="brand-icon">ðŸ›ï¸</span>
         <div>
           <div style="display: flex; align-items: center; gap: 8px;">
-            <h1 class="brand-title">Central Multimídia Church</h1>
+            <h1 class="brand-title">Central MultimÃ­dia Church</h1>
             <span class="version-tag">v2.3.0</span>
           </div>
-          <span class="brand-subtitle">Plataforma Unificada de Mídia & Culto</span>
+          <span class="brand-subtitle">Plataforma Unificada de MÃ­dia & Culto</span>
         </div>
       </div>
     </div>
 
-    <!-- Seletor de Módulos (Personalidades) -->
+    <!-- Seletor de MÃ³dulos (Personalidades) -->
     <nav class="hub-nav" id="hub-nav">
-      <!-- Pílula gel deslizante -->
+      <!-- PÃ­lula gel deslizante -->
       <span class="nav-gel-pill" id="nav-gel-pill"></span>
 
       <button class="nav-module-btn active" data-module="slidekiller">
-        <span class="module-icon">⚡</span>
+        <span class="module-icon">âš¡</span>
         <span class="module-label">Slide Killer</span>
-        <span class="module-pill">Sermões</span>
+        <span class="module-pill">SermÃµes</span>
       </button>
 
       <button class="nav-module-btn" data-module="pdf-to-pptx">
-        <span class="module-icon">📄</span>
-        <span class="module-label">PDF ➔ PPTX Direto</span>
-        <span class="module-pill pill-gold">1 Pág = 1 Slide</span>
+        <span class="module-icon">ðŸ“„</span>
+        <span class="module-label">PDF âž” PPTX Direto</span>
+        <span class="module-pill pill-gold">1 PÃ¡g = 1 Slide</span>
       </button>
 
       <button class="nav-module-btn" data-module="images-to-pptx">
-        <span class="module-icon">🖼️</span>
-        <span class="module-label">Imagens / ZIP ➔ PPTX</span>
+        <span class="module-icon">ðŸ–¼ï¸</span>
+        <span class="module-label">Imagens / ZIP âž” PPTX</span>
         <span class="module-pill pill-purple">Organizador</span>
       </button>
     </nav>
 
     <div class="header-right">
-      <!-- Ações do Módulo Slide Killer -->
+      <!-- AÃ§Ãµes do MÃ³dulo Slide Killer -->
       <div class="module-actions" id="actions-slidekiller">
         <button class="btn btn-secondary" id="btn-new-presentation">Novo Documento</button>
         <button class="btn btn-primary" id="btn-download-top" style="display: none;">
-          <span>📥</span> Baixar PowerPoint (.pptx)
+          <span>ðŸ“¥</span> Baixar PowerPoint (.pptx)
         </button>
       </div>
 
-      <!-- Ações do Módulo PDF ➔ PPTX Direto -->
+      <!-- AÃ§Ãµes do MÃ³dulo PDF âž” PPTX Direto -->
       <div class="module-actions" id="actions-pdf-to-pptx" style="display: none;">
         <button class="btn btn-secondary" id="btn-new-direct-top">Novo PDF</button>
         <button class="btn btn-primary" id="btn-download-direct-top" style="display: none;">
-          <span>📥</span> Baixar PowerPoint (.pptx)
+          <span>ðŸ“¥</span> Baixar PowerPoint (.pptx)
         </button>
       </div>
 
-      <!-- Ações do Módulo Imagens / ZIP ➔ PPTX -->
+      <!-- AÃ§Ãµes do MÃ³dulo Imagens / ZIP âž” PPTX -->
       <div class="module-actions" id="actions-images-to-pptx" style="display: none;">
         <button class="btn btn-secondary" id="btn-new-images-top">Novo Lote</button>
         <button class="btn btn-primary" id="btn-download-images-top" style="display: none;">
-          <span>📥</span> Baixar PowerPoint (.pptx)
+          <span>ðŸ“¥</span> Baixar PowerPoint (.pptx)
         </button>
       </div>
 
-      <!-- Botão Global: Tarefas em Andamento (Celular / PC) -->
+      <!-- BotÃ£o Global: Tarefas em Andamento (Celular / PC) -->
       <button class="btn btn-tasks-toggle" id="btn-open-tasks-panel" title="Tarefas em Andamento (Sincronizadas na Nuvem)">
-        <span>📌</span> <span class="btn-tasks-text">Tarefas</span>
+        <span>ðŸ“Œ</span> <span class="btn-tasks-text">Tarefas</span>
         <span class="tasks-counter-badge" id="tasks-counter-badge">0/3</span>
       </button>
     </div>
@@ -182,7 +182,7 @@
 
   <main class="app-main">
     <!-- ========================================== -->
-    <!-- MÓDULO 1: SLIDE KILLER                     -->
+    <!-- MÃ“DULO 1: SLIDE KILLER                     -->
     <!-- ========================================== -->
     <div class="module-view active" id="view-slidekiller">
       <!-- Tela Inicial de Entrada (Upload / Texto) -->
@@ -190,98 +190,99 @@
         <div class="card hero-card">
           <div class="module-header-badge">
             <span class="badge-dot"></span>
-            <span>MÓDULO SLIDE KILLER • GERADOR INTELIGENTE</span>
+            <span>MÃ“DULO SLIDE KILLER â€¢ GERADOR INTELIGENTE</span>
           </div>
-          <h2>Transforme Esboços e PDFs em Slides Profissionais</h2>
-          <p>Extração automática de versículos, destaque de palavras-chave, quebra de múltiplos versículos e tipografia padronizada em 16:9 Full HD.</p>
+          <h2>Transforme EsboÃ§os e PDFs em Slides Profissionais</h2>
+          <p>ExtraÃ§Ã£o automÃ¡tica de versÃ­culos, destaque de palavras-chave, quebra de mÃºltiplos versÃ­culos e tipografia padronizada em 16:9 Full HD.</p>
           
           <div class="direct-shortcut-banner" id="banner-goto-direct">
-            <span>💡 <strong>Precisa de conversão 1:1?</strong> Transforme cada página do PDF diretamente em um slide do PowerPoint sem alterar nada.</span>
-            <button type="button" class="btn btn-sm btn-outline-gold" id="btn-switch-to-direct">Ir para Conversor Direto ➔</button>
+            <span>ðŸ’¡ <strong>Precisa de conversÃ£o 1:1?</strong> Transforme cada pÃ¡gina do PDF diretamente em um slide do PowerPoint sem alterar nada.</span>
+            <button type="button" class="btn btn-sm btn-outline-gold" id="btn-switch-to-direct">Ir para Conversor Direto âž”</button>
           </div>
 
           <div class="tabs" id="main-tabs">
-            <!-- Pílula gel deslizante das abas -->
+            <!-- PÃ­lula gel deslizante das abas -->
             <span class="tab-gel-pill" id="tab-gel-pill"></span>
-            <button class="tab-btn active" data-tab="tab-pdf">📄 Enviar Arquivo PDF</button>
-            <button class="tab-btn" data-tab="tab-text">✍️ Colar Texto / Esboço</button>
+            <button class="tab-btn active" data-tab="tab-pdf">ðŸ“„ Enviar Arquivo PDF</button>
+            <button class="tab-btn" data-tab="tab-text">âœ ï¸  Colar Texto / EsboÃ§o</button>
             <button class="tab-btn" data-tab="tab-images-ocr">📷 Fotos de Slides / Versículos (IA)</button>
+            <button class="tab-btn" data-tab="tab-paragrafo">¶ Parágrafo para Slide</button>
           </div>
 
           <!-- Aba 1: Upload PDF -->
           <div class="tab-content active" id="tab-pdf">
             <div class="dropzone" id="dropzone">
               <input type="file" id="pdf-file-input" accept=".pdf" style="display: none;">
-              <div class="dropzone-icon">📁</div>
+              <div class="dropzone-icon">ðŸ“</div>
               <div class="dropzone-text">
                 <strong>Arraste o arquivo PDF do pastor aqui</strong>
                 <span>ou clique para selecionar do computador</span>
               </div>
               <div class="selected-file-info" id="selected-file-info" style="display: none;">
                 <span class="file-name" id="file-name-display"></span>
-                <button class="btn-clear" id="btn-clear-file">✕</button>
+                <button class="btn-clear" id="btn-clear-file">âœ•</button>
               </div>
             </div>
           </div>
 
           <!-- Aba 2: Colar Texto -->
           <div class="tab-content" id="tab-text">
-            <!-- Barra de Seleção de Formato de Texto -->
+            <!-- Barra de SeleÃ§Ã£o de Formato de Texto -->
             <div class="text-mode-config-bar">
               <div class="text-format-group">
                 <span class="text-config-label">Formato:</span>
                 <div class="format-pill-group" id="format-pill-group">
                   <button type="button" class="format-pill-btn active" data-text-mode="standard">
-                    <span class="pill-icon">📝</span>
-                    <span>Esboço Padrão</span>
+                    <span class="pill-icon">ðŸ“</span>
+                    <span>EsboÃ§o PadrÃ£o</span>
                   </button>
                   <button type="button" class="format-pill-btn" data-text-mode="teams">
-                    <span class="pill-icon">💬</span>
-                    <span>Direção Teams</span>
+                    <span class="pill-icon">ðŸ’¬</span>
+                    <span>DireÃ§Ã£o Teams</span>
                   </button>
                 </div>
               </div>
 
-              <!-- Opções do Modo Direção Teams -->
+              <!-- OpÃ§Ãµes do Modo DireÃ§Ã£o Teams -->
               <div class="teams-options-container" id="teams-options-container" style="display: none;">
                 <span class="text-config-label">Slides de:</span>
                 <div class="teams-pill-group" id="teams-pill-group">
-                  <button type="button" class="teams-option-btn active" data-teams-option="only-verses" title="Extrai e gera slides somente das passagens bíblicas citadas">
-                    <span class="pill-icon">📖</span>
-                    <span>Apenas Versículos</span>
+                  <button type="button" class="teams-option-btn active" data-teams-option="only-verses" title="Extrai e gera slides somente das passagens bÃ­blicas citadas">
+                    <span class="pill-icon">ðŸ“–</span>
+                    <span>Apenas VersÃ­culos</span>
                   </button>
-                  <button type="button" class="teams-option-btn" data-teams-option="with-explanations" title="Gera slides dos versículos e também das reflexões, tópicos e anotações">
-                    <span class="pill-icon">💡</span>
-                    <span>Com Explicações</span>
+                  <button type="button" class="teams-option-btn" data-teams-option="with-explanations" title="Gera slides dos versÃ­culos e tambÃ©m das reflexÃµes, tÃ³picos e anotaÃ§Ãµes">
+                    <span class="pill-icon">ðŸ’¡</span>
+                    <span>Com ExplicaÃ§Ãµes</span>
                   </button>
                 </div>
               </div>
             </div>
 
-            <textarea id="sermon-text-input" placeholder="Cole aqui o texto ou anotações do pastor com as referências bíblicas (ex: Mateus 6:19-21)..." rows="9"></textarea>
+            <textarea id="sermon-text-input" placeholder="Cole aqui o texto ou anotaÃ§Ãµes do pastor com as referÃªncias bÃ­blicas (ex: Mateus 6:19-21)..." rows="9"></textarea>
           </div>
 
-          <!-- Aba 3: Fotos de Slides / Versículos com IA Gemini Vision -->
+          <!-- Aba 3: Fotos de Slides / VersÃ­culos com IA Gemini Vision -->
           <div class="tab-content" id="tab-images-ocr">
             <div class="dropzone" id="dropzone-ocr">
               <input type="file" id="verse-images-input" accept="image/*" multiple style="display: none;">
-              <div class="dropzone-icon">📷</div>
+              <div class="dropzone-icon">ðŸ“·</div>
               <div class="dropzone-text">
-                <strong>Arraste fotos de telões, slides ou páginas da Bíblia aqui</strong>
+                <strong>Arraste fotos de telÃµes, slides ou pÃ¡ginas da BÃ­blia aqui</strong>
                 <span>ou clique para selecionar fotos do computador ou celular</span>
               </div>
             </div>
 
-            <!-- Lista e Ações das Fotos Selecionadas -->
+            <!-- Lista e AÃ§Ãµes das Fotos Selecionadas -->
             <div id="verse-images-container" style="display: none; margin-top: 14px;">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                 <span style="font-size: 13px; font-weight: 600; color: var(--text);" id="verse-images-count-label">0 foto(s) selecionada(s)</span>
                 <div style="display: flex; gap: 8px;">
                   <button type="button" class="btn btn-secondary btn-sm" id="btn-add-more-verse-images">
-                    <span>＋</span> Mais Fotos
+                    <span>ï¼‹</span> Mais Fotos
                   </button>
                   <button type="button" class="btn btn-danger btn-sm" id="btn-clear-verse-images">
-                    <span>🗑️</span> Limpar
+                    <span>ðŸ—‘ï¸</span> Limpar
                   </button>
                 </div>
               </div>
@@ -290,35 +291,56 @@
             </div>
           </div>
 
-          <!-- Opções Extras -->
+          
+          <!-- Aba 4: Paragrafo para Slide -->
+          <div class="tab-content" id="tab-paragrafo">
+            <div class="input-group">
+              <div class="input-header" style="display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px;">
+                <label style="font-weight: 600; color: var(--text-main); font-size: 14px;">� Par�grafo para Slide</label>
+                <span style="font-size: 12px; color: var(--text-muted);">Separe os slides com linha em branco (2 espa�os para baixo). Use [ref] para refer�ncias e *texto* para destacar.</span>
+              </div>
+              <textarea id="paragrafo-text-input" placeholder="Seu texto aqui...
+
+Pule uma linha vazia para iniciar outro slide.
+
+texto exemplo ii eii
+[ref] Salmos 1:1" rows="10" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text); resize: vertical; margin-bottom: 15px; font-family: inherit; font-size: 14px;"></textarea>
+            </div>
+            
+            <button id="btn-process-paragrafo" class="btn btn-primary pulse-btn" style="width: 100%; margin-top: 15px; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 15px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+              ? Gerar Slides do Par�grafo
+            </button>
+          </div>
+
+          <!-- OpÃ§Ãµes Extras -->
           <div class="options-bar">
             <div class="option-item option-bg-selector">
               <label for="template-select">Plano de Fundo:</label>
               <div class="bg-selector-wrapper">
                 <select id="template-select" class="form-select">
-                  <option value="assets/church_sermon_bg.jpg">🏛️ Fundo Oficial da Igreja (Padrão)</option>
-                  <option value="__custom__">➕ Anexar Fundo Personalizado...</option>
+                  <option value="assets/church_sermon_bg.jpg">ðŸ›ï¸ Fundo Oficial da Igreja (PadrÃ£o)</option>
+                  <option value="__custom__">âž• Anexar Fundo Personalizado...</option>
                 </select>
                 <button type="button" class="btn btn-secondary btn-sm" id="btn-attach-custom-bg" title="Anexar imagem de fundo personalizada">
-                  <span>🖼️</span> Anexar Fundo
+                  <span>ðŸ–¼ï¸</span> Anexar Fundo
                 </button>
                 <input type="file" id="custom-bg-input" accept="image/png, image/jpeg, image/jpg, image/webp" style="display: none;">
                 
                 <!-- Miniatura e status do fundo anexado -->
                 <div id="custom-bg-preview-badge" class="custom-bg-badge" style="display: none;">
-                  <img id="custom-bg-thumb" class="custom-bg-thumb" alt="Prévia Fundo">
+                  <img id="custom-bg-thumb" class="custom-bg-thumb" alt="PrÃ©via Fundo">
                   <span id="custom-bg-filename" class="custom-bg-filename" title="Imagem personalizada">custom.png</span>
-                  <button type="button" id="btn-remove-custom-bg" class="btn-remove-bg" title="Restaurar fundo oficial estático">✕</button>
+                  <button type="button" id="btn-remove-custom-bg" class="btn-remove-bg" title="Restaurar fundo oficial estÃ¡tico">âœ•</button>
                 </div>
               </div>
             </div>
             <div class="option-item" id="option-bible-version" style="display: none;">
-              <label for="bible-version-select">Validação Bíblica (IA):</label>
+              <label for="bible-version-select">ValidaÃ§Ã£o BÃ­blica (IA):</label>
               <select id="bible-version-select" class="form-select">
                 <option value="exact">Manter texto exato da imagem/slide</option>
                 <option value="ACF">Validar / Ajustar pela ACF (Almeida Corrigida Fiel)</option>
                 <option value="ARA">Validar / Ajustar pela ARA (Almeida Revista e Atualizada)</option>
-                <option value="NVI">Validar / Ajustar pela NVI (Nova Versão Internacional)</option>
+                <option value="NVI">Validar / Ajustar pela NVI (Nova VersÃ£o Internacional)</option>
               </select>
             </div>
             <div class="option-item" id="option-use-ai-check">
@@ -342,12 +364,12 @@
           </div>
 
           <button class="btn btn-action" id="btn-generate">
-            <span class="btn-icon">⚡</span> Gerar Slides Instantaneamente
+            <span class="btn-icon">âš¡</span> Gerar Slides Instantaneamente
           </button>
         </div>
       </section>
 
-      <!-- Tela de Resultados e Edição -->
+      <!-- Tela de Resultados e EdiÃ§Ã£o -->
       <section class="results-section" id="results-section" style="display: none;">
         <div class="results-header" style="flex-wrap: wrap; gap: 12px;">
           <div class="results-info">
@@ -355,13 +377,13 @@
             <span class="badge" id="slide-count-badge">0 slides</span>
           </div>
           <div class="results-actions" style="flex-wrap: wrap; gap: 8px;">
-            <button class="btn btn-outline-gold" id="btn-open-verse-modal">📖 Inserir Versículo</button>
+            <button class="btn btn-outline-gold" id="btn-open-verse-modal">ðŸ“– Inserir VersÃ­culo</button>
             <button class="btn btn-secondary" id="btn-add-slide">+ Novo Slide</button>
-            <button class="btn btn-secondary" id="btn-change-bg-results" title="Alterar ou anexar imagem de fundo dos slides">🖼️ Trocar Fundo</button>
-            <button class="btn btn-secondary" id="btn-rebuild">💾 Salvar Edições</button>
-            <button class="btn btn-secondary" id="btn-download-pdf-sk" title="Baixar slides em PDF">📄 Baixar PDF</button>
-            <button class="btn btn-primary" id="btn-download-main">📥 Baixar .pptx</button>
-            <button class="btn btn-outline-gold" id="btn-download-both-sk" title="Baixar PPTX e PDF juntos">✨ Ambos</button>
+            <button class="btn btn-secondary" id="btn-change-bg-results" title="Alterar ou anexar imagem de fundo dos slides">ðŸ–¼ï¸ Trocar Fundo</button>
+            <button class="btn btn-secondary" id="btn-rebuild">ðŸ’¾ Salvar EdiÃ§Ãµes</button>
+            <button class="btn btn-secondary" id="btn-download-pdf-sk" title="Baixar slides em PDF">ðŸ“„ Baixar PDF</button>
+            <button class="btn btn-primary" id="btn-download-main">ðŸ“¥ Baixar .pptx</button>
+            <button class="btn btn-outline-gold" id="btn-download-both-sk" title="Baixar PPTX e PDF juntos">âœ¨ Ambos</button>
           </div>
         </div>
 
@@ -371,35 +393,35 @@
     </div>
 
     <!-- ========================================== -->
-    <!-- MÓDULO 2: PDF ➔ PPTX DIRETO (1:1)          -->
+    <!-- MÃ“DULO 2: PDF âž” PPTX DIRETO (1:1)          -->
     <!-- ========================================== -->
     <div class="module-view" id="view-pdf-to-pptx">
       <section class="input-section" id="section-direct-input">
         <div class="card hero-card">
           <div class="module-header-badge">
             <span class="badge-dot" style="background-color: var(--primary); box-shadow: 0 0 8px var(--primary);"></span>
-            <span>MÓDULO CONVERSOR DIRETO • 1 PÁGINA = 1 SLIDE</span>
+            <span>MÃ“DULO CONVERSOR DIRETO â€¢ 1 PÃGINA = 1 SLIDE</span>
           </div>
-          <h2>Conversão Direta de PDF para PowerPoint</h2>
-          <p>Anexe qualquer PDF e receba uma apresentação .pptx onde cada página do PDF se torna exatamente um slide em alta resolução Full HD, sem extração ou alteração de texto. Pronto para telões e softwares de projeção.</p>
+          <h2>ConversÃ£o Direta de PDF para PowerPoint</h2>
+          <p>Anexe qualquer PDF e receba uma apresentaÃ§Ã£o .pptx onde cada pÃ¡gina do PDF se torna exatamente um slide em alta resoluÃ§Ã£o Full HD, sem extraÃ§Ã£o ou alteraÃ§Ã£o de texto. Pronto para telÃµes e softwares de projeÃ§Ã£o.</p>
 
           <div class="dropzone" id="dropzone-direct">
             <input type="file" id="pdf-direct-input" accept=".pdf" style="display: none;">
-            <div class="dropzone-icon">📄</div>
+            <div class="dropzone-icon">ðŸ“„</div>
             <div class="dropzone-text">
               <strong>Arraste o arquivo PDF aqui</strong>
               <span>ou clique para selecionar do computador</span>
             </div>
             <div class="selected-file-info" id="direct-file-info" style="display: none;">
               <span class="file-name" id="direct-file-name"></span>
-              <button class="btn-clear" id="btn-clear-direct-file">✕</button>
+              <button class="btn-clear" id="btn-clear-direct-file">âœ•</button>
             </div>
           </div>
 
-          <!-- Barra de Progresso da Conversão -->
+          <!-- Barra de Progresso da ConversÃ£o -->
           <div id="direct-progress-container" class="direct-progress-box" style="display: none; margin-top: 18px;">
             <div class="progress-info">
-              <span id="direct-progress-status">Preparando conversão...</span>
+              <span id="direct-progress-status">Preparando conversÃ£o...</span>
               <span id="direct-progress-percent">0%</span>
             </div>
             <div class="progress-bar-bg">
@@ -408,14 +430,14 @@
           </div>
 
           <button class="btn btn-action" id="btn-convert-direct" style="margin-top: 18px;">
-            <span class="btn-icon">⚡</span> Processar PDF e Abrir no Organizador
+            <span class="btn-icon">âš¡</span> Processar PDF e Abrir no Organizador
           </button>
         </div>
       </section>
 
-      <!-- Seção do Organizador de Slides do PDF e Exportação -->
+      <!-- SeÃ§Ã£o do Organizador de Slides do PDF e ExportaÃ§Ã£o -->
       <section class="results-section" id="section-direct-results" style="display: none;">
-        <!-- Inputs ocultos para adicionar mais mídias ao projeto do PDF -->
+        <!-- Inputs ocultos para adicionar mais mÃ­dias ao projeto do PDF -->
         <input type="file" id="pdf-extra-images-input" accept="image/*" multiple style="display: none;">
         <input type="file" id="pdf-append-input" accept=".pdf" style="display: none;">
 
@@ -423,33 +445,33 @@
           <div class="results-info">
             <h2>Organizador de Slides do PDF</h2>
             <span class="badge" id="direct-slide-count-badge" style="background: rgba(232, 184, 89, 0.2); color: var(--primary); border-color: rgba(232, 184, 89, 0.4);">0 slides</span>
-            <span style="font-size: 12px; color: var(--text-muted); margin-left: 8px;">💡 Arraste os cards para reorganizar a ordem dos slides</span>
+            <span style="font-size: 12px; color: var(--text-muted); margin-left: 8px;">ðŸ’¡ Arraste os cards para reorganizar a ordem dos slides</span>
           </div>
 
           <div class="results-actions" style="flex-wrap: wrap; gap: 8px;">
             <button class="btn btn-secondary btn-sm" id="btn-add-pdf-images" onclick="document.getElementById('pdf-extra-images-input').click()">
-              <span>📷 ＋</span> Adicionar Fotos / Avisos
+              <span>ðŸ“· ï¼‹</span> Adicionar Fotos / Avisos
             </button>
             <button class="btn btn-secondary btn-sm" id="btn-add-another-pdf" onclick="document.getElementById('pdf-append-input').click()">
-              <span>📄 ＋</span> Mais um PDF
+              <span>ðŸ“„ ï¼‹</span> Mais um PDF
             </button>
             <button class="btn btn-secondary btn-sm" id="btn-reverse-direct" title="Inverter a ordem atual dos slides">
-              <span>🔀</span> Inverter
+              <span>ðŸ”€</span> Inverter
             </button>
             <button class="btn btn-secondary btn-sm" id="btn-new-direct-main" title="Converter outro PDF do zero">
-              <span>🔄</span> Novo PDF
+              <span>ðŸ”„</span> Novo PDF
             </button>
             <button class="btn btn-danger btn-sm" id="btn-clear-all-direct" title="Remover todos os slides">
-              <span>🗑️</span> Limpar
+              <span>ðŸ—‘ï¸</span> Limpar
             </button>
           </div>
         </div>
 
-        <!-- Barra de Configurações de Exportação PPTX / PDF -->
+        <!-- Barra de ConfiguraÃ§Ãµes de ExportaÃ§Ã£o PPTX / PDF -->
         <div class="card" style="margin-bottom: 20px; padding: 16px 20px;">
           <div class="options-bar" style="margin: 0; display: flex; flex-wrap: wrap; gap: 18px; align-items: center;">
             <div class="option-item">
-              <label for="direct-format-select">Formato de Exportação:</label>
+              <label for="direct-format-select">Formato de ExportaÃ§Ã£o:</label>
               <select id="direct-format-select" class="form-select" style="font-weight: 700; color: var(--primary);">
                 <option value="pptx">PowerPoint (.pptx)</option>
                 <option value="pdf">Documento PDF (.pdf)</option>
@@ -457,15 +479,15 @@
               </select>
             </div>
             <div class="option-item">
-              <label for="direct-aspect-select">Proporção dos Slides:</label>
+              <label for="direct-aspect-select">ProporÃ§Ã£o dos Slides:</label>
               <select id="direct-aspect-select" class="form-select">
-                <option value="16x9">Widescreen 16:9 Full HD (Padrão Telão)</option>
-                <option value="4x3">Proporção 4:3 Tradicional</option>
-                <option value="original">Proporção Original do PDF</option>
+                <option value="16x9">Widescreen 16:9 Full HD (PadrÃ£o TelÃ£o)</option>
+                <option value="4x3">ProporÃ§Ã£o 4:3 Tradicional</option>
+                <option value="original">ProporÃ§Ã£o Original do PDF</option>
               </select>
             </div>
             <div class="option-item">
-              <label for="direct-fit-select">Ajuste da Página / Imagem:</label>
+              <label for="direct-fit-select">Ajuste da PÃ¡gina / Imagem:</label>
               <select id="direct-fit-select" class="form-select">
                 <option value="contain">Ajustar ao Slide com Fundo (Sem cortes)</option>
                 <option value="cover">Preencher Slide Completo (100% Full Cover)</option>
@@ -481,18 +503,18 @@
             </div>
             <div style="margin-left: auto; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
               <button type="button" class="btn btn-secondary btn-sm" id="btn-export-direct-pdf" title="Exportar rapidamente em PDF">
-                <span>📄</span> Baixar PDF
+                <span>ðŸ“„</span> Baixar PDF
               </button>
               <button type="button" class="btn btn-secondary btn-sm" id="btn-export-direct-pptx" title="Exportar rapidamente em PPTX">
-                <span>📊</span> Baixar PPTX
+                <span>ðŸ“Š</span> Baixar PPTX
               </button>
               <button class="btn btn-primary" id="btn-download-direct-main" style="padding: 10px 22px; font-weight: 700; background: linear-gradient(135deg, var(--primary), #ffd978); color: #000; box-shadow: 0 4px 15px rgba(232, 184, 89, 0.4);">
-                <span id="direct-main-btn-icon">⚡</span> <span id="direct-main-btn-label">Gerar e Baixar PowerPoint (.pptx)</span>
+                <span id="direct-main-btn-icon">âš¡</span> <span id="direct-main-btn-label">Gerar e Baixar PowerPoint (.pptx)</span>
               </button>
             </div>
           </div>
 
-          <!-- Barra de Progresso da Geração de Slides PPTX -->
+          <!-- Barra de Progresso da GeraÃ§Ã£o de Slides PPTX -->
           <div id="direct-export-progress-container" class="direct-progress-box" style="display: none; margin-top: 14px;">
             <div class="progress-info">
               <span id="direct-export-progress-status">Preparando slides...</span>
@@ -504,79 +526,79 @@
           </div>
         </div>
 
-        <!-- Grid de Cards dos Slides (Reordenáveis via Drag & Drop) -->
+        <!-- Grid de Cards dos Slides (ReordenÃ¡veis via Drag & Drop) -->
         <div class="images-reorder-grid" id="direct-slides-grid"></div>
       </section>
     </div>
 
     <!-- ========================================== -->
-    <!-- MÓDULO 3: IMAGENS / ZIP ➔ PPTX             -->
+    <!-- MÃ“DULO 3: IMAGENS / ZIP âž” PPTX             -->
     <!-- ========================================== -->
     <div class="module-view" id="view-images-to-pptx">
       <section class="input-section" id="section-images-input">
         <div class="card hero-card">
           <div class="module-header-badge">
             <span class="badge-dot" style="background-color: var(--accent-purple); box-shadow: 0 0 8px var(--accent-purple);"></span>
-            <span>MÓDULO IMAGENS & ZIP • ORGANIZADOR VISUAL DE SLIDES</span>
+            <span>MÃ“DULO IMAGENS & ZIP â€¢ ORGANIZADOR VISUAL DE SLIDES</span>
           </div>
           <h2>Transforme Imagens Avulsas ou Arquivos ZIP em PowerPoint</h2>
-          <p>Selecione fotos avulsas ou anexe um arquivo ZIP com imagens. Ajuste a ordem de cada slide arrastando com o mouse ou usando os botões de posição, e exporte sua apresentação .pptx 16:9 Full HD pronta para telões.</p>
+          <p>Selecione fotos avulsas ou anexe um arquivo ZIP com imagens. Ajuste a ordem de cada slide arrastando com o mouse ou usando os botÃµes de posiÃ§Ã£o, e exporte sua apresentaÃ§Ã£o .pptx 16:9 Full HD pronta para telÃµes.</p>
 
           <div class="dropzone" id="dropzone-images">
             <input type="file" id="images-files-input" accept="image/*,.zip" multiple style="display: none;">
             <input type="file" id="zip-files-input" accept=".zip" style="display: none;">
-            <div class="dropzone-icon">🖼️</div>
+            <div class="dropzone-icon">ðŸ–¼ï¸</div>
             <div class="dropzone-text">
               <strong>Arraste suas imagens ou arquivo ZIP aqui</strong>
               <span>ou clique para selecionar fotos avulsas ou pacote .ZIP</span>
             </div>
           </div>
 
-          <!-- Dicas e Ações Rápidas de Upload -->
+          <!-- Dicas e AÃ§Ãµes RÃ¡pidas de Upload -->
           <div style="display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; justify-content: center;">
             <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('images-files-input').click()">
-              <span>📁</span> Selecionar Imagens Avulsas (Fotos)
+              <span>ðŸ“</span> Selecionar Imagens Avulsas (Fotos)
             </button>
             <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('zip-files-input').click()">
-              <span>📦</span> Selecionar Arquivo .ZIP
+              <span>ðŸ“¦</span> Selecionar Arquivo .ZIP
             </button>
           </div>
         </div>
       </section>
 
-      <!-- Seção do Organizador de Slides e Exportação -->
+      <!-- SeÃ§Ã£o do Organizador de Slides e ExportaÃ§Ã£o -->
       <section class="results-section" id="section-images-organizer" style="display: none;">
         <div class="results-header" style="flex-wrap: wrap; gap: 16px;">
           <div class="results-info">
             <h2>Organizador de Slides</h2>
             <span class="badge" id="images-slide-count-badge" style="background: rgba(168,85,247,0.2); color: var(--accent-purple); border-color: rgba(168,85,247,0.4);">0 imagens</span>
-            <span style="font-size: 12px; color: var(--text-muted); margin-left: 8px;">💡 Arraste os cards para reorganizar a ordem</span>
+            <span style="font-size: 12px; color: var(--text-muted); margin-left: 8px;">ðŸ’¡ Arraste os cards para reorganizar a ordem</span>
           </div>
 
           <div class="results-actions" style="flex-wrap: wrap; gap: 8px;">
             <button class="btn btn-secondary btn-sm" id="btn-add-more-images" onclick="document.getElementById('images-files-input').click()">
-              <span>＋</span> Mais Fotos
+              <span>ï¼‹</span> Mais Fotos
             </button>
             <button class="btn btn-secondary btn-sm" id="btn-add-more-zip" onclick="document.getElementById('zip-files-input').click()">
-              <span>📦</span> Mais um ZIP
+              <span>ðŸ“¦</span> Mais um ZIP
             </button>
             <button class="btn btn-secondary btn-sm" id="btn-sort-images-az" title="Ordenar slides por nome do arquivo">
-              <span>🔤</span> A-Z
+              <span>ðŸ”¤</span> A-Z
             </button>
             <button class="btn btn-secondary btn-sm" id="btn-reverse-images" title="Inverter a ordem atual dos slides">
-              <span>🔀</span> Inverter
+              <span>ðŸ”€</span> Inverter
             </button>
             <button class="btn btn-danger btn-sm" id="btn-clear-all-images" title="Remover todas as imagens">
-              <span>🗑️</span> Limpar
+              <span>ðŸ—‘ï¸</span> Limpar
             </button>
           </div>
         </div>
 
-        <!-- Barra de Configurações de Exportação PPTX / PDF -->
+        <!-- Barra de ConfiguraÃ§Ãµes de ExportaÃ§Ã£o PPTX / PDF -->
         <div class="card" style="margin-bottom: 20px; padding: 16px 20px;">
           <div class="options-bar" style="margin: 0; display: flex; flex-wrap: wrap; gap: 18px; align-items: center;">
             <div class="option-item">
-              <label for="images-format-select">Formato de Exportação:</label>
+              <label for="images-format-select">Formato de ExportaÃ§Ã£o:</label>
               <select id="images-format-select" class="form-select" style="font-weight: 700; color: var(--accent-purple);">
                 <option value="pptx">PowerPoint (.pptx)</option>
                 <option value="pdf">Documento PDF (.pdf)</option>
@@ -584,10 +606,10 @@
               </select>
             </div>
             <div class="option-item">
-              <label for="images-aspect-select">Proporção dos Slides:</label>
+              <label for="images-aspect-select">ProporÃ§Ã£o dos Slides:</label>
               <select id="images-aspect-select" class="form-select">
-                <option value="16x9">Widescreen 16:9 Full HD (Padrão Telão)</option>
-                <option value="4x3">Proporção 4:3 Tradicional</option>
+                <option value="16x9">Widescreen 16:9 Full HD (PadrÃ£o TelÃ£o)</option>
+                <option value="4x3">ProporÃ§Ã£o 4:3 Tradicional</option>
               </select>
             </div>
             <div class="option-item">
@@ -607,18 +629,18 @@
             </div>
             <div style="margin-left: auto; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
               <button type="button" class="btn btn-secondary btn-sm" id="btn-export-images-pdf" title="Exportar rapidamente em PDF">
-                <span>📄</span> Baixar PDF
+                <span>ðŸ“„</span> Baixar PDF
               </button>
               <button type="button" class="btn btn-secondary btn-sm" id="btn-export-images-pptx" title="Exportar rapidamente em PPTX">
-                <span>📊</span> Baixar PPTX
+                <span>ðŸ“Š</span> Baixar PPTX
               </button>
               <button class="btn btn-primary" id="btn-generate-images-pptx" style="padding: 10px 22px; font-weight: 700; background: linear-gradient(135deg, var(--primary), #ffd978); color: #000; box-shadow: 0 4px 15px rgba(232, 184, 89, 0.4);">
-                <span id="images-main-btn-icon">⚡</span> <span id="images-main-btn-label">Gerar e Baixar PowerPoint (.pptx)</span>
+                <span id="images-main-btn-icon">âš¡</span> <span id="images-main-btn-label">Gerar e Baixar PowerPoint (.pptx)</span>
               </button>
             </div>
           </div>
 
-          <!-- Barra de Progresso da Geração de Slides -->
+          <!-- Barra de Progresso da GeraÃ§Ã£o de Slides -->
           <div id="images-progress-container" class="direct-progress-box" style="display: none; margin-top: 14px;">
             <div class="progress-info">
               <span id="images-progress-status">Preparando slides...</span>
@@ -630,119 +652,119 @@
           </div>
         </div>
 
-        <!-- Grid de Cards de Imagens Reordenáveis (Drag and Drop + Botões) -->
+        <!-- Grid de Cards de Imagens ReordenÃ¡veis (Drag and Drop + BotÃµes) -->
         <div class="images-reorder-grid" id="images-reorder-grid"></div>
       </section>
     </div>
 
-    <!-- Modal Inserir Versículo Bíblico -->
+    <!-- Modal Inserir VersÃ­culo BÃ­blico -->
     <div id="modalVerse" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.75); z-index:9999; align-items:center; justify-content:center; backdrop-filter:blur(4px);">
       <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:14px; padding:24px; max-width:620px; width:92%; box-shadow:0 20px 40px rgba(0,0,0,0.7); max-height:90vh; overflow-y:auto;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
           <h3 style="margin:0; font-size:17px; color:var(--text-main); display:flex; align-items:center; gap:8px;">
-            📖 Inserir Versículo Bíblico no Culto
+            ðŸ“– Inserir VersÃ­culo BÃ­blico no Culto
           </h3>
-          <button class="btn-clear" id="btn-close-verse-modal" style="font-size:16px;">✕</button>
+          <button class="btn-clear" id="btn-close-verse-modal" style="font-size:16px;">âœ•</button>
         </div>
 
         <p style="font-size:12px; color:var(--text-muted); margin-bottom:16px;">
-          Busque passagens bíblicas instantaneamente ou dite/edite o texto. O slide será gerado no padrão oficial da igreja com destaque dourado e tipografia de telão.
+          Busque passagens bÃ­blicas instantaneamente ou dite/edite o texto. O slide serÃ¡ gerado no padrÃ£o oficial da igreja com destaque dourado e tipografia de telÃ£o.
         </p>
 
         <!-- Linha de Busca -->
         <div style="display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap;">
           <div style="flex:2; min-width:180px;">
-            <label style="font-size:11px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Referência (Livro Cap:Versículo):</label>
-            <input type="text" id="verseRefInput" placeholder="Ex: João 3:16, Sl 23:1-3, Rm 8:28" class="form-select" style="width:100%; box-sizing:border-box; font-size:13px; font-weight:600; padding:6px 10px;" />
+            <label style="font-size:11px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">ReferÃªncia (Livro Cap:VersÃ­culo):</label>
+            <input type="text" id="verseRefInput" placeholder="Ex: JoÃ£o 3:16, Sl 23:1-3, Rm 8:28" class="form-select" style="width:100%; box-sizing:border-box; font-size:13px; font-weight:600; padding:6px 10px;" />
           </div>
           <div style="flex:1; min-width:130px;">
-            <label style="font-size:11px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Versão:</label>
+            <label style="font-size:11px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">VersÃ£o:</label>
             <select id="verseVersionSelect" class="form-select" style="width:100%; height:34px;">
               <option value="ACF">ACF (Almeida Corrigida Fiel)</option>
               <option value="ARA">ARA (Almeida Revista e Atualizada)</option>
               <option value="ARC">ARC (Revista e Corrigida)</option>
-              <option value="NVI">NVI (Nova Versão Internacional)</option>
+              <option value="NVI">NVI (Nova VersÃ£o Internacional)</option>
             </select>
           </div>
           <div style="display:flex; align-items:flex-end;">
             <button type="button" class="btn btn-primary" id="btnSearchVerse" style="height:34px;">
-              🔍 Buscar
+              ðŸ” Buscar
             </button>
           </div>
         </div>
 
-        <!-- Sugestões Rápidas -->
+        <!-- SugestÃµes RÃ¡pidas -->
         <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px;">
-          <span style="font-size:11px; color:var(--text-muted); align-self:center;">Exemplos rápidos:</span>
-          <button type="button" class="btn btn-secondary btn-sm" onclick="quickFillVersePublic('João 3:16')">João 3:16</button>
+          <span style="font-size:11px; color:var(--text-muted); align-self:center;">Exemplos rÃ¡pidos:</span>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="quickFillVersePublic('JoÃ£o 3:16')">JoÃ£o 3:16</button>
           <button type="button" class="btn btn-secondary btn-sm" onclick="quickFillVersePublic('Salmos 23:1-3')">Salmos 23:1-3</button>
           <button type="button" class="btn btn-secondary btn-sm" onclick="quickFillVersePublic('Romanos 8:28')">Romanos 8:28</button>
           <button type="button" class="btn btn-secondary btn-sm" onclick="quickFillVersePublic('Filipenses 4:13')">Filipenses 4:13</button>
         </div>
 
-        <!-- Área de Edição do Versículo -->
+        <!-- Ãrea de EdiÃ§Ã£o do VersÃ­culo -->
         <div style="background:rgba(9, 13, 22, 0.6); border:1px solid var(--border); border-radius:10px; padding:12px; margin-bottom:14px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:6px;">
             <label style="font-size:11px; font-weight:600; color:var(--primary); margin:0;">
-              Texto do Versículo (Edição Livre & Destaques):
+              Texto do VersÃ­culo (EdiÃ§Ã£o Livre & Destaques):
             </label>
             <div style="display:flex; gap:6px; align-items:center;">
               <button type="button" class="btn btn-outline-gold btn-sm" id="btn-highlight-verse-modal" title="Envolver palavra selecionada com destaque dourado">
-                ⭐ Destaque Dourado
+                â­ Destaque Dourado
               </button>
               <button type="button" class="btn btn-secondary btn-sm" id="btn-quotes-verse-modal" title="Colocar ou tirar aspas">
-                “ ” Aspas
+                â€œ â€ Aspas
               </button>
             </div>
           </div>
 
-          <textarea id="verseTextInput" rows="5" class="form-select" style="width:100%; box-sizing:border-box; font-family:'Inter', sans-serif; font-size:13px; line-height:1.4; padding:8px;" placeholder="Digite, cole ou busque o texto do versículo. Para destacar palavras em dourado, selecione o trecho e clique em '⭐ Destaque Dourado'."></textarea>
+          <textarea id="verseTextInput" rows="5" class="form-select" style="width:100%; box-sizing:border-box; font-family:'Inter', sans-serif; font-size:13px; line-height:1.4; padding:8px;" placeholder="Digite, cole ou busque o texto do versÃ­culo. Para destacar palavras em dourado, selecione o trecho e clique em 'â­ Destaque Dourado'."></textarea>
           
           <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
             <div style="display:flex; align-items:center; gap:8px;">
               <label style="font-size:11px; color:var(--text-muted); display:flex; align-items:center; gap:4px; cursor:pointer;">
                 <input type="checkbox" id="checkSplitMultiVersesPublic" checked />
-                Dividir passagens longas em múltiplos slides
+                Dividir passagens longas em mÃºltiplos slides
               </label>
             </div>
             <div id="verseSearchStatus" style="font-size:11px; color:var(--primary); font-weight:500;"></div>
           </div>
         </div>
 
-        <!-- Rodapé do Modal -->
+        <!-- RodapÃ© do Modal -->
         <div style="display:flex; justify-content:space-between; align-items:center;">
           <button class="btn btn-secondary" id="btn-cancel-verse-modal">Cancelar</button>
           <button class="btn btn-primary" id="btn-confirm-insert-verse">
-            ➕ Inserir Slide no Culto
+            âž• Inserir Slide no Culto
           </button>
         </div>
       </div>
     </div>
 
-    <!-- Drawer de Tarefas em Andamento (Sincronização Celular / PC - Máx 3) -->
+    <!-- Drawer de Tarefas em Andamento (SincronizaÃ§Ã£o Celular / PC - MÃ¡x 3) -->
     <div id="tasks-drawer-overlay" class="tasks-drawer-overlay" onclick="window.toggleTasksDrawer(false)">
       <div class="tasks-drawer" onclick="event.stopPropagation()">
         <div class="tasks-drawer-header">
           <div>
             <h3 style="margin: 0; font-size: 1.15rem; color: #fff; display: flex; align-items: center; gap: 8px;">
-              <span>📌 Tarefas em Andamento</span>
+              <span>ðŸ“Œ Tarefas em Andamento</span>
               <span class="tasks-counter-badge" id="drawer-tasks-counter-badge">0/3</span>
             </h3>
             <span style="font-size: 12px; color: var(--text-muted); display: block; margin-top: 4px;">
-              Edite no celular e conclua no PC (Limite: até 3 tarefas)
+              Edite no celular e conclua no PC (Limite: atÃ© 3 tarefas)
             </span>
           </div>
-          <button class="btn-clear" onclick="window.toggleTasksDrawer(false)">✕</button>
+          <button class="btn-clear" onclick="window.toggleTasksDrawer(false)">âœ•</button>
         </div>
 
-        <!-- Botão Salvar Tarefa Atual -->
+        <!-- BotÃ£o Salvar Tarefa Atual -->
         <div style="padding: 14px 20px; border-bottom: 1px solid var(--border); background: rgba(0,0,0,0.2);">
           <button class="btn btn-primary" id="btn-save-current-task" style="width: 100%; justify-content: center; font-size: 13px;">
-            <span>💾</span> Salvar Trabalho Atual na Nuvem
+            <span>ðŸ’¾</span> Salvar Trabalho Atual na Nuvem
           </button>
         </div>
 
-        <!-- Lista de até 3 Tarefas -->
+        <!-- Lista de atÃ© 3 Tarefas -->
         <div class="tasks-list" id="tasks-list-container">
           <div class="empty-tasks-msg">
             Nenhuma tarefa salva no momento.<br>
@@ -750,19 +772,20 @@
           </div>
         </div>
 
-        <!-- Rodapé Informativo -->
+        <!-- RodapÃ© Informativo -->
         <div class="tasks-drawer-footer">
           <span style="font-size: 11px; color: var(--text-muted); line-height: 1.4; display: block;">
-            ⚡ <strong>Liberdade Total:</strong> Comece a montar no celular e baixe o PowerPoint no computador, ou vice-versa! Limite máximo de 3 tarefas para manter tudo ágil e leve.
+            âš¡ <strong>Liberdade Total:</strong> Comece a montar no celular e baixe o PowerPoint no computador, ou vice-versa! Limite mÃ¡ximo de 3 tarefas para manter tudo Ã¡gil e leve.
           </span>
         </div>
       </div>
     </div>
 
-    <!-- Modal / Toast de Notificação -->
+    <!-- Modal / Toast de NotificaÃ§Ã£o -->
     <div id="toast" class="toast"></div>
   </main>
 
   <script src="app.js?v=2.5.0"></script>
 </body>
 </html>
+

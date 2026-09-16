@@ -455,32 +455,43 @@ document.addEventListener('DOMContentLoaded', () => {
   // Quebra o texto bíblico com destaques visuais (amarelo/dourado) preservando a exatidão
   function buildRunsFromHighlights(text, highlights = []) {
     if (!text) return [];
-    if (!highlights || !Array.isArray(highlights) || highlights.length === 0) {
-      return [{ text, highlight: false }];
-    }
-
-    const validTerms = highlights
-      .filter(h => typeof h === 'string' && h.trim().length > 0)
-      .map(h => h.trim());
-
-    if (validTerms.length === 0) {
-      return [{ text, highlight: false }];
-    }
-
-    validTerms.sort((a, b) => b.length - a.length);
-    const escaped = validTerms.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-    const regex = new RegExp(`(${escaped.join('|')})`, 'gi');
-
-    const parts = text.split(regex);
-    const runs = [];
-
-    for (const part of parts) {
+    
+    let runs = [];
+    const asteriskParts = text.split(/(\*[^*]+\*)/g);
+    for (const part of asteriskParts) {
       if (!part) continue;
-      const isHigh = validTerms.some(t => t.toLowerCase() === part.toLowerCase());
-      runs.push({
-        text: part,
-        highlight: isHigh
-      });
+      if (part.startsWith('*') && part.endsWith('*') && part.length >= 2) {
+        runs.push({ text: part.slice(1, -1), highlight: true });
+      } else {
+        runs.push({ text: part, highlight: false });
+      }
+    }
+
+    if (highlights && Array.isArray(highlights) && highlights.length > 0) {
+      const validTerms = highlights
+        .filter(h => typeof h === 'string' && h.trim().length > 0)
+        .map(h => h.trim());
+        
+      if (validTerms.length > 0) {
+        validTerms.sort((a, b) => b.length - a.length);
+        const escaped = validTerms.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+        const regex = new RegExp(`(${escaped.join('|')})`, 'gi');
+        
+        const finalRuns = [];
+        for (const run of runs) {
+          if (run.highlight) {
+             finalRuns.push(run);
+          } else {
+             const subParts = run.text.split(regex);
+             for (const sp of subParts) {
+               if (!sp) continue;
+               const isHigh = validTerms.some(t => t.toLowerCase() === sp.toLowerCase());
+               finalRuns.push({ text: sp, highlight: isHigh });
+             }
+          }
+        }
+        runs = finalRuns;
+      }
     }
 
     return runs.length > 0 ? runs : [{ text, highlight: false }];
@@ -4021,4 +4032,79 @@ ${sermonText}`;
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#039;');
   }
+
+
+  // ==========================================
+  // M�DULO: Par�grafo para Slide
+  // ==========================================
+  const btnProcessParagrafo = document.getElementById('btn-process-paragrafo');
+  const inputParagrafo = document.getElementById('paragrafo-text-input');
+  
+  if (btnProcessParagrafo && inputParagrafo) {
+    btnProcessParagrafo.addEventListener('click', () => {
+      const rawText = inputParagrafo.value.trim();
+      if (!rawText) {
+        showToast('Cole ou digite algum texto primeiro!', 'error');
+        return;
+      }
+
+      // Separa os blocos pulando uma linha em branco (no m�nimo 2 quebras de linha consecutivas)
+      const blocks = rawText.split(/\n\s*\n/g).map(b => b.trim()).filter(Boolean);
+
+      if (blocks.length === 0) {
+        showToast('Nenhum par�grafo v�lido encontrado.', 'error');
+        return;
+      }
+
+      const generatedSlides = [];
+
+      for (const block of blocks) {
+        // Verifica se h� alguma linha com [ref]
+        const lines = block.split('\n');
+        let reference = 'Par�grafo';
+        let mainLines = [];
+        
+        for (const line of lines) {
+          if (line.toLowerCase().includes('[ref]')) {
+            // Encontrou uma refer�ncia
+            reference = line.replace(/\[ref\]/ig, '').trim();
+          } else {
+            mainLines.push(line);
+          }
+        }
+        
+        const mainText = mainLines.join('\n').trim();
+        
+        // Se a pessoa s� colocou [ref] sem texto, usa a propria ref como texto
+        const finalContent = mainText || reference;
+
+        // buildRunsFromHighlights processa os *asteriscos* agora
+        const runs = buildRunsFromHighlights(finalContent, []);
+
+        generatedSlides.push({
+          type: 'verse', // Mapeamos como verse para ter o design bonit�o
+          reference: reference !== 'Par�grafo' ? reference : '',
+          runs: runs
+        });
+      }
+
+      currentSlides = generatedSlides;
+      
+      // Ocultar section de inputs
+      const inputSection = document.getElementById('input-section');
+      const resultsSection = document.getElementById('results-section');
+      
+      if (inputSection) inputSection.style.display = 'none';
+      if (resultsSection) resultsSection.style.display = 'block';
+      
+      // Limpar o dropzone original se houver
+      currentFile = null;
+      if (document.getElementById('selected-file-info')) document.getElementById('selected-file-info').style.display = 'none';
+      if (document.getElementById('dropzone-text')) document.getElementById('dropzone-text').style.display = 'block';
+
+      renderResults();
+      showToast('Slides gerados a partir do par�grafo!', 'success');
+    });
+  }
+
 });
