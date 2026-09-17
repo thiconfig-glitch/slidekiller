@@ -4035,7 +4035,7 @@ ${sermonText}`;
 
 
   // ==========================================
-  // M�DULO: Par�grafo para Slide
+  // MÓDULO: Parágrafo para Slide
   // ==========================================
   const btnProcessParagrafo = document.getElementById('btn-process-paragrafo');
   const inputParagrafo = document.getElementById('paragrafo-text-input');
@@ -4048,25 +4048,25 @@ ${sermonText}`;
         return;
       }
 
-      // Separa os blocos pulando uma linha em branco (no m�nimo 2 quebras de linha consecutivas)
+      // Separa os blocos pulando uma linha em branco (no mínimo 2 quebras de linha consecutivas)
       const blocks = rawText.split(/\n\s*\n/g).map(b => b.trim()).filter(Boolean);
 
       if (blocks.length === 0) {
-        showToast('Nenhum par�grafo v�lido encontrado.', 'error');
+        showToast('Nenhum parágrafo válido encontrado.', 'error');
         return;
       }
 
       const generatedSlides = [];
 
       for (const block of blocks) {
-        // Verifica se h� alguma linha com [ref]
+        // Verifica se há alguma linha com [ref]
         const lines = block.split('\n');
-        let reference = 'Par�grafo';
+        let reference = 'Parágrafo';
         let mainLines = [];
         
         for (const line of lines) {
           if (line.toLowerCase().includes('[ref]')) {
-            // Encontrou uma refer�ncia
+            // Encontrou uma referência
             reference = line.replace(/\[ref\]/ig, '').trim();
           } else {
             mainLines.push(line);
@@ -4075,15 +4075,15 @@ ${sermonText}`;
         
         const mainText = mainLines.join('\n').trim();
         
-        // Se a pessoa s� colocou [ref] sem texto, usa a propria ref como texto
+        // Se a pessoa só colocou [ref] sem texto, usa a própria ref como texto
         const finalContent = mainText || reference;
 
         // buildRunsFromHighlights processa os *asteriscos* agora
         const runs = buildRunsFromHighlights(finalContent, []);
 
         generatedSlides.push({
-          type: 'verse', // Mapeamos como verse para ter o design bonit�o
-          reference: reference !== 'Par�grafo' ? reference : '',
+          type: 'verse', // Mapeamos como verse para ter o design bonito
+          reference: reference !== 'Parágrafo' ? reference : '',
           runs: runs
         });
       }
@@ -4103,8 +4103,9 @@ ${sermonText}`;
       if (document.getElementById('dropzone-text')) document.getElementById('dropzone-text').style.display = 'block';
 
       renderResults();
-      showToast('Slides gerados a partir do par�grafo!', 'success');
+      showToast('Slides gerados a partir do parágrafo!', 'success');
     });
   }
 
 });
+``
