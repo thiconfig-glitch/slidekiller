@@ -1811,20 +1811,65 @@ textarea:focus {
     scrollbar-width: none;
     padding-bottom: 2px;
     gap: 6px;
+    position: relative;
   }
 
   .hub-nav::-webkit-scrollbar {
     display: none;
   }
 
+  /* Oculta a pílula animada no mobile para evitar desalinhamento ao rolar */
+  .nav-gel-pill,
+  .tab-gel-pill {
+    display: none !important;
+  }
+
   .nav-module-btn {
-    padding: 7px 12px;
+    padding: 8px 14px;
     font-size: 12px;
     flex-shrink: 0;
+    border-radius: 8px;
+    border: 1px solid transparent;
+  }
+
+  .nav-module-btn.active {
+    background: rgba(232, 184, 89, 0.18) !important;
+    border-color: rgba(232, 184, 89, 0.35) !important;
+    color: #e8b859 !important;
   }
 
   .nav-module-btn .module-pill {
     display: none;
+  }
+
+  /* Abas internas no mobile */
+  .tabs {
+    display: flex;
+    width: 100%;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 6px;
+    padding-bottom: 6px;
+  }
+
+  .tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tab-btn {
+    padding: 8px 14px;
+    font-size: 12px;
+    flex-shrink: 0;
+    border-radius: 8px;
+    border: 1px solid transparent;
+  }
+
+  .tab-btn.active {
+    background: rgba(232, 184, 89, 0.18) !important;
+    border-color: rgba(232, 184, 89, 0.35) !important;
+    color: #e8b859 !important;
   }
 
   .header-right {
