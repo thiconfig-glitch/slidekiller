@@ -377,6 +377,12 @@ body {
   border-bottom: 1px solid var(--border);
   padding-bottom: 12px;
   position: relative;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.tabs::-webkit-scrollbar {
+  display: none;
 }
 
 /* GEL PILL: pílula deslizante das abas internas */
@@ -416,6 +422,8 @@ body {
   transition: color 0.22s ease;
   position: relative;
   z-index: 1;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .tab-btn:hover {
@@ -1168,7 +1176,7 @@ textarea:focus {
 }
 
 /* ================================================= */
-/* MÓDULO 3: PROJEÇÃO & TELÃO (CÉROS)                */
+/* MÓDULO 3: PROJEÇíO & TELíO (CÉROS)                */
 /* ================================================= */
 .projection-hub-container {
   max-width: 1000px;
@@ -1270,7 +1278,7 @@ textarea:focus {
 }
 
 /* ================================================= */
-/* TOAST NOTIFICAÇÃO                                 */
+/* TOAST NOTIFICAÇíO                                 */
 /* ================================================= */
 .toast {
   position: fixed;
@@ -1603,7 +1611,7 @@ textarea:focus {
 }
 
 /* ================================================= */
-/* TAREFAS EM ANDAMENTO (SINCRONIZAÇÃO CELULAR / PC)  */
+/* TAREFAS EM ANDAMENTO (SINCRONIZAÇíO CELULAR / PC)  */
 /* ================================================= */
 .btn-tasks-toggle {
   background: rgba(232, 184, 89, 0.12);
