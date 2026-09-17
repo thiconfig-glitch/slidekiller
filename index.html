@@ -15,7 +15,7 @@
   <!-- Firebase SDKs para sincronização Celular ➔ PC -->
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
-  <link rel="stylesheet" href="style.css?v=2.7.0">
+  <link rel="stylesheet" href="style.css?v=2.8.0">
   <style>
     /* Estilos imediatos garantidos para os botões de formato (Esboço vs Direção Teams) */
     .text-mode-config-bar {
@@ -112,11 +112,11 @@
   <header class="app-header">
     <div class="header-left">
       <div class="church-brand">
-        <span class="brand-icon">ðŸ›ï¸</span>
+        <span class="brand-icon">⛪️</span>
         <div>
           <div style="display: flex; align-items: center; gap: 8px;">
             <h1 class="brand-title">Central Multimídia Church</h1>
-            <span class="version-tag">v2.7.0</span>
+            <span class="version-tag">v2.8.0</span>
           </div>
           <span class="brand-subtitle">Plataforma Unificada de Mídia & Culto</span>
         </div>
@@ -379,11 +379,11 @@ texto exemplo ii eii
           <div class="results-actions" style="flex-wrap: wrap; gap: 8px;">
             <button class="btn btn-outline-gold" id="btn-open-verse-modal">📖 Inserir Versículo</button>
             <button class="btn btn-secondary" id="btn-add-slide">+ Novo Slide</button>
-            <button class="btn btn-secondary" id="btn-change-bg-results" title="Alterar ou anexar imagem de fundo dos slides">ðŸ–¼ï¸ Trocar Fundo</button>
+            <button class="btn btn-secondary" id="btn-change-bg-results" title="Alterar ou anexar imagem de fundo dos slides">🖼️ Trocar Fundo</button>
             <button class="btn btn-secondary" id="btn-rebuild">💾 Salvar Edições</button>
             <button class="btn btn-secondary" id="btn-download-pdf-sk" title="Baixar slides em PDF">📄 Baixar PDF</button>
             <button class="btn btn-primary" id="btn-download-main">📥 Baixar .pptx</button>
-            <button class="btn btn-outline-gold" id="btn-download-both-sk" title="Baixar PPTX e PDF juntos">âœ¨ Ambos</button>
+            <button class="btn btn-outline-gold" id="btn-download-both-sk" title="Baixar PPTX e PDF juntos">✨ Ambos</button>
           </div>
         </div>
 
@@ -462,7 +462,7 @@ texto exemplo ii eii
               <span>🔄</span> Novo PDF
             </button>
             <button class="btn btn-danger btn-sm" id="btn-clear-all-direct" title="Remover todos os slides">
-              <span>ðŸ—‘ï¸</span> Limpar
+              <span>🗑️</span> Limpar
             </button>
           </div>
         </div>
@@ -547,7 +547,7 @@ texto exemplo ii eii
           <div class="dropzone" id="dropzone-images">
             <input type="file" id="images-files-input" accept="image/*,.zip" multiple style="display: none;">
             <input type="file" id="zip-files-input" accept=".zip" style="display: none;">
-            <div class="dropzone-icon">ðŸ–¼ï¸</div>
+            <div class="dropzone-icon">🖼️</div>
             <div class="dropzone-text">
               <strong>Arraste suas imagens ou arquivo ZIP aqui</strong>
               <span>ou clique para selecionar fotos avulsas ou pacote .ZIP</span>
@@ -557,7 +557,7 @@ texto exemplo ii eii
           <!-- Dicas e Ações Rápidas de Upload -->
           <div style="display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; justify-content: center;">
             <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('images-files-input').click()">
-              <span>ðŸ“</span> Selecionar Imagens Avulsas (Fotos)
+              <span>📁</span> Selecionar Imagens Avulsas (Fotos)
             </button>
             <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('zip-files-input').click()">
               <span>📦</span> Selecionar Arquivo .ZIP
@@ -589,7 +589,7 @@ texto exemplo ii eii
               <span>🔀</span> Inverter
             </button>
             <button class="btn btn-danger btn-sm" id="btn-clear-all-images" title="Remover todas as imagens">
-              <span>ðŸ—‘ï¸</span> Limpar
+              <span>🗑️</span> Limpar
             </button>
           </div>
         </div>
@@ -688,7 +688,7 @@ texto exemplo ii eii
           </div>
           <div style="display:flex; align-items:flex-end;">
             <button type="button" class="btn btn-primary" id="btnSearchVerse" style="height:34px;">
-              ðŸ” Buscar
+              🔍 Buscar
             </button>
           </div>
         </div>
@@ -702,7 +702,7 @@ texto exemplo ii eii
           <button type="button" class="btn btn-secondary btn-sm" onclick="quickFillVersePublic('Filipenses 4:13')">Filipenses 4:13</button>
         </div>
 
-        <!-- írea de Edição do Versículo -->
+        <!-- Área de Edição do Versículo -->
         <div style="background:rgba(9, 13, 22, 0.6); border:1px solid var(--border); border-radius:10px; padding:12px; margin-bottom:14px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:6px;">
             <label style="font-size:11px; font-weight:600; color:var(--primary); margin:0;">
@@ -710,15 +710,15 @@ texto exemplo ii eii
             </label>
             <div style="display:flex; gap:6px; align-items:center;">
               <button type="button" class="btn btn-outline-gold btn-sm" id="btn-highlight-verse-modal" title="Envolver palavra selecionada com destaque dourado">
-                â­ Destaque Dourado
+                ⭐ Destaque Dourado
               </button>
               <button type="button" class="btn btn-secondary btn-sm" id="btn-quotes-verse-modal" title="Colocar ou tirar aspas">
-                “ â€ Aspas
+                “ ” Aspas
               </button>
             </div>
           </div>
 
-          <textarea id="verseTextInput" rows="5" class="form-select" style="width:100%; box-sizing:border-box; font-family:'Inter', sans-serif; font-size:13px; line-height:1.4; padding:8px;" placeholder="Digite, cole ou busque o texto do versículo. Para destacar palavras em dourado, selecione o trecho e clique em 'â­ Destaque Dourado'."></textarea>
+          <textarea id="verseTextInput" rows="5" class="form-select" style="width:100%; box-sizing:border-box; font-family:'Inter', sans-serif; font-size:13px; line-height:1.4; padding:8px;" placeholder="Digite, cole ou busque o texto do versículo. Para destacar palavras em dourado, selecione o trecho e clique em '⭐ Destaque Dourado'."></textarea>
           
           <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
             <div style="display:flex; align-items:center; gap:8px;">
@@ -785,7 +785,7 @@ texto exemplo ii eii
     <div id="toast" class="toast"></div>
   </main>
 
-  <script src="app.js?v=2.7.0"></script>
+  <script src="app.js?v=2.8.0"></script>
 </body>
 </html>
 
