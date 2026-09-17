@@ -15,7 +15,7 @@
   <!-- Firebase SDKs para sincronização Celular ➔ PC -->
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
-  <link rel="stylesheet" href="style.css?v=2.6.0">
+  <link rel="stylesheet" href="style.css?v=2.7.0">
   <style>
     /* Estilos imediatos garantidos para os botões de formato (Esboço vs Direção Teams) */
     .text-mode-config-bar {
@@ -116,7 +116,7 @@
         <div>
           <div style="display: flex; align-items: center; gap: 8px;">
             <h1 class="brand-title">Central Multimídia Church</h1>
-            <span class="version-tag">v2.6.0</span>
+            <span class="version-tag">v2.7.0</span>
           </div>
           <span class="brand-subtitle">Plataforma Unificada de Mídia & Culto</span>
         </div>
@@ -141,7 +141,7 @@
       </button>
 
       <button class="nav-module-btn" data-module="images-to-pptx">
-        <span class="module-icon">ðŸ–¼ï¸</span>
+        <span class="module-icon">🖼️</span>
         <span class="module-label">Imagens / ZIP ➔ PPTX</span>
         <span class="module-pill pill-purple">Organizador</span>
       </button>
@@ -190,7 +190,7 @@
         <div class="card hero-card">
           <div class="module-header-badge">
             <span class="badge-dot"></span>
-            <span>MÓDULO SLIDE KILLER â€¢ GERADOR INTELIGENTE</span>
+            <span>MÓDULO SLIDE KILLER • GERADOR INTELIGENTE</span>
           </div>
           <h2>Transforme Esboços e PDFs em Slides Profissionais</h2>
           <p>Extração automática de versículos, destaque de palavras-chave, quebra de múltiplos versículos e tipografia padronizada em 16:9 Full HD.</p>
@@ -213,7 +213,7 @@
           <div class="tab-content active" id="tab-pdf">
             <div class="dropzone" id="dropzone">
               <input type="file" id="pdf-file-input" accept=".pdf" style="display: none;">
-              <div class="dropzone-icon">ðŸ“</div>
+              <div class="dropzone-icon">📄</div>
               <div class="dropzone-text">
                 <strong>Arraste o arquivo PDF do pastor aqui</strong>
                 <span>ou clique para selecionar do computador</span>
@@ -233,11 +233,11 @@
                 <span class="text-config-label">Formato:</span>
                 <div class="format-pill-group" id="format-pill-group">
                   <button type="button" class="format-pill-btn active" data-text-mode="standard">
-                    <span class="pill-icon">ðŸ“</span>
+                    <span class="pill-icon">📝</span>
                     <span>Esboço Padrão</span>
                   </button>
                   <button type="button" class="format-pill-btn" data-text-mode="teams">
-                    <span class="pill-icon">ðŸ’¬</span>
+                    <span class="pill-icon">💬</span>
                     <span>Direção Teams</span>
                   </button>
                 </div>
@@ -248,7 +248,7 @@
                 <span class="text-config-label">Slides de:</span>
                 <div class="teams-pill-group" id="teams-pill-group">
                   <button type="button" class="teams-option-btn active" data-teams-option="only-verses" title="Extrai e gera slides somente das passagens bíblicas citadas">
-                    <span class="pill-icon">ðŸ“–</span>
+                    <span class="pill-icon">📖</span>
                     <span>Apenas Versículos</span>
                   </button>
                   <button type="button" class="teams-option-btn" data-teams-option="with-explanations" title="Gera slides dos versículos e também das reflexões, tópicos e anotações">
@@ -266,7 +266,7 @@
           <div class="tab-content" id="tab-images-ocr">
             <div class="dropzone" id="dropzone-ocr">
               <input type="file" id="verse-images-input" accept="image/*" multiple style="display: none;">
-              <div class="dropzone-icon">ðŸ“·</div>
+              <div class="dropzone-icon">📷</div>
               <div class="dropzone-text">
                 <strong>Arraste fotos de telões, slides ou páginas da Bíblia aqui</strong>
                 <span>ou clique para selecionar fotos do computador ou celular</span>
@@ -279,10 +279,10 @@
                 <span style="font-size: 13px; font-weight: 600; color: var(--text);" id="verse-images-count-label">0 foto(s) selecionada(s)</span>
                 <div style="display: flex; gap: 8px;">
                   <button type="button" class="btn btn-secondary btn-sm" id="btn-add-more-verse-images">
-                    <span>ï¼‹</span> Mais Fotos
+                    <span>＋</span> Mais Fotos
                   </button>
                   <button type="button" class="btn btn-danger btn-sm" id="btn-clear-verse-images">
-                    <span>ðŸ—‘ï¸</span> Limpar
+                    <span>🗑️</span> Limpar
                   </button>
                 </div>
               </div>
@@ -318,11 +318,11 @@ texto exemplo ii eii
               <label for="template-select">Plano de Fundo:</label>
               <div class="bg-selector-wrapper">
                 <select id="template-select" class="form-select">
-                  <option value="assets/church_sermon_bg.jpg">ðŸ›ï¸ Fundo Oficial da Igreja (Padrão)</option>
+                  <option value="assets/church_sermon_bg.jpg">⛪️ Fundo Oficial da Igreja (Padrão)</option>
                   <option value="__custom__">➕ Anexar Fundo Personalizado...</option>
                 </select>
                 <button type="button" class="btn btn-secondary btn-sm" id="btn-attach-custom-bg" title="Anexar imagem de fundo personalizada">
-                  <span>ðŸ–¼ï¸</span> Anexar Fundo
+                  <span>🖼️</span> Anexar Fundo
                 </button>
                 <input type="file" id="custom-bg-input" accept="image/png, image/jpeg, image/jpg, image/webp" style="display: none;">
                 
@@ -377,7 +377,7 @@ texto exemplo ii eii
             <span class="badge" id="slide-count-badge">0 slides</span>
           </div>
           <div class="results-actions" style="flex-wrap: wrap; gap: 8px;">
-            <button class="btn btn-outline-gold" id="btn-open-verse-modal">ðŸ“– Inserir Versículo</button>
+            <button class="btn btn-outline-gold" id="btn-open-verse-modal">📖 Inserir Versículo</button>
             <button class="btn btn-secondary" id="btn-add-slide">+ Novo Slide</button>
             <button class="btn btn-secondary" id="btn-change-bg-results" title="Alterar ou anexar imagem de fundo dos slides">ðŸ–¼ï¸ Trocar Fundo</button>
             <button class="btn btn-secondary" id="btn-rebuild">💾 Salvar Edições</button>
@@ -400,7 +400,7 @@ texto exemplo ii eii
         <div class="card hero-card">
           <div class="module-header-badge">
             <span class="badge-dot" style="background-color: var(--primary); box-shadow: 0 0 8px var(--primary);"></span>
-            <span>MÓDULO CONVERSOR DIRETO â€¢ 1 PíGINA = 1 SLIDE</span>
+            <span>MÓDULO CONVERSOR DIRETO • 1 PíGINA = 1 SLIDE</span>
           </div>
           <h2>Conversão Direta de PDF para PowerPoint</h2>
           <p>Anexe qualquer PDF e receba uma apresentação .pptx onde cada página do PDF se torna exatamente um slide em alta resolução Full HD, sem extração ou alteração de texto. Pronto para telões e softwares de projeção.</p>
@@ -450,16 +450,16 @@ texto exemplo ii eii
 
           <div class="results-actions" style="flex-wrap: wrap; gap: 8px;">
             <button class="btn btn-secondary btn-sm" id="btn-add-pdf-images" onclick="document.getElementById('pdf-extra-images-input').click()">
-              <span>ðŸ“· ï¼‹</span> Adicionar Fotos / Avisos
+              <span>📷 ＋</span> Adicionar Fotos / Avisos
             </button>
             <button class="btn btn-secondary btn-sm" id="btn-add-another-pdf" onclick="document.getElementById('pdf-append-input').click()">
-              <span>📄 ï¼‹</span> Mais um PDF
+              <span>📄 ＋</span> Mais um PDF
             </button>
             <button class="btn btn-secondary btn-sm" id="btn-reverse-direct" title="Inverter a ordem atual dos slides">
-              <span>ðŸ”€</span> Inverter
+              <span>🔀</span> Inverter
             </button>
             <button class="btn btn-secondary btn-sm" id="btn-new-direct-main" title="Converter outro PDF do zero">
-              <span>ðŸ”„</span> Novo PDF
+              <span>🔄</span> Novo PDF
             </button>
             <button class="btn btn-danger btn-sm" id="btn-clear-all-direct" title="Remover todos os slides">
               <span>ðŸ—‘ï¸</span> Limpar
@@ -506,7 +506,7 @@ texto exemplo ii eii
                 <span>📄</span> Baixar PDF
               </button>
               <button type="button" class="btn btn-secondary btn-sm" id="btn-export-direct-pptx" title="Exportar rapidamente em PPTX">
-                <span>ðŸ“Š</span> Baixar PPTX
+                <span>📊</span> Baixar PPTX
               </button>
               <button class="btn btn-primary" id="btn-download-direct-main" style="padding: 10px 22px; font-weight: 700; background: linear-gradient(135deg, var(--primary), #ffd978); color: #000; box-shadow: 0 4px 15px rgba(232, 184, 89, 0.4);">
                 <span id="direct-main-btn-icon">⚡</span> <span id="direct-main-btn-label">Gerar e Baixar PowerPoint (.pptx)</span>
@@ -539,7 +539,7 @@ texto exemplo ii eii
         <div class="card hero-card">
           <div class="module-header-badge">
             <span class="badge-dot" style="background-color: var(--accent-purple); box-shadow: 0 0 8px var(--accent-purple);"></span>
-            <span>MÓDULO IMAGENS & ZIP â€¢ ORGANIZADOR VISUAL DE SLIDES</span>
+            <span>MÓDULO IMAGENS & ZIP • ORGANIZADOR VISUAL DE SLIDES</span>
           </div>
           <h2>Transforme Imagens Avulsas ou Arquivos ZIP em PowerPoint</h2>
           <p>Selecione fotos avulsas ou anexe um arquivo ZIP com imagens. Ajuste a ordem de cada slide arrastando com o mouse ou usando os botões de posição, e exporte sua apresentação .pptx 16:9 Full HD pronta para telões.</p>
@@ -560,7 +560,7 @@ texto exemplo ii eii
               <span>ðŸ“</span> Selecionar Imagens Avulsas (Fotos)
             </button>
             <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('zip-files-input').click()">
-              <span>ðŸ“¦</span> Selecionar Arquivo .ZIP
+              <span>📦</span> Selecionar Arquivo .ZIP
             </button>
           </div>
         </div>
@@ -577,16 +577,16 @@ texto exemplo ii eii
 
           <div class="results-actions" style="flex-wrap: wrap; gap: 8px;">
             <button class="btn btn-secondary btn-sm" id="btn-add-more-images" onclick="document.getElementById('images-files-input').click()">
-              <span>ï¼‹</span> Mais Fotos
+              <span>＋</span> Mais Fotos
             </button>
             <button class="btn btn-secondary btn-sm" id="btn-add-more-zip" onclick="document.getElementById('zip-files-input').click()">
-              <span>ðŸ“¦</span> Mais um ZIP
+              <span>📦</span> Mais um ZIP
             </button>
             <button class="btn btn-secondary btn-sm" id="btn-sort-images-az" title="Ordenar slides por nome do arquivo">
-              <span>ðŸ”¤</span> A-Z
+              <span>🔤</span> A-Z
             </button>
             <button class="btn btn-secondary btn-sm" id="btn-reverse-images" title="Inverter a ordem atual dos slides">
-              <span>ðŸ”€</span> Inverter
+              <span>🔀</span> Inverter
             </button>
             <button class="btn btn-danger btn-sm" id="btn-clear-all-images" title="Remover todas as imagens">
               <span>ðŸ—‘ï¸</span> Limpar
@@ -632,7 +632,7 @@ texto exemplo ii eii
                 <span>📄</span> Baixar PDF
               </button>
               <button type="button" class="btn btn-secondary btn-sm" id="btn-export-images-pptx" title="Exportar rapidamente em PPTX">
-                <span>ðŸ“Š</span> Baixar PPTX
+                <span>📊</span> Baixar PPTX
               </button>
               <button class="btn btn-primary" id="btn-generate-images-pptx" style="padding: 10px 22px; font-weight: 700; background: linear-gradient(135deg, var(--primary), #ffd978); color: #000; box-shadow: 0 4px 15px rgba(232, 184, 89, 0.4);">
                 <span id="images-main-btn-icon">⚡</span> <span id="images-main-btn-label">Gerar e Baixar PowerPoint (.pptx)</span>
@@ -662,7 +662,7 @@ texto exemplo ii eii
       <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:14px; padding:24px; max-width:620px; width:92%; box-shadow:0 20px 40px rgba(0,0,0,0.7); max-height:90vh; overflow-y:auto;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
           <h3 style="margin:0; font-size:17px; color:var(--text-main); display:flex; align-items:center; gap:8px;">
-            ðŸ“– Inserir Versículo Bíblico no Culto
+            📖 Inserir Versículo Bíblico no Culto
           </h3>
           <button class="btn-clear" id="btn-close-verse-modal" style="font-size:16px;">✖</button>
         </div>
@@ -785,7 +785,7 @@ texto exemplo ii eii
     <div id="toast" class="toast"></div>
   </main>
 
-  <script src="app.js?v=2.6.0"></script>
+  <script src="app.js?v=2.7.0"></script>
 </body>
 </html>
 

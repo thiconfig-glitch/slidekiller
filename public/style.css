@@ -639,9 +639,11 @@ textarea:focus {
   background: #1e293b;
   border: 1px solid var(--border);
   color: #fff;
-  padding: 6px 12px;
+  padding: 7px 12px;
   border-radius: 6px;
   font-size: 13px;
+  max-width: 100%;
+  text-overflow: ellipsis;
 }
 
 .form-select:focus {
@@ -650,6 +652,10 @@ textarea:focus {
 }
 
 /* Seletor de Plano de Fundo e Anexo Customizado */
+.option-bg-selector {
+  flex-wrap: wrap;
+}
+
 .bg-selector-wrapper {
   display: flex;
   align-items: center;
