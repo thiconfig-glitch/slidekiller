@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
   // ==========================================
-  // NAVEGAÇÃO DE MÓDULOS (CENTRAL MULTIMÍDIA)
+  // NAVEGAÇíO DE MÓDULOS (CENTRAL MULTIMÍDIA)
   // ==========================================
   const navModuleBtns = document.querySelectorAll('.nav-module-btn');
   const moduleViews = {
@@ -947,7 +947,7 @@ Retorne ESTRITAMENTE em formato JSON puro, sem crases ou markdown adicional:
 Sua missão é transformar o texto de um sermão em uma sequência de SLIDES INDIVIDUAIS estruturados em JSON.
 
 REGRA MÁXIMA E OBRIGATÓRIA:
-NÃO OMITA, NÃO RESUMA E NÃO EXCLUA NENHUM PARÁGRAFO OU FRASE!
+NíO OMITA, NíO RESUMA E NíO EXCLUA NENHUM PARÁGRAFO OU FRASE!
 Todo o conteúdo do sermão (introduções pastorais, reflexões, comentários, tópicos e versículos bíblicos) deve ser transformado em slides na íntegra.
 Se houver marcações [HL]...[/HL] no texto, você DEVE preservar esses trechos com "highlight": true.
 
@@ -981,7 +981,7 @@ FORMATO DA RESPOSTA (ARRAY JSON):
   }
 ]
 
-TEXTO COMPLETO DO SERMÃO:
+TEXTO COMPLETO DO SERMíO:
 ${sermonText}`;
 
     const models = [
@@ -1047,7 +1047,7 @@ ${sermonText}`;
     throw new Error(lastError || 'Erro ao processar com IA Gemini');
   }
 
-  // --- MOTOR LOCAL INSTANTÂNEO DE SERMÃO DA IGREJA ---
+  // --- MOTOR LOCAL INSTANTÂNEO DE SERMíO DA IGREJA ---
   const PREFIXES = "(?:1[ºª°\\.]?|2[ºª°\\.]?|3[ºª°\\.]?|I{1,3}|Primeir[oa]|Segund[oa]|Terceir[oa])";
 
   const BOOK_NAMES = [
@@ -1427,7 +1427,7 @@ ${sermonText}`;
     }];
   }
 
-  // --- MOTOR ESPECIALIZADO DE SERMÃO / ROTEIRO DO TEAMS ---
+  // --- MOTOR ESPECIALIZADO DE SERMíO / ROTEIRO DO TEAMS ---
   function parseTeamsDirectionTextBrowser(rawText, options = { onlyVerses: true }) {
     const onlyVerses = options.onlyVerses !== false;
 
@@ -1520,7 +1520,7 @@ ${sermonText}`;
         }
       }
 
-      // Se NÃO for versículo, e a opção "Manter Explicações" estiver selecionada:
+      // Se NíO for versículo, e a opção "Manter Explicações" estiver selecionada:
       if (!onlyVerses) {
         if (isAdministrativeNoise(p)) {
           continue;
@@ -3423,7 +3423,7 @@ ${sermonText}`;
   }
 
   // ==========================================
-  // INSERÇÃO RÁPIDA DE VERSÍCULOS BÍBLICOS
+  // INSERÇíO RÁPIDA DE VERSÍCULOS BÍBLICOS
   // ==========================================
   const modalVerse = document.getElementById('modalVerse');
   const btnOpenVerseModal = document.getElementById('btn-open-verse-modal');

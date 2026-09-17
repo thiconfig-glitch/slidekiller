@@ -963,7 +963,7 @@
     }
 
     // ==========================================
-    // MÓDULO DE INSERÇÃO DE VERSÍCULOS BÍBLICOS
+    // MÓDULO DE INSERÇíO DE VERSÍCULOS BÍBLICOS
     // ==========================================
     let verseModalFontSize = 52;
 
@@ -1479,15 +1479,15 @@
         btn.disabled = true;
 
         const prompt = `Você é um auditor e validador estrutural de slides de sermão de igreja para projeção e telão.
-SUA MISSÃO: Validar e estruturar o texto em uma sequência de SLIDES INDIVIDUAIS em formato JSON.
+SUA MISSíO: Validar e estruturar o texto em uma sequência de SLIDES INDIVIDUAIS em formato JSON.
 
 REGRAS ESTRITAS E INVIOLÁVEIS:
-1. NÃO CRIE SLIDES DE REFERÊNCIA ISOLADOS: Vá direto para os slides com o texto do versículo. NUNCA gere um slide contendo apenas o nome da passagem bíblica (ex: "Mateus 7:19-23").
-2. NÃO COLOQUE A REFERÊNCIA NEM O NÚMERO DO VERSÍCULO DENTRO DO TEXTO:
+1. NíO CRIE SLIDES DE REFERÊNCIA ISOLADOS: Vá direto para os slides com o texto do versículo. NUNCA gere um slide contendo apenas o nome da passagem bíblica (ex: "Mateus 7:19-23").
+2. NíO COLOQUE A REFERÊNCIA NEM O NÚMERO DO VERSÍCULO DENTRO DO TEXTO:
    - O campo "content" deve conter apenas as palavras da mensagem/versículo entre aspas “ ... ” (remova o número do versículo como "19 " ou "20 " do início do texto).
    - O campo "reference" conterá a referência correspondente (ex: "Mateus 7:19", "1 Samuel 15:22").
-3. PROIBIDO ALTERAR O TEXTO: Mantenha cada palavra, concordância e pontuação 100% IDÊNTICA ao original. NÃO altere o português, NÃO invente palavras, NÃO resuma.
-4. PRESERVE OS DESTAQUES [HL]...[/HL]: Mantenha as tags [HL]...[/HL] EXATAMENTE nas palavras onde vieram do PDF original. NÃO invente novos destaques.
+3. PROIBIDO ALTERAR O TEXTO: Mantenha cada palavra, concordância e pontuação 100% IDÊNTICA ao original. NíO altere o português, NíO invente palavras, NíO resuma.
+4. PRESERVE OS DESTAQUES [HL]...[/HL]: Mantenha as tags [HL]...[/HL] EXATAMENTE nas palavras onde vieram do PDF original. NíO invente novos destaques.
 5. TIPOS DE SLIDES:
    - "verse": 1 versículo por slide com aspas “ ... ” e campo "reference".
    - "topic": Títulos ou tópicos (ex: "Obediência acima de tudo:").
@@ -1508,7 +1508,7 @@ FORMATO DE RESPOSTA (APENAS JSON VÁLIDO):
   }
 ]
 
-TEXTO DO SERMÃO:
+TEXTO DO SERMíO:
 ${rawExtractedSermonText || slides.map(s => s.elements.map(e => e.content).join(' ')).join('\n')}`;
 
         const models = [
