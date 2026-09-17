@@ -1047,7 +1047,7 @@ ${sermonText}`;
     throw new Error(lastError || 'Erro ao processar com IA Gemini');
   }
 
-  // --- MOTOR LOCAL INSTANTÂNEO DE SERMíO DA IGREJA ---
+  // --- MOTOR LOCAL INSTANTNEO DE SERMíO DA IGREJA ---
   const PREFIXES = "(?:1[ºª°\\.]?|2[ºª°\\.]?|3[ºª°\\.]?|I{1,3}|Primeir[oa]|Segund[oa]|Terceir[oa])";
 
   const BOOK_NAMES = [
@@ -1649,7 +1649,7 @@ ${sermonText}`;
             showToast(`⚡ ${currentSlides.length} slides estruturados instantaneamente!`, 'success');
           }
         } else {
-          // MOTOR INSTANTÂNEO DA IGREJA (5ms)
+          // MOTOR INSTANTNEO DA IGREJA (5ms)
           currentSlides = parseSermonOfflineBrowser(extractedText);
           showToast(`⚡ ${currentSlides.length} slides gerados instantaneamente!`, 'success');
         }
