@@ -1616,6 +1616,105 @@ textarea:focus {
   border-color: var(--danger);
 }
 
+.card-right-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.card-more-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.btn-card-more {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  width: 28px;
+  height: 26px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+  line-height: 1;
+}
+
+.btn-card-more:hover,
+.btn-card-more.active {
+  background: rgba(232, 184, 89, 0.15);
+  color: var(--primary);
+  border-color: rgba(232, 184, 89, 0.4);
+}
+
+.image-slide-card.menu-open {
+  z-index: 50 !important;
+  overflow: visible !important;
+}
+
+.card-dropdown-menu {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  right: 0;
+  background: #111726;
+  border: 1px solid rgba(232, 184, 89, 0.35);
+  border-radius: 8px;
+  padding: 5px;
+  min-width: 195px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.85);
+  z-index: 999;
+  display: none;
+  flex-direction: column;
+  gap: 3px;
+  animation: cardMenuFadeIn 0.15s ease-out;
+}
+
+@keyframes cardMenuFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.card-dropdown-menu.show {
+  display: flex;
+}
+
+.card-dropdown-item {
+  background: transparent;
+  border: none;
+  color: #e2e8f0;
+  padding: 8px 10px;
+  font-size: 11.5px;
+  font-weight: 600;
+  text-align: left;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.15s;
+  width: 100%;
+  white-space: nowrap;
+}
+
+.card-dropdown-item:hover {
+  background: rgba(232, 184, 89, 0.15);
+  color: var(--primary);
+}
+
+.card-dropdown-item span {
+  font-size: 13px;
+}
+
 /* ================================================= */
 /* TAREFAS EM ANDAMENTO (SINCRONIZAÇíO CELULAR / PC)  */
 /* ================================================= */
