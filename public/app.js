@@ -2271,6 +2271,7 @@ ${sermonText}`;
   const directFormatSelect = document.getElementById('direct-format-select');
   const btnExportDirectPdf = document.getElementById('btn-export-direct-pdf');
   const btnExportDirectPptx = document.getElementById('btn-export-direct-pptx');
+  const btnExportDirectPngZip = document.getElementById('btn-export-direct-png-zip');
   const directMainBtnIcon = document.getElementById('direct-main-btn-icon');
   const directMainBtnLabel = document.getElementById('direct-main-btn-label');
 
@@ -2576,9 +2577,24 @@ ${sermonText}`;
                 ➡
               </button>
             </div>
-            <button type="button" class="btn-card-delete" data-action="delete" title="Excluir este slide">
-              🗑️
-            </button>
+            <div class="card-right-actions">
+              <div class="card-more-wrapper">
+                <button type="button" class="btn-card-more" data-action="more" title="Mais opções (Extrair PNG)">
+                  ⋮
+                </button>
+                <div class="card-dropdown-menu">
+                  <button type="button" class="card-dropdown-item" data-action="download-png-screen">
+                    <span>🖼️</span> Baixar como PNG (Telão)
+                  </button>
+                  <button type="button" class="card-dropdown-item" data-action="download-png-orig">
+                    <span>📐</span> Baixar como PNG (Original)
+                  </button>
+                </div>
+              </div>
+              <button type="button" class="btn-card-delete" data-action="delete" title="Excluir este slide">
+                🗑️
+              </button>
+            </div>
           </div>
         </div>
       `;
@@ -2587,6 +2603,10 @@ ${sermonText}`;
       const btnPrev = card.querySelector('[data-action="prev"]');
       const btnNext = card.querySelector('[data-action="next"]');
       const btnDel  = card.querySelector('[data-action="delete"]');
+      const btnMore = card.querySelector('[data-action="more"]');
+      const cardDropdown = card.querySelector('.card-dropdown-menu');
+      const btnDlScreen = card.querySelector('[data-action="download-png-screen"]');
+      const btnDlOrig = card.querySelector('[data-action="download-png-orig"]');
 
       if (btnPrev && index > 0) {
         btnPrev.addEventListener('click', (e) => {
@@ -2606,6 +2626,47 @@ ${sermonText}`;
         btnDel.addEventListener('click', (e) => {
           e.stopPropagation();
           deleteDirectSlide(index);
+        });
+      }
+
+      if (btnMore && cardDropdown) {
+        btnMore.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const isOpen = cardDropdown.classList.contains('show');
+          document.querySelectorAll('.card-dropdown-menu.show').forEach(m => m.classList.remove('show'));
+          document.querySelectorAll('.btn-card-more.active').forEach(b => b.classList.remove('active'));
+          document.querySelectorAll('.image-slide-card.menu-open').forEach(c => c.classList.remove('menu-open'));
+
+          if (!isOpen) {
+            cardDropdown.classList.add('show');
+            btnMore.classList.add('active');
+            card.classList.add('menu-open');
+          }
+        });
+      }
+
+      if (btnDlScreen) {
+        btnDlScreen.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (cardDropdown) cardDropdown.classList.remove('show');
+          if (btnMore) btnMore.classList.remove('active');
+          card.classList.remove('menu-open');
+
+          const aspect = directAspectSelect ? directAspectSelect.value : '16x9';
+          const fit = directFitSelect ? directFitSelect.value : 'contain';
+          const bg = directBgSelect ? directBgSelect.value : '000000';
+          downloadSingleSlidePng(slide, index, 'screen', aspect, fit, bg);
+        });
+      }
+
+      if (btnDlOrig) {
+        btnDlOrig.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (cardDropdown) cardDropdown.classList.remove('show');
+          if (btnMore) btnMore.classList.remove('active');
+          card.classList.remove('menu-open');
+
+          downloadSingleSlidePng(slide, index, 'orig');
         });
       }
 
@@ -2764,6 +2825,172 @@ ${sermonText}`;
     doc.save(fileName);
   }
 
+  // Renderiza um slide (de directSlides ou imageSlides) em imagem PNG de alta resolução
+  async function renderSlideToPngBlob(slide, aspectChoice = '16x9', fitChoice = 'contain', bgChoice = '000000') {
+    return new Promise((resolve, reject) => {
+      const rawImg = slide.imgData || slide.dataUrl;
+      if (!rawImg) {
+        return reject(new Error('Imagem do slide indisponível.'));
+      }
+
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        try {
+          const natW = img.naturalWidth || img.width || 1920;
+          const natH = img.naturalHeight || img.height || 1080;
+          const imgRatio = slide.ratio || (natW / natH) || (16 / 9);
+
+          let canvasW = 1920;
+          let canvasH = 1080;
+
+          if (aspectChoice === 'original') {
+            canvasW = natW;
+            canvasH = natH;
+          } else if (aspectChoice === '4x3') {
+            canvasW = 1920;
+            canvasH = 1440;
+          } else {
+            canvasW = 1920;
+            canvasH = 1080;
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = canvasW;
+          canvas.height = canvasH;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return reject(new Error('Não foi possível obter contexto 2D.'));
+
+          if (aspectChoice === 'original') {
+            ctx.drawImage(img, 0, 0, canvasW, canvasH);
+          } else {
+            const hex = (bgChoice || '000000').replace('#', '');
+            ctx.fillStyle = '#' + hex;
+            ctx.fillRect(0, 0, canvasW, canvasH);
+
+            let drawW = canvasW;
+            let drawH = canvasW / imgRatio;
+
+            if (fitChoice === 'cover') {
+              if (drawH < canvasH) {
+                drawH = canvasH;
+                drawW = canvasH * imgRatio;
+              }
+            } else { // contain
+              if (drawH > canvasH) {
+                drawH = canvasH;
+                drawW = canvasH * imgRatio;
+              }
+            }
+
+            const x = (canvasW - drawW) / 2;
+            const y = (canvasH - drawH) / 2;
+
+            ctx.drawImage(img, x, y, drawW, drawH);
+          }
+
+          canvas.toBlob((blob) => {
+            if (blob) {
+              resolve(blob);
+            } else {
+              reject(new Error('Falha ao converter canvas para PNG.'));
+            }
+          }, 'image/png');
+        } catch (err) {
+          reject(err);
+        }
+      };
+      img.onerror = () => reject(new Error('Erro ao carregar imagem para renderização PNG.'));
+      img.src = rawImg;
+    });
+  }
+
+  // Dispara o download de um Blob no navegador
+  function downloadBlobFile(blob, fileName) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  // Download individual de um slide em PNG
+  async function downloadSingleSlidePng(slide, index, mode = 'screen', aspectChoice = '16x9', fitChoice = 'contain', bgChoice = '000000') {
+    try {
+      showToast(`Gerando imagem PNG do slide ${index + 1}...`, 'info');
+      const targetAspect = mode === 'orig' ? 'original' : aspectChoice;
+      const pngBlob = await renderSlideToPngBlob(slide, targetAspect, fitChoice, bgChoice);
+
+      const num = String(index + 1).padStart(2, '0');
+      const rawTitle = slide.title || slide.name || `Slide_${num}`;
+      const safeTitle = rawTitle
+        .replace(/[/\\?%*:|"<>]/g, '_')
+        .replace(/\s+/g, '_')
+        .trim();
+      const fileName = `Slide_${num}_${safeTitle}.png`;
+
+      downloadBlobFile(pngBlob, fileName);
+      showToast(`🖼️ Slide #${index + 1} baixado em PNG!`, 'success');
+    } catch (err) {
+      console.error('Erro ao baixar slide individual em PNG:', err);
+      showToast('Erro ao exportar PNG: ' + err.message, 'error');
+    }
+  }
+
+  // Gera e baixa um pacote .ZIP contendo todas as telas em formato PNG
+  async function generateSlidesZip({
+    slides,
+    aspectChoice,
+    fitChoice,
+    bgChoice,
+    zipFileName,
+    progressCallback
+  }) {
+    if (typeof JSZip === 'undefined') {
+      throw new Error('Biblioteca JSZip não carregada.');
+    }
+
+    const zip = new JSZip();
+    const total = slides.length;
+
+    for (let i = 0; i < total; i++) {
+      const slide = slides[i];
+      if (progressCallback) {
+        progressCallback(i + 1, total, `Processando PNG: slide ${i + 1} de ${total}...`);
+      }
+
+      const pngBlob = await renderSlideToPngBlob(slide, aspectChoice, fitChoice, bgChoice);
+      const num = String(i + 1).padStart(2, '0');
+      const rawTitle = slide.title || slide.name || `Slide_${num}`;
+      const safeTitle = rawTitle
+        .replace(/[/\\?%*:|"<>]/g, '_')
+        .replace(/\s+/g, '_')
+        .trim();
+      const filename = `Slide_${num}_${safeTitle}.png`;
+
+      zip.file(filename, pngBlob);
+    }
+
+    if (progressCallback) {
+      progressCallback(total, total, 'Compactando arquivo ZIP...');
+    }
+
+    const zipBlob = await zip.generateAsync({
+      type: 'blob',
+      compression: 'DEFLATE',
+      compressionOptions: { level: 6 }
+    }, (metadata) => {
+      if (progressCallback) {
+        progressCallback(total, total, `Compactando ZIP: ${Math.round(metadata.percent)}%...`);
+      }
+    });
+
+    downloadBlobFile(zipBlob, zipFileName);
+  }
+
   function updateDirectExportBtnLabel() {
     const fmt = directFormatSelect ? directFormatSelect.value : 'pptx';
     if (directMainBtnIcon && directMainBtnLabel) {
@@ -2773,6 +3000,9 @@ ${sermonText}`;
       } else if (fmt === 'both') {
         directMainBtnIcon.textContent = '✨';
         directMainBtnLabel.textContent = 'Gerar e Baixar Ambos (.pptx + .pdf)';
+      } else if (fmt === 'zip') {
+        directMainBtnIcon.textContent = '📦';
+        directMainBtnLabel.textContent = 'Gerar e Baixar Pacote ZIP (.zip)';
       } else {
         directMainBtnIcon.textContent = '⚡';
         directMainBtnLabel.textContent = 'Gerar e Baixar PowerPoint (.pptx)';
@@ -2783,6 +3013,8 @@ ${sermonText}`;
         btnDownloadDirectTop.innerHTML = '<span>📄</span> Baixar PDF (.pdf)';
       } else if (fmt === 'both') {
         btnDownloadDirectTop.innerHTML = '<span>✨</span> Baixar Ambos (.pptx + .pdf)';
+      } else if (fmt === 'zip') {
+        btnDownloadDirectTop.innerHTML = '<span>📦</span> Baixar Pacote ZIP (.zip)';
       } else {
         btnDownloadDirectTop.innerHTML = '<span>📥</span> Baixar PowerPoint (.pptx)';
       }
@@ -2793,7 +3025,7 @@ ${sermonText}`;
     directFormatSelect.addEventListener('change', updateDirectExportBtnLabel);
   }
 
-  // Geração e Exportação customizada (PPTX, PDF ou Ambos) para Módulo 2
+  // Geração e Exportação customizada (PPTX, PDF, ZIP ou Ambos) para Módulo 2
   async function generateDirectExport(requestedFormat) {
     if (directSlides.length === 0) {
       showToast('Adicione pelo menos uma página ou imagem para gerar a apresentação.', 'error');
@@ -2808,6 +3040,7 @@ ${sermonText}`;
     const baseName = (currentDirectFile ? currentDirectFile.name.replace(/\.[^/.]+$/, '') : 'Apresentacao') + '_PAGINAS';
     const pptxFileName = baseName + '.pptx';
     const pdfFileName = baseName + '.pdf';
+    const zipFileName = baseName + '_PNG.zip';
 
     if (btnDownloadDirectMain) {
       btnDownloadDirectMain.disabled = true;
@@ -2883,6 +3116,25 @@ ${sermonText}`;
         });
       }
 
+      // 3. Exportar Pacote ZIP com imagens PNG se solicitado
+      if (formatChoice === 'zip') {
+        if (directExportProgressStatus) directExportProgressStatus.textContent = 'Gerando pacote ZIP com imagens PNG...';
+
+        await generateSlidesZip({
+          slides: directSlides,
+          aspectChoice,
+          fitChoice,
+          bgChoice,
+          zipFileName,
+          progressCallback: (cur, tot, statusText) => {
+            const pct = Math.round((cur / tot) * 95);
+            if (directExportProgressBar) directExportProgressBar.style.width = `${pct}%`;
+            if (directExportProgressPercent) directExportProgressPercent.textContent = `${pct}%`;
+            if (directExportProgressStatus) directExportProgressStatus.textContent = statusText || `PNG: slide ${cur} de ${tot}...`;
+          }
+        });
+      }
+
       if (directExportProgressBar) directExportProgressBar.style.width = '100%';
       if (directExportProgressPercent) directExportProgressPercent.textContent = '100%';
       if (directExportProgressStatus) directExportProgressStatus.textContent = 'Concluído!';
@@ -2891,6 +3143,8 @@ ${sermonText}`;
         showToast(`🎉 Apresentação baixada em PPTX e PDF (${total} slides cada)!`, 'success');
       } else if (formatChoice === 'pdf') {
         showToast(`🎉 Documento PDF baixado com sucesso (${total} páginas)!`, 'success');
+      } else if (formatChoice === 'zip') {
+        showToast(`🎉 Pacote ZIP baixado com sucesso (${total} imagens PNG)!`, 'success');
       } else {
         showToast(`🎉 Apresentação PPTX baixada com sucesso (${total} slides)!`, 'success');
       }
@@ -2915,6 +3169,7 @@ ${sermonText}`;
   if (btnDownloadDirectMain) btnDownloadDirectMain.addEventListener('click', () => generateDirectExport());
   if (btnExportDirectPdf) btnExportDirectPdf.addEventListener('click', () => generateDirectExport('pdf'));
   if (btnExportDirectPptx) btnExportDirectPptx.addEventListener('click', () => generateDirectExport('pptx'));
+  if (btnExportDirectPngZip) btnExportDirectPngZip.addEventListener('click', () => generateDirectExport('zip'));
 
   // ==========================================
   // MÓDULO 3: IMAGENS & ZIP ➔ PPTX (ORGANIZADOR)
@@ -2947,6 +3202,7 @@ ${sermonText}`;
   const imagesFormatSelect = document.getElementById('images-format-select');
   const btnExportImagesPdf = document.getElementById('btn-export-images-pdf');
   const btnExportImagesPptx = document.getElementById('btn-export-images-pptx');
+  const btnExportImagesPngZip = document.getElementById('btn-export-images-png-zip');
   const imagesMainBtnIcon = document.getElementById('images-main-btn-icon');
   const imagesMainBtnLabel = document.getElementById('images-main-btn-label');
 
@@ -3132,9 +3388,24 @@ ${sermonText}`;
                 ➡
               </button>
             </div>
-            <button type="button" class="btn-card-delete" data-action="delete" title="Excluir este slide">
-              🗑️
-            </button>
+            <div class="card-right-actions">
+              <div class="card-more-wrapper">
+                <button type="button" class="btn-card-more" data-action="more" title="Mais opções (Extrair PNG)">
+                  ⋮
+                </button>
+                <div class="card-dropdown-menu">
+                  <button type="button" class="card-dropdown-item" data-action="download-png-screen">
+                    <span>🖼️</span> Baixar como PNG (Telão)
+                  </button>
+                  <button type="button" class="card-dropdown-item" data-action="download-png-orig">
+                    <span>📐</span> Baixar como PNG (Original)
+                  </button>
+                </div>
+              </div>
+              <button type="button" class="btn-card-delete" data-action="delete" title="Excluir este slide">
+                🗑️
+              </button>
+            </div>
           </div>
         </div>
       `;
@@ -3143,6 +3414,10 @@ ${sermonText}`;
       const btnPrev = card.querySelector('[data-action="prev"]');
       const btnNext = card.querySelector('[data-action="next"]');
       const btnDel  = card.querySelector('[data-action="delete"]');
+      const btnMore = card.querySelector('[data-action="more"]');
+      const cardDropdown = card.querySelector('.card-dropdown-menu');
+      const btnDlScreen = card.querySelector('[data-action="download-png-screen"]');
+      const btnDlOrig = card.querySelector('[data-action="download-png-orig"]');
 
       if (btnPrev && index > 0) {
         btnPrev.addEventListener('click', (e) => {
@@ -3162,6 +3437,47 @@ ${sermonText}`;
         btnDel.addEventListener('click', (e) => {
           e.stopPropagation();
           deleteImageSlide(index);
+        });
+      }
+
+      if (btnMore && cardDropdown) {
+        btnMore.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const isOpen = cardDropdown.classList.contains('show');
+          document.querySelectorAll('.card-dropdown-menu.show').forEach(m => m.classList.remove('show'));
+          document.querySelectorAll('.btn-card-more.active').forEach(b => b.classList.remove('active'));
+          document.querySelectorAll('.image-slide-card.menu-open').forEach(c => c.classList.remove('menu-open'));
+
+          if (!isOpen) {
+            cardDropdown.classList.add('show');
+            btnMore.classList.add('active');
+            card.classList.add('menu-open');
+          }
+        });
+      }
+
+      if (btnDlScreen) {
+        btnDlScreen.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (cardDropdown) cardDropdown.classList.remove('show');
+          if (btnMore) btnMore.classList.remove('active');
+          card.classList.remove('menu-open');
+
+          const aspect = imagesAspectSelect ? imagesAspectSelect.value : '16x9';
+          const fit = imagesFitSelect ? imagesFitSelect.value : 'contain';
+          const bg = imagesBgSelect ? imagesBgSelect.value : '000000';
+          downloadSingleSlidePng(slide, index, 'screen', aspect, fit, bg);
+        });
+      }
+
+      if (btnDlOrig) {
+        btnDlOrig.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (cardDropdown) cardDropdown.classList.remove('show');
+          if (btnMore) btnMore.classList.remove('active');
+          card.classList.remove('menu-open');
+
+          downloadSingleSlidePng(slide, index, 'orig');
         });
       }
 
@@ -3272,6 +3588,9 @@ ${sermonText}`;
       } else if (fmt === 'both') {
         imagesMainBtnIcon.textContent = '✨';
         imagesMainBtnLabel.textContent = 'Gerar e Baixar Ambos (.pptx + .pdf)';
+      } else if (fmt === 'zip') {
+        imagesMainBtnIcon.textContent = '📦';
+        imagesMainBtnLabel.textContent = 'Gerar e Baixar Pacote ZIP (.zip)';
       } else {
         imagesMainBtnIcon.textContent = '⚡';
         imagesMainBtnLabel.textContent = 'Gerar e Baixar PowerPoint (.pptx)';
@@ -3282,6 +3601,8 @@ ${sermonText}`;
         btnDownloadImagesTop.innerHTML = '<span>📄</span> Baixar PDF (.pdf)';
       } else if (fmt === 'both') {
         btnDownloadImagesTop.innerHTML = '<span>✨</span> Baixar Ambos (.pptx + .pdf)';
+      } else if (fmt === 'zip') {
+        btnDownloadImagesTop.innerHTML = '<span>📦</span> Baixar Pacote ZIP (.zip)';
       } else {
         btnDownloadImagesTop.innerHTML = '<span>📥</span> Baixar PowerPoint (.pptx)';
       }
@@ -3292,7 +3613,7 @@ ${sermonText}`;
     imagesFormatSelect.addEventListener('change', updateImagesExportBtnLabel);
   }
 
-  // Geração e Exportação customizada (PPTX, PDF ou Ambos) para Módulo 3
+  // Geração e Exportação customizada (PPTX, PDF, ZIP ou Ambos) para Módulo 3
   async function generateImagesExport(requestedFormat) {
     if (imageSlides.length === 0) {
       showToast('Adicione pelo menos uma imagem para gerar a apresentação.', 'error');
@@ -3307,6 +3628,7 @@ ${sermonText}`;
     const timestamp = new Date().toISOString().slice(0, 10);
     const pptxFileName = `Apresentacao_Imagens_${timestamp}.pptx`;
     const pdfFileName = `Apresentacao_Imagens_${timestamp}.pdf`;
+    const zipFileName = `Apresentacao_Imagens_${timestamp}_PNG.zip`;
 
     if (btnGenerateImagesPptx) {
       btnGenerateImagesPptx.disabled = true;
@@ -3378,6 +3700,25 @@ ${sermonText}`;
         });
       }
 
+      // 3. Exportar Pacote ZIP com imagens PNG se solicitado
+      if (formatChoice === 'zip') {
+        imagesProgressStatus.textContent = 'Gerando pacote ZIP com imagens PNG...';
+
+        await generateSlidesZip({
+          slides: imageSlides,
+          aspectChoice,
+          fitChoice,
+          bgChoice: bgColor,
+          zipFileName,
+          progressCallback: (cur, tot, statusText) => {
+            const pct = Math.round((cur / tot) * 95);
+            imagesProgressBar.style.width = `${pct}%`;
+            imagesProgressPercent.textContent = `${pct}%`;
+            imagesProgressStatus.textContent = statusText || `PNG: slide ${cur} de ${tot}...`;
+          }
+        });
+      }
+
       imagesProgressStatus.textContent = 'Concluído!';
       imagesProgressBar.style.width = '100%';
       imagesProgressPercent.textContent = '100%';
@@ -3386,6 +3727,8 @@ ${sermonText}`;
         showToast(`🎉 Apresentação baixada em PPTX e PDF (${total} slides cada)!`, 'success');
       } else if (formatChoice === 'pdf') {
         showToast(`🎉 Documento PDF baixado com sucesso (${total} páginas)!`, 'success');
+      } else if (formatChoice === 'zip') {
+        showToast(`🎉 Pacote ZIP baixado com sucesso (${total} imagens PNG)!`, 'success');
       } else {
         showToast(`🎉 Apresentação PPTX baixada com sucesso (${total} slides)!`, 'success');
       }
@@ -3421,6 +3764,19 @@ ${sermonText}`;
   if (btnExportImagesPptx) {
     btnExportImagesPptx.addEventListener('click', () => generateImagesExport('pptx'));
   }
+
+  if (btnExportImagesPngZip) {
+    btnExportImagesPngZip.addEventListener('click', () => generateImagesExport('zip'));
+  }
+
+  // Fechar menus de 3 pontinhos ao clicar fora de qualquer card
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.card-more-wrapper')) {
+      document.querySelectorAll('.card-dropdown-menu.show').forEach(m => m.classList.remove('show'));
+      document.querySelectorAll('.btn-card-more.active').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.image-slide-card.menu-open').forEach(c => c.classList.remove('menu-open'));
+    }
+  });
 
   // ==========================================
   // INSERÇíO RÁPIDA DE VERSÍCULOS BÍBLICOS

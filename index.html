@@ -15,7 +15,7 @@
   <!-- Firebase SDKs para sincronização Celular ➔ PC -->
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
-  <link rel="stylesheet" href="style.css?v=2.9.0">
+  <link rel="stylesheet" href="style.css?v=2.10.0">
   <style>
     /* Estilos imediatos garantidos para os botões de formato (Esboço vs Direção Teams) */
     .text-mode-config-bar {
@@ -476,6 +476,7 @@ texto exemplo ii eii
                 <option value="pptx">PowerPoint (.pptx)</option>
                 <option value="pdf">Documento PDF (.pdf)</option>
                 <option value="both">Ambos (.pptx + .pdf juntos)</option>
+                <option value="zip">Pacote ZIP com Imagens PNG (.zip)</option>
               </select>
             </div>
             <div class="option-item">
@@ -502,6 +503,9 @@ texto exemplo ii eii
               </select>
             </div>
             <div style="margin-left: auto; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-export-direct-png-zip" title="Extrair todas as telas em um pacote ZIP com imagens PNG Full HD">
+                <span>🖼️</span> Baixar ZIP (PNG)
+              </button>
               <button type="button" class="btn btn-secondary btn-sm" id="btn-export-direct-pdf" title="Exportar rapidamente em PDF">
                 <span>📄</span> Baixar PDF
               </button>
@@ -603,6 +607,7 @@ texto exemplo ii eii
                 <option value="pptx">PowerPoint (.pptx)</option>
                 <option value="pdf">Documento PDF (.pdf)</option>
                 <option value="both">Ambos (.pptx + .pdf juntos)</option>
+                <option value="zip">Pacote ZIP com Imagens PNG (.zip)</option>
               </select>
             </div>
             <div class="option-item">
@@ -628,6 +633,9 @@ texto exemplo ii eii
               </select>
             </div>
             <div style="margin-left: auto; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-export-images-png-zip" title="Extrair todas as imagens em um pacote ZIP com PNG Full HD">
+                <span>🖼️</span> Baixar ZIP (PNG)
+              </button>
               <button type="button" class="btn btn-secondary btn-sm" id="btn-export-images-pdf" title="Exportar rapidamente em PDF">
                 <span>📄</span> Baixar PDF
               </button>
@@ -785,7 +793,7 @@ texto exemplo ii eii
     <div id="toast" class="toast"></div>
   </main>
 
-  <script src="app.js?v=2.9.0"></script>
+  <script src="app.js?v=2.10.0"></script>
 </body>
 </html>
 
