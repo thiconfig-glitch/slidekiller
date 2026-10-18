@@ -6,12 +6,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const moduleViews = {
     'slidekiller': document.getElementById('view-slidekiller'),
     'pdf-to-pptx': document.getElementById('view-pdf-to-pptx'),
-    'images-to-pptx': document.getElementById('view-images-to-pptx')
+    'images-to-pptx': document.getElementById('view-images-to-pptx'),
+    'deckcraft': document.getElementById('view-deckcraft')
   };
   const moduleActions = {
     'slidekiller': document.getElementById('actions-slidekiller'),
     'pdf-to-pptx': document.getElementById('actions-pdf-to-pptx'),
-    'images-to-pptx': document.getElementById('actions-images-to-pptx')
+    'images-to-pptx': document.getElementById('actions-images-to-pptx'),
+    'deckcraft': document.getElementById('actions-deckcraft')
   };
 
   let currentActiveModule = 'slidekiller';
@@ -34,6 +36,21 @@ document.addEventListener('DOMContentLoaded', () => {
         moduleActions[key].style.display = (key === targetModule) ? 'flex' : 'none';
       }
     });
+
+    // Inicializa o iframe do DeckCraft Standalone sob demanda
+    if (targetModule === 'deckcraft') {
+      const standaloneIframe = document.getElementById('deckcraft-standalone-iframe');
+      const standaloneLoading = document.getElementById('deckcraft-standalone-loading');
+      if (standaloneIframe && (standaloneIframe.src === 'about:blank' || !standaloneIframe.src.includes('deckcraft'))) {
+        if (standaloneLoading) standaloneLoading.style.display = 'flex';
+        standaloneIframe.src = 'deckcraft/?blank';
+        standaloneIframe.onload = () => {
+          if (standaloneLoading) {
+            setTimeout(() => { standaloneLoading.style.display = 'none'; }, 600);
+          }
+        };
+      }
+    }
   }
 
   navModuleBtns.forEach(btn => {
@@ -2109,6 +2126,7 @@ ${sermonText}`;
     const modal = document.getElementById('modalDeckcraft');
     const iframe = document.getElementById('deckcraft-iframe');
     const filenameBadge = document.getElementById('deckcraft-filename-badge');
+    const stepFilenameBadge = document.getElementById('deckcraft-modal-step-filename');
     const loadingOverlay = document.getElementById('deckcraft-loading-overlay');
     if (!modal || !iframe) return;
 
@@ -2121,13 +2139,30 @@ ${sermonText}`;
       iframe.src = 'deckcraft/?blank';
     }
 
-    showToast('Preparando apresentação para o DeckCraft Studio...', 'info');
+    showToast('Preparando e baixando PPTX para o DeckCraft Studio...', 'info');
 
     try {
       const data = await getSlideKillerPptxData();
       if (data) {
         activeDeckcraftPptxData = data;
         if (filenameBadge) filenameBadge.textContent = data.fileName;
+        if (stepFilenameBadge) stepFilenameBadge.textContent = data.fileName;
+
+        // Auto-download imediato para a barra de downloads do navegador
+        // facilitando arrastar diretamente para a tela do DeckCraft
+        try {
+          const downloadUrl = URL.createObjectURL(data.blob);
+          const downloadLink = document.createElement('a');
+          downloadLink.href = downloadUrl;
+          downloadLink.download = data.fileName;
+          document.body.appendChild(downloadLink);
+          downloadLink.click();
+          document.body.removeChild(downloadLink);
+          setTimeout(() => URL.revokeObjectURL(downloadUrl), 10000);
+          showToast(`📥 "${data.fileName}" baixado! Arraste-o para o editor ou use File ➔ Open.`, 'success');
+        } catch (downloadErr) {
+          console.warn('[DeckCraft] Erro no download automático:', downloadErr);
+        }
 
         const sendPptxToDeckcraft = () => {
           try {
@@ -2192,9 +2227,83 @@ ${sermonText}`;
       });
     }
 
+    const btnReDownload = document.getElementById('btn-re-download-pptx');
+    if (btnReDownload) {
+      btnReDownload.addEventListener('click', async () => {
+        try {
+          if (!activeDeckcraftPptxData) {
+            activeDeckcraftPptxData = await getSlideKillerPptxData();
+          }
+          if (!activeDeckcraftPptxData) {
+            showToast('Nenhum slide disponível para download.', 'error');
+            return;
+          }
+          const url = URL.createObjectURL(activeDeckcraftPptxData.blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = activeDeckcraftPptxData.fileName;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(() => URL.revokeObjectURL(url), 10000);
+          showToast(`📥 Baixando novamente: ${activeDeckcraftPptxData.fileName}`, 'success');
+        } catch (err) {
+          showToast('Erro ao baixar PPTX: ' + err.message, 'error');
+        }
+      });
+    }
+
+    // Botão da tela frontal para abrir DeckCraft direto sem projeto
+    const btnOpenDeckcraftFront = document.getElementById('btn-open-deckcraft-front');
+    if (btnOpenDeckcraftFront) {
+      btnOpenDeckcraftFront.addEventListener('click', () => {
+        const deckcraftNavBtn = document.querySelector('.nav-module-btn[data-module="deckcraft"]');
+        switchModule('deckcraft');
+        if (deckcraftNavBtn) moveNavGelPill(deckcraftNavBtn);
+      });
+    }
+
+    // Botão de nova aba no cabeçalho do módulo DeckCraft
+    const btnDeckcraftHeaderNewtab = document.getElementById('btn-deckcraft-header-newtab');
+    if (btnDeckcraftHeaderNewtab) {
+      btnDeckcraftHeaderNewtab.addEventListener('click', () => {
+        window.open('deckcraft/?blank', '_blank');
+      });
+    }
+
+    // Botões da tela avulsa / standalone do DeckCraft
+    const btnDeckcraftStandaloneFullscreen = document.getElementById('btn-deckcraft-standalone-fullscreen');
+    const deckcraftStandaloneWrapper = document.getElementById('deckcraft-standalone-wrapper');
+    if (btnDeckcraftStandaloneFullscreen && deckcraftStandaloneWrapper) {
+      btnDeckcraftStandaloneFullscreen.addEventListener('click', () => {
+        if (!document.fullscreenElement) {
+          deckcraftStandaloneWrapper.requestFullscreen().catch(() => {
+            deckcraftStandaloneWrapper.classList.toggle('is-fullscreen');
+          });
+        } else {
+          document.exitFullscreen().catch(() => {});
+        }
+      });
+      document.addEventListener('fullscreenchange', () => {
+        if (document.fullscreenElement === deckcraftStandaloneWrapper) {
+          btnDeckcraftStandaloneFullscreen.innerHTML = '<span>⛶</span> Sair da Tela Cheia';
+          deckcraftStandaloneWrapper.classList.add('is-fullscreen');
+        } else if (!document.fullscreenElement) {
+          btnDeckcraftStandaloneFullscreen.innerHTML = '<span>⛶</span> Tela Cheia';
+          deckcraftStandaloneWrapper.classList.remove('is-fullscreen');
+        }
+      });
+    }
+
+    const btnDeckcraftStandaloneNewtab = document.getElementById('btn-deckcraft-standalone-newtab');
+    if (btnDeckcraftStandaloneNewtab) {
+      btnDeckcraftStandaloneNewtab.addEventListener('click', () => {
+        window.open('deckcraft/?blank', '_blank');
+      });
+    }
+
     const btnOpenFile = document.getElementById('btn-deckcraft-open-file');
     const fileInput = document.getElementById('deckcraft-file-input');
-    const filenameBadge = document.getElementById('deckcraft-filename-badge');
     if (btnOpenFile && fileInput) {
       btnOpenFile.addEventListener('click', () => fileInput.click());
       fileInput.addEventListener('change', async (e) => {

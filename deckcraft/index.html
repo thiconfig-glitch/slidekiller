@@ -47,12 +47,32 @@ window.addEventListener('message', async (e) => {
   }
 });
 
-// Suporte para arrastar e soltar arquivo em qualquer lugar da tela
+// Suporte para arrastar e soltar arquivo em qualquer lugar da tela com feedback visual
+let dragCounter = 0;
+window.addEventListener('dragenter', (e) => {
+  e.preventDefault();
+  dragCounter++;
+  const overlay = document.getElementById('deckcraft_drop_overlay');
+  if (overlay) overlay.style.display = 'flex';
+});
+window.addEventListener('dragleave', (e) => {
+  e.preventDefault();
+  dragCounter--;
+  if (dragCounter <= 0) {
+    dragCounter = 0;
+    const overlay = document.getElementById('deckcraft_drop_overlay');
+    if (overlay) overlay.style.display = 'none';
+  }
+});
 window.addEventListener('dragover', (e) => {
   e.preventDefault();
   if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
 });
 window.addEventListener('drop', (e) => {
+  dragCounter = 0;
+  const overlay = document.getElementById('deckcraft_drop_overlay');
+  if (overlay) overlay.style.display = 'none';
+
   const canvas = document.getElementById('deckcraft_canvas');
   if (e.target !== canvas && canvas && e.dataTransfer && e.dataTransfer.files.length > 0) {
     e.preventDefault();
@@ -71,10 +91,17 @@ window.addEventListener('drop', (e) => {
     #deckcraft_canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
     #deckcraft_loading { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
       color: #b8b8b8; font: 14px system-ui, sans-serif; pointer-events: none; }
+    #deckcraft_drop_overlay {
+      display: none; position: absolute; inset: 16px; border: 3px dashed #6366f1; border-radius: 14px;
+      background: rgba(15, 23, 42, 0.88); z-index: 999; pointer-events: none; align-items: center; justify-content: center;
+      color: #ffffff; font: 600 20px system-ui, sans-serif; box-shadow: 0 0 40px rgba(99, 102, 241, 0.5); text-align: center;
+      letter-spacing: 0.5px;
+    }
   </style>
 <link rel="modulepreload" href="./deckcraft-web-3d451cd28e31e9b6.js" crossorigin="anonymous" integrity="sha384-hRvfSmZL8PtHjvk0dxau+U6PSZIHU9i9WWFE9g1UopeDnXr0TmMS50YPv/94kpza"><link rel="preload" href="./deckcraft-web-3d451cd28e31e9b6_bg.wasm" crossorigin="anonymous" integrity="sha384-5lwc55uObOnpaxlexh2cE3pJsS52e2Cowx2tgMOs9T32SdNaE9X3R3l3ozlARCl+" as="fetch" type="application/wasm"></head>
 <body>
   <canvas id="deckcraft_canvas"></canvas>
   <div id="deckcraft_loading">Loading DeckCraft&hellip;</div>
+  <div id="deckcraft_drop_overlay">📥 Solte o arquivo .pptx aqui para carregar no DeckCraft</div>
 </body>
 </html>
