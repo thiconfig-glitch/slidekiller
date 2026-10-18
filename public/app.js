@@ -2766,8 +2766,14 @@ ${sermonText}`;
   }
 
   // ==========================================
-  // MÓDULO 2: PDF ➔ PPTX DIRETO (1:1 PÁGINA)
+  // MÓDULO 2: CONVERSOR PDF ⇄ PPTX (DIRETO & INVERSO)
   // ==========================================
+  const btnSubmodePdf = document.getElementById('btn-submode-pdf-to-pptx');
+  const btnSubmodePptx = document.getElementById('btn-submode-pptx-reverse');
+  const cardDirectPdf = document.getElementById('card-direct-pdf');
+  const cardReversePptx = document.getElementById('card-reverse-pptx');
+
+  // Modo Direto (PDF ➔ PPTX)
   const dropzoneDirect = document.getElementById('dropzone-direct');
   const pdfDirectInput = document.getElementById('pdf-direct-input');
   const directFileInfo = document.getElementById('direct-file-info');
@@ -2787,6 +2793,22 @@ ${sermonText}`;
   const btnExportDirectPngZip = document.getElementById('btn-export-direct-png-zip');
   const directMainBtnIcon = document.getElementById('direct-main-btn-icon');
   const directMainBtnLabel = document.getElementById('direct-main-btn-label');
+
+  // Modo Inverso (PPTX ➔ Imagens / ZIP / PDF)
+  const dropzonePptxReverse = document.getElementById('dropzone-pptx-reverse');
+  const pptxReverseInput = document.getElementById('pptx-reverse-input');
+  const pptxReverseFileInfo = document.getElementById('pptx-reverse-file-info');
+  const pptxReverseFileName = document.getElementById('pptx-reverse-file-name');
+  const btnClearPptxReverseFile = document.getElementById('btn-clear-pptx-reverse-file');
+  const pptxReverseProgressContainer = document.getElementById('pptx-reverse-progress-container');
+  const pptxReverseProgressBar = document.getElementById('pptx-reverse-progress-bar');
+  const pptxReverseProgressStatus = document.getElementById('pptx-reverse-progress-status');
+  const pptxReverseProgressPercent = document.getElementById('pptx-reverse-progress-percent');
+  const btnPptxToZip = document.getElementById('btn-pptx-to-zip');
+  const btnPptxToPdf = document.getElementById('btn-pptx-to-pdf');
+  const btnPptxToOrganizer = document.getElementById('btn-pptx-to-organizer');
+  const pptxAppendInput = document.getElementById('pptx-append-input');
+  const imagesPptxInput = document.getElementById('images-pptx-input');
 
   const sectionDirectInput = document.getElementById('section-direct-input');
   const sectionDirectResults = document.getElementById('section-direct-results');
@@ -2808,15 +2830,33 @@ ${sermonText}`;
   const directExportProgressPercent = document.getElementById('direct-export-progress-percent');
 
   let currentDirectFile = null;
+  let currentReversePptxFile = null;
   let directGeneratedPptx = null;
   let directPptxFileName = 'Apresentacao.pptx';
   let directSlides = [];
   let draggedDirectSlideIndex = null;
 
+  // Alternador de Submodo: Direto (PDF ➔ PPTX) vs Inverso (PPTX ➔ Imagens/ZIP/PDF)
+  if (btnSubmodePdf && btnSubmodePptx) {
+    btnSubmodePdf.addEventListener('click', () => {
+      btnSubmodePdf.classList.add('active');
+      btnSubmodePptx.classList.remove('active');
+      if (cardDirectPdf) cardDirectPdf.style.display = 'block';
+      if (cardReversePptx) cardReversePptx.style.display = 'none';
+    });
+    btnSubmodePptx.addEventListener('click', () => {
+      btnSubmodePptx.classList.add('active');
+      btnSubmodePdf.classList.remove('active');
+      if (cardDirectPdf) cardDirectPdf.style.display = 'none';
+      if (cardReversePptx) cardReversePptx.style.display = 'block';
+    });
+  }
+
   if (btnSwitchToDirect) {
     btnSwitchToDirect.addEventListener('click', () => switchModule('pdf-to-pptx'));
   }
 
+  // Dropzone Modo Direto (PDF)
   if (dropzoneDirect && pdfDirectInput) {
     dropzoneDirect.addEventListener('click', () => pdfDirectInput.click());
 
@@ -2861,14 +2901,154 @@ ${sermonText}`;
     directFileInfo.style.display = 'inline-flex';
   }
 
+  // Dropzone Modo Inverso (PPTX)
+  if (dropzonePptxReverse && pptxReverseInput) {
+    dropzonePptxReverse.addEventListener('click', () => pptxReverseInput.click());
+
+    dropzonePptxReverse.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropzonePptxReverse.classList.add('dragover');
+    });
+
+    dropzonePptxReverse.addEventListener('dragleave', () => {
+      dropzonePptxReverse.classList.remove('dragover');
+    });
+
+    dropzonePptxReverse.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropzonePptxReverse.classList.remove('dragover');
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+        handleReversePptxFileSelected(e.dataTransfer.files[0]);
+      }
+    });
+
+    pptxReverseInput.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files[0]) {
+        handleReversePptxFileSelected(e.target.files[0]);
+      }
+    });
+  }
+
+  if (btnClearPptxReverseFile) {
+    btnClearPptxReverseFile.addEventListener('click', (e) => {
+      e.stopPropagation();
+      currentReversePptxFile = null;
+      if (pptxReverseInput) pptxReverseInput.value = '';
+      if (pptxReverseFileInfo) pptxReverseFileInfo.style.display = 'none';
+    });
+  }
+
+  function handleReversePptxFileSelected(file) {
+    if (!file.name.toLowerCase().endsWith('.pptx')) {
+      showToast('Por favor, anexe um arquivo PowerPoint (.pptx) válido.', 'error');
+      return;
+    }
+    currentReversePptxFile = file;
+    if (pptxReverseFileName) pptxReverseFileName.textContent = file.name;
+    if (pptxReverseFileInfo) pptxReverseFileInfo.style.display = 'inline-flex';
+  }
+
+  function showPptxReverseProgress(percent, status) {
+    if (pptxReverseProgressContainer) pptxReverseProgressContainer.style.display = 'block';
+    if (pptxReverseProgressBar) pptxReverseProgressBar.style.width = `${percent}%`;
+    if (pptxReverseProgressPercent) pptxReverseProgressPercent.textContent = `${percent}%`;
+    if (pptxReverseProgressStatus) pptxReverseProgressStatus.textContent = status;
+  }
+
+  function hidePptxReverseProgress() {
+    setTimeout(() => {
+      if (pptxReverseProgressContainer) pptxReverseProgressContainer.style.display = 'none';
+    }, 1500);
+  }
+
+  // Ações de Conversão Inversa (PPTX ➔ ZIP, PDF, Organizador)
+  if (btnPptxToZip) {
+    btnPptxToZip.addEventListener('click', async () => {
+      if (!currentReversePptxFile) {
+        showToast('Por favor, anexe uma apresentação .pptx primeiro.', 'error');
+        return;
+      }
+      btnPptxToZip.disabled = true;
+      btnPptxToZip.innerHTML = '<span>⏳</span> Convertendo e baixando ZIP...';
+      try {
+        const ok = await processPptxIntoSlides(currentReversePptxFile, false);
+        if (ok && directSlides.length > 0) {
+          await generateDirectExport('zip');
+        }
+      } catch (err) {
+        console.error('Erro na conversão PPTX ➔ ZIP:', err);
+      } finally {
+        btnPptxToZip.disabled = false;
+        btnPptxToZip.innerHTML = '<span class="btn-icon">📦</span> Converter e Baixar ZIP (Imagens PNG)';
+      }
+    });
+  }
+
+  if (btnPptxToPdf) {
+    btnPptxToPdf.addEventListener('click', async () => {
+      if (!currentReversePptxFile) {
+        showToast('Por favor, anexe uma apresentação .pptx primeiro.', 'error');
+        return;
+      }
+      btnPptxToPdf.disabled = true;
+      btnPptxToPdf.innerHTML = '<span>⏳</span> Convertendo e baixando PDF...';
+      try {
+        const ok = await processPptxIntoSlides(currentReversePptxFile, false);
+        if (ok && directSlides.length > 0) {
+          await generateDirectExport('pdf');
+        }
+      } catch (err) {
+        console.error('Erro na conversão PPTX ➔ PDF:', err);
+      } finally {
+        btnPptxToPdf.disabled = false;
+        btnPptxToPdf.innerHTML = '<span class="btn-icon">📄</span> Converter e Baixar PDF (.pdf)';
+      }
+    });
+  }
+
+  if (btnPptxToOrganizer) {
+    btnPptxToOrganizer.addEventListener('click', async () => {
+      if (!currentReversePptxFile) {
+        showToast('Por favor, anexe uma apresentação .pptx primeiro.', 'error');
+        return;
+      }
+      btnPptxToOrganizer.disabled = true;
+      btnPptxToOrganizer.innerHTML = '<span>⏳</span> Processando slides...';
+      try {
+        await processPptxIntoSlides(currentReversePptxFile, false);
+      } catch (err) {
+        console.error('Erro ao abrir PPTX no organizador:', err);
+      } finally {
+        btnPptxToOrganizer.disabled = false;
+        btnPptxToOrganizer.innerHTML = '<span class="btn-icon">📋</span> Abrir no Organizador';
+      }
+    });
+  }
+
+  // Adicionar mais um PPTX ao projeto
+  if (pptxAppendInput) {
+    pptxAppendInput.addEventListener('change', async (e) => {
+      if (e.target.files && e.target.files[0]) {
+        await processPptxIntoSlides(e.target.files[0], true);
+        pptxAppendInput.value = '';
+      }
+    });
+  }
+
   function resetDirectInput() {
     currentDirectFile = null;
+    currentReversePptxFile = null;
     if (pdfDirectInput) pdfDirectInput.value = '';
+    if (pptxReverseInput) pptxReverseInput.value = '';
     if (pdfExtraImagesInput) pdfExtraImagesInput.value = '';
     if (pdfAppendInput) pdfAppendInput.value = '';
+    if (pptxAppendInput) pptxAppendInput.value = '';
     if (directFileInfo) directFileInfo.style.display = 'none';
+    if (pptxReverseFileInfo) pptxReverseFileInfo.style.display = 'none';
     if (directProgressContainer) directProgressContainer.style.display = 'none';
     if (directProgressBar) directProgressBar.style.width = '0%';
+    if (pptxReverseProgressContainer) pptxReverseProgressContainer.style.display = 'none';
+    if (pptxReverseProgressBar) pptxReverseProgressBar.style.width = '0%';
     if (directExportProgressContainer) directExportProgressContainer.style.display = 'none';
     if (sectionDirectResults) sectionDirectResults.style.display = 'none';
     if (sectionDirectInput) sectionDirectInput.style.display = 'block';
@@ -2878,11 +3058,11 @@ ${sermonText}`;
   }
 
   if (btnNewDirectTop) btnNewDirectTop.addEventListener('click', () => {
-    if (directSlides.length > 0 && !confirm('Deseja iniciar um novo PDF? Os slides atuais serão limpos.')) return;
+    if (directSlides.length > 0 && !confirm('Deseja iniciar um novo arquivo? Os slides atuais serão limpos.')) return;
     resetDirectInput();
   });
   if (btnNewDirectMain) btnNewDirectMain.addEventListener('click', () => {
-    if (directSlides.length > 0 && !confirm('Deseja iniciar um novo PDF? Os slides atuais serão limpos.')) return;
+    if (directSlides.length > 0 && !confirm('Deseja iniciar um novo arquivo? Os slides atuais serão limpos.')) return;
     resetDirectInput();
   });
 
@@ -3064,7 +3244,498 @@ ${sermonText}`;
     });
   }
 
-  // Renderiza a grade de cards do organizador de slides do PDF
+  // ==========================================
+  // PROCESSAMENTO E RENDERIZAÇÃO DO MODO INVERSO (PPTX ➔ SLIDES)
+  // ==========================================
+  function decodeXmlEntities(str) {
+    if (!str) return '';
+    return str
+      .replace(/&quot;/g, '"')
+      .replace(/&apos;/g, "'")
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&amp;/g, '&')
+      .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec));
+  }
+
+  function loadImageAsync(src) {
+    return new Promise((resolve) => {
+      if (!src) return resolve(null);
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => resolve(img);
+      img.onerror = () => resolve(null);
+      img.src = src;
+    });
+  }
+
+  // Função central para processar arquivo .pptx e transformar cada slide em imagem Full HD
+  async function processPptxIntoSlides(file, isAppend = false) {
+    if (typeof JSZip === 'undefined') {
+      showToast('Biblioteca JSZip não carregada. Aguarde alguns instantes.', 'error');
+      return false;
+    }
+
+    showPptxReverseProgress(5, 'Lendo arquivo PowerPoint (.pptx)...');
+
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const zip = await JSZip.loadAsync(arrayBuffer);
+
+      // 1. Dimensões do slide
+      let presWidth = 12192000;
+      let presHeight = 6858000;
+      if (zip.file('ppt/presentation.xml')) {
+        const presXml = await zip.file('ppt/presentation.xml').async('text');
+        const m = presXml.match(/<p:sldSz\s+[^>]*cx="(\d+)"[^>]*cy="(\d+)"/i) || presXml.match(/<p:sldSz\s+[^>]*cy="(\d+)"[^>]*cx="(\d+)"/i);
+        if (m) {
+          if (presXml.indexOf('cx="') < presXml.indexOf('cy="')) {
+            presWidth = parseInt(m[1], 10);
+            presHeight = parseInt(m[2], 10);
+          } else {
+            presHeight = parseInt(m[1], 10);
+            presWidth = parseInt(m[2], 10);
+          }
+        }
+      }
+      const ratio = (presWidth && presHeight) ? (presWidth / presHeight) : (16 / 9);
+
+      // 2. Mapeamento e ordem dos slides
+      let slidePaths = [];
+      if (zip.file('ppt/_rels/presentation.xml.rels')) {
+        const relsXml = await zip.file('ppt/_rels/presentation.xml.rels').async('text');
+        const rRegex = /<Relationship[^>]+Id="([^"]+)"[^>]+Type="[^"]*\/slide"[^>]+Target="([^"]+)"/gi;
+        const map = {};
+        let rm;
+        while ((rm = rRegex.exec(relsXml)) !== null) {
+          let target = rm[2].replace(/^\/?ppt\//, '').replace(/^\//, '');
+          if (!target.startsWith('slides/')) target = 'slides/' + target.split('slides/').pop();
+          map[rm[1]] = 'ppt/' + target;
+        }
+
+        if (zip.file('ppt/presentation.xml')) {
+          const presXml = await zip.file('ppt/presentation.xml').async('text');
+          const idRegex = /<p:sldId\s+[^>]*r:id="([^"]+)"/gi;
+          let im;
+          while ((im = idRegex.exec(presXml)) !== null) {
+            if (map[im[1]]) slidePaths.push(map[im[1]]);
+          }
+        }
+      }
+
+      // Fallback: ordenar numericamente slide1.xml, slide2.xml...
+      if (slidePaths.length === 0) {
+        slidePaths = Object.keys(zip.files).filter(k => /^ppt\/slides\/slide\d+\.xml$/i.test(k));
+        slidePaths.sort((a, b) => {
+          const na = parseInt(a.match(/slide(\d+)\.xml/i)[1], 10);
+          const nb = parseInt(b.match(/slide(\d+)\.xml/i)[1], 10);
+          return na - nb;
+        });
+      }
+
+      if (slidePaths.length === 0) {
+        throw new Error('Nenhum slide encontrado neste arquivo PowerPoint (.pptx).');
+      }
+
+      showPptxReverseProgress(12, 'Extraindo mídias e imagens em alta definição...');
+
+      // 3. Cache de mídias em base64
+      const mediaFiles = Object.keys(zip.files).filter(k => k.startsWith('ppt/media/'));
+      const mediaDataUrls = {};
+      for (const mf of mediaFiles) {
+        const ext = mf.split('.').pop().toLowerCase();
+        let mime = 'image/png';
+        if (ext === 'jpg' || ext === 'jpeg') mime = 'image/jpeg';
+        else if (ext === 'webp') mime = 'image/webp';
+        else if (ext === 'gif') mime = 'image/gif';
+        else if (ext === 'svg') mime = 'image/svg+xml';
+
+        const b64 = await zip.file(mf).async('base64');
+        mediaDataUrls[mf] = `data:${mime};base64,${b64}`;
+      }
+
+      if (!isAppend) {
+        directSlides = [];
+        currentDirectFile = file;
+        directPptxFileName = file.name.replace(/\.[^/.]+$/, '') + '_CONVERTIDO.pptx';
+      }
+
+      const total = slidePaths.length;
+
+      // 4. Renderizar cada slide para Full HD
+      for (let idx = 0; idx < total; idx++) {
+        const pct = Math.round(15 + ((idx + 1) / total) * 80);
+        showPptxReverseProgress(pct, `Renderizando slide ${idx + 1} de ${total}...`);
+
+        const slidePath = slidePaths[idx];
+        const xml = await zip.file(slidePath).async('text');
+
+        const relsPath = slidePath.replace('ppt/slides/', 'ppt/slides/_rels/') + '.rels';
+        const rels = {};
+        if (zip.file(relsPath)) {
+          const relsXml = await zip.file(relsPath).async('text');
+          const relRegex = /<Relationship[^>]+Id="([^"]+)"[^>]+Target="([^"]+)"/gi;
+          let rm;
+          while ((rm = relRegex.exec(relsXml)) !== null) {
+            let tgt = rm[2].replace(/^\.\.\//, 'ppt/');
+            if (!tgt.startsWith('ppt/')) tgt = 'ppt/' + tgt;
+            rels[rm[1]] = tgt;
+          }
+        }
+
+        const slideResult = await renderPptxSlideToCanvas({
+          xml,
+          rels,
+          mediaDataUrls,
+          presWidth,
+          presHeight,
+          ratio,
+          slideIndex: idx + 1
+        });
+
+        directSlides.push({
+          id: 'pptx_' + Date.now() + '_' + idx + '_' + Math.random().toString(36).substr(2, 5),
+          title: slideResult.title || `${file.name.replace(/\.[^/.]+$/, '')} - Slide ${idx + 1}`,
+          type: 'pptx',
+          source: file.name,
+          pageNum: idx + 1,
+          imgData: slideResult.dataUrl,
+          ratio: ratio,
+          width: slideResult.width,
+          height: slideResult.height
+        });
+      }
+
+      showPptxReverseProgress(100, 'Slides prontos!');
+      renderDirectOrganizer();
+      showToast(`🎉 ${total} slides extraídos do PowerPoint com sucesso!`, 'success');
+      return true;
+
+    } catch (err) {
+      console.error('Erro na conversão de PPTX:', err);
+      showToast(err.message || 'Erro ao converter PowerPoint.', 'error');
+      return false;
+    } finally {
+      hidePptxReverseProgress();
+    }
+  }
+
+  // Renderiza um slide XML em um canvas 1080p
+  async function renderPptxSlideToCanvas({ xml, rels, mediaDataUrls, presWidth, presHeight, ratio, slideIndex }) {
+    // 1. Pictures
+    const picBlocks = xml.match(/<p:pic>[\s\S]*?<\/p:pic>/gi) || [];
+    const pictures = [];
+    for (const pb of picBlocks) {
+      const blipM = pb.match(/<a:blip[^>]+r:embed="([^"]+)"/i);
+      if (!blipM) continue;
+      const offM = pb.match(/<a:off\s+x="(-?\d+)"\s+y="(-?\d+)"/i);
+      const extM = pb.match(/<a:ext\s+cx="(\d+)"\s+cy="(\d+)"/i);
+      pictures.push({
+        rId: blipM[1],
+        target: rels[blipM[1]],
+        x: offM ? parseInt(offM[1], 10) : 0,
+        y: offM ? parseInt(offM[2], 10) : 0,
+        cx: extM ? parseInt(extM[1], 10) : presWidth,
+        cy: extM ? parseInt(extM[2], 10) : presHeight
+      });
+    }
+
+    // 2. Shapes & Text
+    const spBlocks = xml.match(/<p:sp>[\s\S]*?<\/p:sp>/gi) || [];
+    const shapes = [];
+    let titleFound = '';
+
+    for (const sp of spBlocks) {
+      const txBody = sp.match(/<p:txBody>[\s\S]*?<\/p:txBody>/i);
+      const offM = sp.match(/<a:off\s+x="(-?\d+)"\s+y="(-?\d+)"/i);
+      const extM = sp.match(/<a:ext\s+cx="(\d+)"\s+cy="(\d+)"/i);
+      const x = offM ? parseInt(offM[1], 10) : 0;
+      const y = offM ? parseInt(offM[2], 10) : 0;
+      const cx = extM ? parseInt(extM[1], 10) : presWidth;
+      const cy = extM ? parseInt(extM[2], 10) : presHeight;
+
+      let shapeFill = null;
+      const fillM = sp.match(/<p:spPr>[\s\S]*?<a:solidFill>[\s\S]*?<a:srgbClr\s+val="([0-9a-fA-F]{6})"/i);
+      if (fillM) shapeFill = '#' + fillM[1];
+
+      if (!txBody) {
+        if (shapeFill) shapes.push({ x, y, cx, cy, fill: shapeFill, paragraphs: [] });
+        continue;
+      }
+
+      const pBlocks = txBody[0].match(/<a:p>[\s\S]*?<\/a:p>/gi) || [];
+      const paragraphs = [];
+      for (const pb of pBlocks) {
+        const alignM = pb.match(/<a:pPr[^>]*algn="([a-zA-Z]+)"/i);
+        const align = alignM ? alignM[1] : 'l';
+
+        const rBlocks = pb.match(/<a:r>[\s\S]*?<\/a:r>/gi) || [];
+        const runs = [];
+        for (const rb of rBlocks) {
+          const tMatch = rb.match(/<a:t>([^<]*)<\/a:t>/i);
+          if (!tMatch) continue;
+          const rawText = decodeXmlEntities(tMatch[1]);
+          if (!titleFound && rawText.trim().length > 3) {
+            titleFound = rawText.trim().replace(/^“|”$/g, '').substring(0, 45);
+          }
+          const szMatch = rb.match(/<a:rPr[^>]*sz="(\d+)"/i);
+          const sz = szMatch ? parseInt(szMatch[1], 10) : 4000;
+          const boldMatch = rb.match(/<a:rPr[^>]*b="([01])"/i);
+          const bold = boldMatch ? boldMatch[1] === '1' : false;
+          const clrMatch = rb.match(/<a:srgbClr\s+val="([0-9a-fA-F]{6})"/i);
+          const clrScheme = rb.match(/<a:schemeClr\s+val="([^"]+)"/i);
+          let color = '#FFFFFF';
+          if (clrMatch) color = '#' + clrMatch[1];
+          else if (clrScheme) {
+            if (clrScheme[1] === 'tx1') color = '#000000';
+            else if (clrScheme[1] === 'bg1') color = '#FFFFFF';
+          }
+          const typefaceM = rb.match(/<a:latin\s+[^>]*typeface="([^"]+)"/i);
+          const typeface = typefaceM ? typefaceM[1] : null;
+
+          runs.push({ text: rawText, sz, bold, color, typeface });
+        }
+        if (runs.length > 0) paragraphs.push({ align, runs });
+      }
+
+      if (paragraphs.length > 0 || shapeFill) {
+        shapes.push({ x, y, cx, cy, fill: shapeFill, paragraphs });
+      }
+    }
+
+    // 3. Background
+    let bgBlipTarget = null;
+    let bgColor = '#0b0f19';
+    const bgMatch = xml.match(/<p:bg>[\s\S]*?<\/p:bg>/i);
+    if (bgMatch) {
+      const bgXml = bgMatch[0];
+      const blipM = bgXml.match(/<a:blip[^>]+r:embed="([^"]+)"/i);
+      if (blipM && rels[blipM[1]]) bgBlipTarget = rels[blipM[1]];
+      const clrM = bgXml.match(/<a:srgbClr\s+val="([0-9a-fA-F]{6})"/i);
+      if (clrM) bgColor = '#' + clrM[1];
+    }
+
+    // Shortcut: se for um slide puramente de imagem cheia sem texto (ex: slides vindos de PDF ou Canva)
+    if (shapes.length === 0 && pictures.length === 1 && pictures[0].cx >= presWidth * 0.88 && pictures[0].cy >= presHeight * 0.88) {
+      const directUrl = mediaDataUrls[pictures[0].target];
+      if (directUrl) {
+        return {
+          dataUrl: directUrl,
+          title: titleFound || `Slide ${slideIndex}`,
+          width: 1920,
+          height: Math.round(1920 / ratio)
+        };
+      }
+    }
+
+    if (shapes.length === 0 && pictures.length === 0 && bgBlipTarget) {
+      const directUrl = mediaDataUrls[bgBlipTarget];
+      if (directUrl) {
+        return {
+          dataUrl: directUrl,
+          title: titleFound || `Slide ${slideIndex}`,
+          width: 1920,
+          height: Math.round(1920 / ratio)
+        };
+      }
+    }
+
+    // Renderização completa no Canvas
+    const canvasW = 1920;
+    const canvasH = Math.round(1920 / ratio);
+    const scaleX = canvasW / presWidth;
+    const scaleY = canvasH / presHeight;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = canvasW;
+    canvas.height = canvasH;
+    const ctx = canvas.getContext('2d');
+
+    // Fundo
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0, 0, canvasW, canvasH);
+
+    // Imagem de fundo
+    if (bgBlipTarget && mediaDataUrls[bgBlipTarget]) {
+      const bgImg = await loadImageAsync(mediaDataUrls[bgBlipTarget]);
+      if (bgImg) ctx.drawImage(bgImg, 0, 0, canvasW, canvasH);
+    }
+
+    // Imagens do slide
+    for (const pic of pictures) {
+      const picUrl = mediaDataUrls[pic.target];
+      if (picUrl) {
+        const img = await loadImageAsync(picUrl);
+        if (img) {
+          const px = Math.round(pic.x * scaleX);
+          const py = Math.round(pic.y * scaleY);
+          const pw = Math.round(pic.cx * scaleX);
+          const ph = Math.round(pic.cy * scaleY);
+          ctx.drawImage(img, px, py, pw, ph);
+        }
+      }
+    }
+
+    // Formas e Caixas de Texto
+    for (const shape of shapes) {
+      const sx = Math.round(shape.x * scaleX);
+      const sy = Math.round(shape.y * scaleY);
+      const sw = Math.round(shape.cx * scaleX);
+      const sh = Math.round(shape.cy * scaleY);
+
+      if (shape.fill) {
+        ctx.fillStyle = shape.fill;
+        ctx.fillRect(sx, sy, sw, sh);
+      }
+
+      if (shape.paragraphs && shape.paragraphs.length > 0) {
+        let curY = sy;
+        for (const p of shape.paragraphs) {
+          const align = p.align;
+          for (const run of p.runs) {
+            if (!run.text) continue;
+            const szPt = (run.sz || 4000) / 100;
+            const fontSizePx = Math.max(16, Math.min(180, Math.round(szPt * (canvasH / 540))));
+            const isBold = run.bold ? 'bold ' : '';
+            const family = run.typeface ? `"${run.typeface}", Impact, Anton, sans-serif` : 'Impact, Anton, "Montserrat", sans-serif';
+
+            ctx.font = `${isBold}${fontSizePx}px ${family}`;
+            ctx.fillStyle = run.color || '#FFFFFF';
+
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
+            ctx.shadowBlur = 8;
+            ctx.shadowOffsetX = 3;
+            ctx.shadowOffsetY = 3;
+
+            const lineHeight = Math.round(fontSizePx * 1.25);
+            const words = run.text.split(' ');
+            let line = '';
+
+            for (let n = 0; n < words.length; n++) {
+              const testLine = line + (line ? ' ' : '') + words[n];
+              const metrics = ctx.measureText(testLine);
+              if (metrics.width > sw && n > 0) {
+                curY += lineHeight;
+                let lineX = sx;
+                if (align === 'ctr' || align === 'center') {
+                  ctx.textAlign = 'center';
+                  lineX = sx + sw / 2;
+                } else if (align === 'r' || align === 'right') {
+                  ctx.textAlign = 'right';
+                  lineX = sx + sw;
+                } else {
+                  ctx.textAlign = 'left';
+                }
+                ctx.fillText(line, lineX, curY);
+                line = words[n];
+              } else {
+                line = testLine;
+              }
+            }
+            if (line) {
+              curY += lineHeight;
+              let lineX = sx;
+              if (align === 'ctr' || align === 'center') {
+                ctx.textAlign = 'center';
+                lineX = sx + sw / 2;
+              } else if (align === 'r' || align === 'right') {
+                ctx.textAlign = 'right';
+                lineX = sx + sw;
+              } else {
+                ctx.textAlign = 'left';
+              }
+              ctx.fillText(line, lineX, curY);
+            }
+          }
+        }
+      }
+    }
+
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
+
+    return {
+      dataUrl: canvas.toDataURL('image/jpeg', 0.92),
+      title: titleFound || `Slide ${slideIndex}`,
+      width: canvasW,
+      height: canvasH
+    };
+  }
+
+  // Extrair slides de um PowerPoint diretamente para o Módulo 3 (Organizador de Imagens)
+  async function extractPptxIntoImageSlides(file) {
+    if (typeof JSZip === 'undefined') {
+      showToast('Biblioteca JSZip carregando...', 'error');
+      return;
+    }
+    showToast(`Extraindo slides de ${file.name}...`, 'info');
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const zip = await JSZip.loadAsync(arrayBuffer);
+      let presWidth = 12192000, presHeight = 6858000;
+      if (zip.file('ppt/presentation.xml')) {
+        const presXml = await zip.file('ppt/presentation.xml').async('text');
+        const m = presXml.match(/<p:sldSz\s+[^>]*cx="(\d+)"[^>]*cy="(\d+)"/i);
+        if (m) {
+          presWidth = parseInt(m[1], 10);
+          presHeight = parseInt(m[2], 10);
+        }
+      }
+      const ratio = presWidth / presHeight;
+      let slidePaths = Object.keys(zip.files).filter(k => /^ppt\/slides\/slide\d+\.xml$/i.test(k));
+      slidePaths.sort((a, b) => {
+        const na = parseInt(a.match(/slide(\d+)\.xml/i)[1], 10);
+        const nb = parseInt(b.match(/slide(\d+)\.xml/i)[1], 10);
+        return na - nb;
+      });
+      if (slidePaths.length === 0) {
+        showToast('Nenhum slide encontrado no PowerPoint.', 'error');
+        return;
+      }
+      const mediaFiles = Object.keys(zip.files).filter(k => k.startsWith('ppt/media/'));
+      const mediaDataUrls = {};
+      for (const mf of mediaFiles) {
+        const ext = mf.split('.').pop().toLowerCase();
+        let mime = (ext === 'jpg' || ext === 'jpeg') ? 'image/jpeg' : 'image/png';
+        const b64 = await zip.file(mf).async('base64');
+        mediaDataUrls[mf] = `data:${mime};base64,${b64}`;
+      }
+      for (let idx = 0; idx < slidePaths.length; idx++) {
+        const sf = slidePaths[idx];
+        const xml = await zip.file(sf).async('text');
+        const relsPath = sf.replace('ppt/slides/', 'ppt/slides/_rels/') + '.rels';
+        const rels = {};
+        if (zip.file(relsPath)) {
+          const relsXml = await zip.file(relsPath).async('text');
+          const relRegex = /<Relationship[^>]+Id="([^"]+)"[^>]+Target="([^"]+)"/gi;
+          let rm;
+          while ((rm = relRegex.exec(relsXml)) !== null) {
+            let tgt = rm[2].replace(/^\.\.\//, 'ppt/');
+            if (!tgt.startsWith('ppt/')) tgt = 'ppt/' + tgt;
+            rels[rm[1]] = tgt;
+          }
+        }
+        const slideResult = await renderPptxSlideToCanvas({
+          xml, rels, mediaDataUrls, presWidth, presHeight, ratio, slideIndex: idx + 1
+        });
+        imageSlides.push({
+          id: 'img_pptx_' + Date.now() + '_' + idx,
+          name: slideResult.title || `Slide ${idx + 1}`,
+          dataUrl: slideResult.dataUrl,
+          ratio: ratio
+        });
+      }
+      renderImagesOrganizer();
+      showToast(`🎉 ${slidePaths.length} slide(s) do PowerPoint adicionado(s) ao organizador!`, 'success');
+    } catch (err) {
+      console.error('Erro ao extrair PPTX para Módulo 3:', err);
+      showToast('Erro ao processar PPTX: ' + err.message, 'error');
+    }
+  }
+
+  // Renderiza a grade de cards do organizador de slides do PDF / PPTX
   function renderDirectOrganizer() {
     if (!sectionDirectInput || !sectionDirectResults) return;
 
@@ -3095,9 +3766,12 @@ ${sermonText}`;
       card.dataset.index = index;
 
       const isPdf = slide.type === 'pdf';
+      const isPptx = slide.type === 'pptx';
       const typeBadgeHtml = isPdf
         ? `<span style="position: absolute; top: 8px; right: 8px; background: rgba(232, 184, 89, 0.9); color: #0b0f19; font-weight: 800; font-size: 10px; padding: 2px 7px; border-radius: 5px; box-shadow: 0 2px 6px rgba(0,0,0,0.5);">📄 PDF</span>`
-        : `<span style="position: absolute; top: 8px; right: 8px; background: rgba(168, 85, 247, 0.9); color: #fff; font-weight: 800; font-size: 10px; padding: 2px 7px; border-radius: 5px; box-shadow: 0 2px 6px rgba(0,0,0,0.5);">🖼️ FOTO</span>`;
+        : (isPptx
+            ? `<span style="position: absolute; top: 8px; right: 8px; background: rgba(56, 189, 248, 0.9); color: #0b0f19; font-weight: 800; font-size: 10px; padding: 2px 7px; border-radius: 5px; box-shadow: 0 2px 6px rgba(0,0,0,0.5);">📊 PPTX</span>`
+            : `<span style="position: absolute; top: 8px; right: 8px; background: rgba(168, 85, 247, 0.9); color: #fff; font-weight: 800; font-size: 10px; padding: 2px 7px; border-radius: 5px; box-shadow: 0 2px 6px rgba(0,0,0,0.5);">🖼️ FOTO</span>`);
 
       card.innerHTML = `
         <div class="image-slide-preview">
@@ -3796,7 +4470,16 @@ ${sermonText}`;
     });
   }
 
-  // Função centralizada para processar arquivos de imagens e ZIP
+  if (imagesPptxInput) {
+    imagesPptxInput.addEventListener('change', async (e) => {
+      if (e.target.files && e.target.files[0]) {
+        await extractPptxIntoImageSlides(e.target.files[0]);
+        e.target.value = '';
+      }
+    });
+  }
+
+  // Função centralizada para processar arquivos de imagens, ZIP e PPTX
   async function processIncomingFiles(files) {
     const validImageExtensions = ['.png', '.jpg', '.jpeg', '.webp', '.bmp', '.svg', '.gif'];
     let addedCount = 0;
@@ -3805,6 +4488,12 @@ ${sermonText}`;
 
     for (const file of files) {
       const fileNameLower = file.name.toLowerCase();
+
+      // Caso 0: Arquivo PowerPoint (.pptx)
+      if (fileNameLower.endsWith('.pptx')) {
+        await extractPptxIntoImageSlides(file);
+        continue;
+      }
 
       // Caso 1: Arquivo ZIP
       if (fileNameLower.endsWith('.zip') || file.type === 'application/zip' || file.type === 'application/x-zip-compressed') {

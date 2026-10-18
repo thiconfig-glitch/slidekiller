@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:wght@600;700;800&family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&family=Montserrat:wght@700;800;900&family=Oswald:wght@600;700&family=Roboto+Condensed:wght@600;700;800;900&display=swap" rel="stylesheet">
   <script src="pdf.min.js" onerror="this.onerror=null;this.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js';"></script>
-  <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/libs/jszip.min.js"></script>
+  <script src="jszip.min.js" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/libs/jszip.min.js';"></script>
   <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/dist/pptxgen.min.js"></script>
   <!-- jsPDF para exportação instantânea em PDF no navegador -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -99,6 +99,13 @@
       border: 1px solid rgba(6, 182, 212, 0.45) !important;
       box-shadow: 0 2px 8px rgba(6, 182, 212, 0.18) !important;
     }
+    .format-pill-btn[data-submode="pptx-reverse"].active {
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.28), rgba(14, 165, 233, 0.18)) !important;
+      color: #38bdf8 !important;
+      font-weight: 700 !important;
+      border: 1px solid rgba(56, 189, 248, 0.5) !important;
+      box-shadow: 0 2px 10px rgba(56, 189, 248, 0.22) !important;
+    }
     .pill-icon {
       font-size: 13px !important;
       line-height: 1 !important;
@@ -116,7 +123,7 @@
         <div>
           <div style="display: flex; align-items: center; gap: 8px;">
             <h1 class="brand-title">Central Multimídia Church</h1>
-            <span class="version-tag">v2.11.0</span>
+            <span class="version-tag">v2.12.0</span>
           </div>
           <span class="brand-subtitle">Plataforma Unificada de Mídia & Culto</span>
         </div>
@@ -135,9 +142,9 @@
       </button>
 
       <button class="nav-module-btn" data-module="pdf-to-pptx">
-        <span class="module-icon">📄</span>
-        <span class="module-label">PDF ➔ PPTX Direto</span>
-        <span class="module-pill pill-gold">1 Pág = 1 Slide</span>
+        <span class="module-icon">🔄</span>
+        <span class="module-label">Conversor PDF ⇄ PPTX</span>
+        <span class="module-pill pill-gold">Direto & Inverso</span>
       </button>
 
       <button class="nav-module-btn" data-module="images-to-pptx">
@@ -464,7 +471,20 @@ texto exemplo ii eii
     <!-- ========================================== -->
     <div class="module-view" id="view-pdf-to-pptx">
       <section class="input-section" id="section-direct-input">
-        <div class="card hero-card">
+        <!-- Alternador de Modo: Direto (PDF ➔ PPTX) vs Inverso (PPTX ➔ Imagens / ZIP / PDF) -->
+        <div class="converter-mode-selector-wrap" style="display: flex; justify-content: center; margin-bottom: 22px;">
+          <div class="format-pill-box">
+            <button type="button" class="format-pill-btn active" id="btn-submode-pdf-to-pptx" data-submode="pdf-to-pptx">
+              <span>📄</span> Modo Direto: PDF ➔ PowerPoint (.pptx)
+            </button>
+            <button type="button" class="format-pill-btn" id="btn-submode-pptx-reverse" data-submode="pptx-reverse">
+              <span>🔄</span> Modo Inverso: PPTX ➔ Imagens, ZIP & PDF
+            </button>
+          </div>
+        </div>
+
+        <!-- CARD 1: MODO DIRETO (PDF ➔ PPTX) -->
+        <div class="card hero-card" id="card-direct-pdf">
           <div class="module-header-badge">
             <span class="badge-dot" style="background-color: var(--primary); box-shadow: 0 0 8px var(--primary);"></span>
             <span>MÓDULO CONVERSOR DIRETO • 1 PÁGINA = 1 SLIDE</span>
@@ -505,17 +525,65 @@ texto exemplo ii eii
             </button>
           </div>
         </div>
+
+        <!-- CARD 2: MODO INVERSO (PPTX ➔ IMAGENS / ZIP / PDF) -->
+        <div class="card hero-card" id="card-reverse-pptx" style="display: none;">
+          <div class="module-header-badge" style="background: rgba(56, 189, 248, 0.12); border-color: rgba(56, 189, 248, 0.35); color: #38bdf8;">
+            <span class="badge-dot" style="background-color: #38bdf8; box-shadow: 0 0 8px #38bdf8;"></span>
+            <span>MÓDULO CONVERSOR INVERSO • PPTX ➔ IMAGENS • ZIP • PDF</span>
+          </div>
+          <h2>Conversão Inversa de PowerPoint para Imagens, ZIP e PDF</h2>
+          <p>Anexe qualquer arquivo PowerPoint (.pptx). Cada slide é extraído e renderizado em alta definição Full HD (1080p), permitindo baixar um pacote ZIP com imagens PNG individuais, exportar para documento PDF ou abrir diretamente no organizador de slides.</p>
+
+          <div class="dropzone" id="dropzone-pptx-reverse">
+            <input type="file" id="pptx-reverse-input" accept=".pptx" style="display: none;">
+            <div class="dropzone-icon">📊</div>
+            <div class="dropzone-text">
+              <strong>Arraste o arquivo PowerPoint (.pptx) aqui</strong>
+              <span>ou clique para selecionar do computador</span>
+            </div>
+            <div class="selected-file-info" id="pptx-reverse-file-info" style="display: none;">
+              <span class="file-name" id="pptx-reverse-file-name"></span>
+              <button class="btn-clear" id="btn-clear-pptx-reverse-file">✖</button>
+            </div>
+          </div>
+
+          <!-- Barra de Progresso da Conversão Inversa -->
+          <div id="pptx-reverse-progress-container" class="direct-progress-box" style="display: none; margin-top: 18px;">
+            <div class="progress-info">
+              <span id="pptx-reverse-progress-status">Preparando conversão do PowerPoint...</span>
+              <span id="pptx-reverse-progress-percent">0%</span>
+            </div>
+            <div class="progress-bar-bg">
+              <div class="progress-bar-fill" id="pptx-reverse-progress-bar" style="width: 0%; background: linear-gradient(90deg, #38bdf8, #818cf8);"></div>
+            </div>
+          </div>
+
+          <!-- Ações Rápidas de Conversão e Download Inverso -->
+          <div style="display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap;">
+            <button class="btn btn-action" id="btn-pptx-to-zip" style="flex: 1; min-width: 220px; background: linear-gradient(135deg, #38bdf8, #0284c7); color: #000; font-weight: 700; box-shadow: 0 4px 14px rgba(56, 189, 248, 0.3);">
+              <span class="btn-icon">📦</span> Converter e Baixar ZIP (Imagens PNG)
+            </button>
+            <button class="btn btn-action" id="btn-pptx-to-pdf" style="flex: 1; min-width: 220px; background: linear-gradient(135deg, #e8b859, #ca9a3e); color: #000; font-weight: 700; box-shadow: 0 4px 14px rgba(232, 184, 89, 0.3);">
+              <span class="btn-icon">📄</span> Converter e Baixar PDF (.pdf)
+            </button>
+            <button class="btn btn-secondary" id="btn-pptx-to-organizer" style="padding: 12px 22px;">
+              <span class="btn-icon">📋</span> Abrir no Organizador
+            </button>
+          </div>
+        </div>
       </section>
 
       <!-- Seção do Organizador de Slides do PDF e Exportação -->
       <section class="results-section" id="section-direct-results" style="display: none;">
-        <!-- Inputs ocultos para adicionar mais mídias ao projeto do PDF -->
+        <!-- Inputs ocultos para adicionar mais mídias ao projeto do PDF / PPTX -->
         <input type="file" id="pdf-extra-images-input" accept="image/*" multiple style="display: none;">
         <input type="file" id="pdf-append-input" accept=".pdf" style="display: none;">
+        <input type="file" id="pptx-append-input" accept=".pptx" style="display: none;">
 
         <div class="results-header" style="flex-wrap: wrap; gap: 16px;">
           <div class="results-info">
-            <h2>Organizador de Slides do PDF</h2>
+            <h2 id="direct-results-title">Organizador de Slides</h2>
             <span class="badge" id="direct-slide-count-badge" style="background: rgba(232, 184, 89, 0.2); color: var(--primary); border-color: rgba(232, 184, 89, 0.4);">0 slides</span>
             <span style="font-size: 12px; color: var(--text-muted); margin-left: 8px;">💡 Arraste os cards para reorganizar a ordem dos slides</span>
           </div>
@@ -527,11 +595,14 @@ texto exemplo ii eii
             <button class="btn btn-secondary btn-sm" id="btn-add-another-pdf" onclick="document.getElementById('pdf-append-input').click()">
               <span>📄 ＋</span> Mais um PDF
             </button>
+            <button class="btn btn-secondary btn-sm" id="btn-add-another-pptx" onclick="document.getElementById('pptx-append-input').click()">
+              <span>📊 ＋</span> Mais um PPTX
+            </button>
             <button class="btn btn-secondary btn-sm" id="btn-reverse-direct" title="Inverter a ordem atual dos slides">
               <span>🔀</span> Inverter
             </button>
-            <button class="btn btn-secondary btn-sm" id="btn-new-direct-main" title="Converter outro PDF do zero">
-              <span>🔄</span> Novo PDF
+            <button class="btn btn-secondary btn-sm" id="btn-new-direct-main" title="Converter outro arquivo do zero">
+              <span>🔄</span> Novo Arquivo
             </button>
             <button class="btn btn-danger btn-sm" id="btn-clear-all-direct" title="Remover todos os slides">
               <span>🗑️</span> Limpar
@@ -621,12 +692,13 @@ texto exemplo ii eii
           <p>Selecione fotos avulsas ou anexe um arquivo ZIP com imagens. Ajuste a ordem de cada slide arrastando com o mouse ou usando os botões de posição, e exporte sua apresentação .pptx 16:9 Full HD pronta para telões.</p>
 
           <div class="dropzone" id="dropzone-images">
-            <input type="file" id="images-files-input" accept="image/*,.zip" multiple style="display: none;">
+            <input type="file" id="images-files-input" accept="image/*,.zip,.pptx" multiple style="display: none;">
             <input type="file" id="zip-files-input" accept=".zip" style="display: none;">
+            <input type="file" id="images-pptx-input" accept=".pptx" style="display: none;">
             <div class="dropzone-icon">🖼️</div>
             <div class="dropzone-text">
-              <strong>Arraste suas imagens ou arquivo ZIP aqui</strong>
-              <span>ou clique para selecionar fotos avulsas ou pacote .ZIP</span>
+              <strong>Arraste suas imagens, arquivo ZIP ou apresentação .PPTX aqui</strong>
+              <span>ou clique para selecionar fotos avulsas, pacote .ZIP ou PowerPoint</span>
             </div>
           </div>
 
@@ -637,6 +709,9 @@ texto exemplo ii eii
             </button>
             <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('zip-files-input').click()">
               <span>📦</span> Selecionar Arquivo .ZIP
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('images-pptx-input').click()">
+              <span>📊</span> Extrair de Arquivo .PPTX
             </button>
           </div>
         </div>
@@ -986,7 +1061,7 @@ texto exemplo ii eii
     <div id="toast" class="toast"></div>
   </main>
 
-  <script src="app.js?v=2.11.0"></script>
+  <script src="app.js?v=2.12.0"></script>
 </body>
 </html>
 
