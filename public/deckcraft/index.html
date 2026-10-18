@@ -82,17 +82,19 @@ window.addEventListener('drop', (e) => {
       dataTransfer: e.dataTransfer
     });
     canvas.dispatchEvent(dropEvt);
-  // Pré-carregamento das fontes oficiais para o motor WebAssembly
-  if (document.fonts) {
-    Promise.all([
-      document.fonts.load('600 16px "Bahnschrift SemiBold Condensed"'),
-      document.fonts.load('700 16px "Anton"'),
-      document.fonts.load('400 16px "Bebas Neue"'),
-      document.fonts.load('700 16px "Oswald"'),
-      document.fonts.load('700 16px "Roboto Condensed"')
-    ]).catch(() => {});
   }
 });
+
+// Pré-carregamento das fontes oficiais para o motor WebAssembly
+if (document.fonts) {
+  Promise.all([
+    document.fonts.load('600 16px "Bahnschrift SemiBold Condensed"'),
+    document.fonts.load('700 16px "Anton"'),
+    document.fonts.load('400 16px "Bebas Neue"'),
+    document.fonts.load('700 16px "Oswald"'),
+    document.fonts.load('700 16px "Roboto Condensed"')
+  ]).catch(() => {});
+}
 </script>
   <link rel="icon" href="./ai.storyteller.deckcraft-74e97653dd8dd002.png" integrity="sha384-THDce39ERZRgdnEtM/35FnmU4IExPfz9k2XrApCGWP0NUMC98NUWG1VYUMNXNCiD"/>
   <link rel="preconnect" href="https://fonts.googleapis.com">
