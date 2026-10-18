@@ -15,7 +15,7 @@
   <!-- Firebase SDKs para sincronização Celular ➔ PC -->
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
-  <link rel="stylesheet" href="style.css?v=2.12.2">
+  <link rel="stylesheet" href="style.css?v=2.12.3">
   <style>
     /* Estilos imediatos garantidos para os botões de formato (Esboço vs Direção Teams) */
     .text-mode-config-bar {
@@ -123,7 +123,7 @@
         <div>
           <div style="display: flex; align-items: center; gap: 8px;">
             <h1 class="brand-title">Central Multimídia Church</h1>
-            <span class="version-tag">v2.12.2</span>
+            <span class="version-tag">v2.12.3</span>
           </div>
           <span class="brand-subtitle">Plataforma Unificada de Mídia & Culto</span>
         </div>
@@ -231,8 +231,8 @@
 
           <!-- Aba 1: Upload PDF -->
           <div class="tab-content active" id="tab-pdf">
+            <input type="file" id="pdf-file-input" accept=".pdf" style="display: none;">
             <div class="dropzone" id="dropzone">
-              <input type="file" id="pdf-file-input" accept=".pdf" style="display: none;">
               <div class="dropzone-icon">📄</div>
               <div class="dropzone-text">
                 <strong>Arraste o arquivo PDF do pastor aqui</strong>
@@ -287,8 +287,8 @@
 
           <!-- Aba 3: Fotos de Slides / Versículos com IA Gemini Vision -->
           <div class="tab-content" id="tab-images-ocr">
+            <input type="file" id="verse-images-input" accept="image/*" multiple style="display: none;">
             <div class="dropzone" id="dropzone-ocr">
-              <input type="file" id="verse-images-input" accept="image/*" multiple style="display: none;">
               <div class="dropzone-icon">📷</div>
               <div class="dropzone-text">
                 <strong>Arraste fotos de telões, slides ou páginas da Bíblia aqui</strong>
@@ -498,8 +498,8 @@ texto exemplo ii eii
 
           <!-- SUBMODO 1: PDF ➔ PPTX DIRETO -->
           <div id="submode-panel-pdf" class="submode-panel" style="display: block;">
+            <input type="file" id="pdf-direct-input" accept=".pdf" style="display: none;">
             <div class="dropzone" id="dropzone-direct">
-              <input type="file" id="pdf-direct-input" accept=".pdf" style="display: none;">
               <div class="dropzone-icon">📄</div>
               <div class="dropzone-text">
                 <strong>Arraste o arquivo PDF aqui</strong>
@@ -537,8 +537,8 @@ texto exemplo ii eii
 
           <!-- SUBMODO 2: PPTX ➔ IMAGENS / ZIP / PDF INVERSO -->
           <div id="submode-panel-pptx" class="submode-panel" style="display: none;">
+            <input type="file" id="pptx-reverse-input" accept=".pptx" style="display: none;">
             <div class="dropzone" id="dropzone-pptx-reverse">
-              <input type="file" id="pptx-reverse-input" accept=".pptx" style="display: none;">
               <div class="dropzone-icon">📊</div>
               <div class="dropzone-text">
                 <strong>Arraste a apresentação .pptx aqui</strong>
@@ -697,10 +697,10 @@ texto exemplo ii eii
           <h2>Transforme Imagens Avulsas ou Arquivos ZIP em PowerPoint</h2>
           <p>Selecione fotos avulsas ou anexe um arquivo ZIP com imagens. Ajuste a ordem de cada slide arrastando com o mouse ou usando os botões de posição, e exporte sua apresentação .pptx 16:9 Full HD pronta para telões.</p>
 
+          <input type="file" id="images-files-input" accept="image/*,.zip,.pptx" multiple style="display: none;">
+          <input type="file" id="zip-files-input" accept=".zip" style="display: none;">
+          <input type="file" id="images-pptx-input" accept=".pptx" style="display: none;">
           <div class="dropzone" id="dropzone-images">
-            <input type="file" id="images-files-input" accept="image/*,.zip,.pptx" multiple style="display: none;">
-            <input type="file" id="zip-files-input" accept=".zip" style="display: none;">
-            <input type="file" id="images-pptx-input" accept=".pptx" style="display: none;">
             <div class="dropzone-icon">🖼️</div>
             <div class="dropzone-text">
               <strong>Arraste suas imagens, arquivo ZIP ou apresentação .PPTX aqui</strong>
@@ -1070,7 +1070,7 @@ texto exemplo ii eii
     <div id="toast" class="toast"></div>
   </main>
 
-  <script src="app.js?v=2.12.2"></script>
+  <script src="app.js?v=2.12.3"></script>
 </body>
 </html>
 
