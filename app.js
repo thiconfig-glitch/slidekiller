@@ -241,9 +241,18 @@ document.addEventListener('DOMContentLoaded', () => {
   // TIPOGRAFIA & FONTES PRINCIPAIS PARA SLIDES (ESTILO DA FOTO)
   // ========================================================
   const CHURCH_FONTS = {
+    'bahnschrift_semibold_condensed': {
+      id: 'bahnschrift_semibold_condensed',
+      name: 'Bahnschrift SemiBold Condensed (Padrão Oficial Igreja)',
+      cssFamily: "'Bahnschrift SemiBold Condensed', 'Bahnschrift', 'Roboto Condensed', 'Arial Narrow', sans-serif",
+      pptxFontFace: 'Bahnschrift SemiBold Condensed',
+      fontWeight: '600',
+      letterSpacing: '0',
+      lineHeight: '1.20'
+    },
     'impact': {
       id: 'impact',
-      name: 'Impact / Anton (A da Foto - Padrão)',
+      name: 'Impact / Anton (Forte & Marcante)',
       cssFamily: "'Anton', 'Impact', 'Arial Black', sans-serif",
       pptxFontFace: 'Impact',
       fontWeight: '700',
@@ -320,11 +329,15 @@ document.addEventListener('DOMContentLoaded', () => {
   let customBgFile = null;
   let customBgServerUrl = null;
 
-  let currentSelectedFont = localStorage.getItem('slidekiller_church_font') || 'impact';
+  let currentSelectedFont = localStorage.getItem('slidekiller_church_font');
+  if (!currentSelectedFont || currentSelectedFont === 'impact') {
+    currentSelectedFont = 'bahnschrift_semibold_condensed';
+    localStorage.setItem('slidekiller_church_font', 'bahnschrift_semibold_condensed');
+  }
   let currentSelectedAlign = localStorage.getItem('slidekiller_church_align') || 'left';
 
   function applySelectedFont(fontKey, shouldRender = false) {
-    if (!CHURCH_FONTS[fontKey]) fontKey = 'impact';
+    if (!CHURCH_FONTS[fontKey]) fontKey = 'bahnschrift_semibold_condensed';
     currentSelectedFont = fontKey;
     localStorage.setItem('slidekiller_church_font', fontKey);
 
@@ -2265,7 +2278,7 @@ ${sermonText}`;
       } catch (e) {}
     }
 
-    const fontConfig = CHURCH_FONTS[currentSelectedFont] || CHURCH_FONTS['impact'];
+    const fontConfig = CHURCH_FONTS[currentSelectedFont] || CHURCH_FONTS['bahnschrift_semibold_condensed'];
     const pptxFontFace = fontConfig.pptxFontFace;
     const isLeftAlign = currentSelectedAlign === 'left';
 
@@ -2801,7 +2814,7 @@ ${sermonText}`;
           ctx.fillRect(0, 0, baseW, baseH);
         }
 
-        const fontConfig = CHURCH_FONTS[currentSelectedFont] || CHURCH_FONTS['impact'];
+        const fontConfig = CHURCH_FONTS[currentSelectedFont] || CHURCH_FONTS['bahnschrift_semibold_condensed'];
         const isLeftAlign = currentSelectedAlign === 'left';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
@@ -3918,8 +3931,8 @@ ${sermonText}`;
       const isBold = style.bold ? 'bold ' : '';
       const isItalic = style.italic ? 'italic ' : '';
       const family = style.typeface
-        ? `"${style.typeface}", Impact, "Montserrat", "Segoe UI", sans-serif`
-        : 'Impact, "Montserrat", "Segoe UI", sans-serif';
+        ? `"${style.typeface}", "Bahnschrift SemiBold Condensed", "Bahnschrift", "Roboto Condensed", Impact, sans-serif`
+        : '"Bahnschrift SemiBold Condensed", "Bahnschrift", "Roboto Condensed", Impact, sans-serif';
       return {
         font: `${isItalic}${isBold}${fontSizePx}px ${family}`,
         fontSizePx
