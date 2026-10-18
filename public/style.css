@@ -2368,5 +2368,106 @@ textarea:focus {
   }
 }
 
+/* ================================================= */
+/* DECKCRAFT STANDALONE & LAUNCHER NA FRENTE         */
+/* ================================================= */
+.deckcraft-front-launcher {
+  margin-top: 18px;
+  background: linear-gradient(135deg, rgba(232, 184, 89, 0.08), rgba(99, 102, 241, 0.12));
+  border: 1px dashed rgba(232, 184, 89, 0.35);
+  border-radius: 10px;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  transition: all 0.2s ease;
+}
+
+.deckcraft-front-launcher:hover {
+  border-color: var(--primary);
+  background: linear-gradient(135deg, rgba(232, 184, 89, 0.12), rgba(99, 102, 241, 0.18));
+}
+
+.deckcraft-standalone-section {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 120px);
+  min-height: 650px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+.deckcraft-standalone-toolbar {
+  padding: 12px 20px;
+  background: linear-gradient(90deg, #0d111a 0%, #161b29 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.deckcraft-standalone-tip {
+  padding: 8px 20px;
+  background: rgba(99, 102, 241, 0.12);
+  border-bottom: 1px solid rgba(99, 102, 241, 0.2);
+  font-size: 12px;
+  color: #c4b5fd;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.deckcraft-standalone-frame-wrapper {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  position: relative;
+  background: #1e1e1e;
+  overflow: hidden;
+}
+
+.deckcraft-step-banner {
+  background: linear-gradient(90deg, rgba(16, 185, 129, 0.15), rgba(99, 102, 241, 0.15));
+  border-bottom: 1px solid rgba(16, 185, 129, 0.3);
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: #f1f5f9;
+}
+
+.deckcraft-step-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.deckcraft-step-number {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #000;
+  font-weight: 700;
+  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+
 
 

@@ -145,6 +145,12 @@
         <span class="module-label">Imagens / ZIP ➔ PPTX</span>
         <span class="module-pill pill-purple">Organizador</span>
       </button>
+
+      <button class="nav-module-btn" data-module="deckcraft">
+        <span class="module-icon">🎨</span>
+        <span class="module-label">DeckCraft Studio</span>
+        <span class="module-pill pill-cyan">PowerPoint Web</span>
+      </button>
     </nav>
 
     <div class="header-right">
@@ -169,6 +175,13 @@
         <button class="btn btn-secondary" id="btn-new-images-top">Novo Lote</button>
         <button class="btn btn-primary" id="btn-download-images-top" style="display: none;">
           <span>📥</span> Baixar PowerPoint (.pptx)
+        </button>
+      </div>
+
+      <!-- Ações do Módulo DeckCraft Studio -->
+      <div class="module-actions" id="actions-deckcraft" style="display: none;">
+        <button class="btn btn-secondary btn-sm" id="btn-deckcraft-header-newtab">
+          <span>↗️</span> Nova Aba
         </button>
       </div>
 
@@ -366,6 +379,20 @@ texto exemplo ii eii
           <button class="btn btn-action" id="btn-generate">
             <span class="btn-icon">⚡</span> Gerar Slides Instantaneamente
           </button>
+
+          <!-- Atalho na Frente: Abrir DeckCraft Avulso (Sem Projeto) -->
+          <div class="deckcraft-front-launcher" id="deckcraft-front-launcher">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <span style="font-size: 26px;">🎨</span>
+              <div>
+                <strong style="color: #fff; font-size: 13px;">Deseja apenas abrir o PowerPoint Web avulso?</strong>
+                <span style="display: block; color: var(--text-muted); font-size: 11px;">Abra o DeckCraft Studio sem projeto prévio para arrastar e editar apresentações .pptx prontas.</span>
+              </div>
+            </div>
+            <button type="button" class="btn btn-deckcraft btn-sm" id="btn-open-deckcraft-front">
+              <span>🎨</span> Abrir DeckCraft Direto ➔
+            </button>
+          </div>
         </div>
       </section>
 
@@ -666,6 +693,55 @@ texto exemplo ii eii
       </section>
     </div>
 
+    <!-- ========================================== -->
+    <!-- MÓDULO 4: DECKCRAFT STUDIO (POWERPOINT WEB) -->
+    <!-- ========================================== -->
+    <div class="module-view" id="view-deckcraft">
+      <section class="deckcraft-standalone-section">
+        <div class="deckcraft-standalone-toolbar">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 26px;">🎨</span>
+            <div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <h2 style="margin: 0; font-size: 1.15rem; color: #fff;">DeckCraft Studio</h2>
+                <span class="deckcraft-badge">PowerPoint Web • v0.7.0</span>
+              </div>
+              <span style="font-size: 11px; color: var(--text-muted); display: block; margin-top: 2px;">
+                Editor de Apresentações PowerPoint em Rust / WebAssembly (100% Offline e Seguro)
+              </span>
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-deckcraft-standalone-fullscreen" title="Alternar Modo Tela Cheia">
+              <span>⛶</span> Tela Cheia
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-deckcraft-standalone-newtab" title="Abrir DeckCraft em uma nova aba">
+              <span>↗️</span> Nova Aba
+            </button>
+          </div>
+        </div>
+
+        <div class="deckcraft-standalone-tip">
+          <span>💡 <strong>Como usar:</strong> Para editar qualquer apresentação, <strong>arraste o arquivo .pptx diretamente para a tela abaixo</strong> ou use o menu <strong>File ➔ Open</strong> no topo do editor.</span>
+        </div>
+
+        <div class="deckcraft-standalone-frame-wrapper" id="deckcraft-standalone-wrapper">
+          <div class="deckcraft-loading-overlay" id="deckcraft-standalone-loading" style="display:none;">
+            <div class="deckcraft-spinner"></div>
+            <span>Carregando DeckCraft WebAssembly...</span>
+          </div>
+          <iframe 
+            id="deckcraft-standalone-iframe" 
+            src="about:blank"
+            title="DeckCraft PowerPoint Web"
+            allow="fullscreen; clipboard-read; clipboard-write; autoplay"
+            sandbox="allow-scripts allow-same-origin allow-downloads allow-popups allow-forms allow-modals"
+            style="width: 100%; height: 100%; border: none; display: block;"
+          ></iframe>
+        </div>
+      </section>
+    </div>
+
     <!-- Modal Inserir Versículo Bíblico -->
     <div id="modalVerse" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.75); z-index:9999; align-items:center; justify-content:center; backdrop-filter:blur(4px);">
       <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:14px; padding:24px; max-width:620px; width:92%; box-shadow:0 20px 40px rgba(0,0,0,0.7); max-height:90vh; overflow-y:auto;">
@@ -823,12 +899,25 @@ texto exemplo ii eii
           </div>
         </div>
 
-        <!-- Barra Informativa / Dica com Drop Zone -->
-        <div class="deckcraft-helper-bar" id="deckcraft-helper-bar">
-          <div class="deckcraft-helper-text">
-            <span>💡 <strong>Dica Pro:</strong> O DeckCraft é uma recriação moderna do PowerPoint em Rust/WASM. O arquivo <code>.pptx</code> do seu culto está preparado! Se não abrir automaticamente na tela abaixo, clique em <strong>"📥 Baixar PPTX"</strong> e <strong>arraste o arquivo para dentro da tela</strong> ou use o menu <strong>File ➔ Open</strong>.</span>
+        <!-- Barra Informativa / Fluxo Visual em 2 Passos -->
+        <div class="deckcraft-step-banner" id="deckcraft-helper-bar">
+          <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+            <div class="deckcraft-step-item">
+              <span class="deckcraft-step-number">1</span>
+              <span>Arquivo <code id="deckcraft-modal-step-filename">SLIDES_CULTO.pptx</code> pronto e baixado no navegador</span>
+            </div>
+            <span style="color: var(--primary); font-weight: 700;">➔</span>
+            <div class="deckcraft-step-item" style="color: #ffd978; font-weight: 600;">
+              <span class="deckcraft-step-number" style="background: #ffd978; color: #000;">2</span>
+              <span>Arraste o arquivo da barra de downloads para a tela abaixo (ou use <strong>File ➔ Open</strong>)</span>
+            </div>
           </div>
-          <button type="button" class="deckcraft-helper-dismiss" id="btn-dismiss-deckcraft-helper" title="Ocultar dica">✕</button>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <button type="button" class="btn btn-primary btn-sm" id="btn-re-download-pptx" style="font-size: 11px; padding: 4px 10px;">
+              📥 Baixar Novamente
+            </button>
+            <button type="button" class="deckcraft-helper-dismiss" id="btn-dismiss-deckcraft-helper" title="Ocultar">✕</button>
+          </div>
         </div>
 
         <!-- Container do Iframe com Loading Overlay -->
