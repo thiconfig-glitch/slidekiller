@@ -485,9 +485,28 @@ body {
   user-select: auto !important;
 }
 
-.dropzone:hover, .dropzone.dragover {
-  border-color: var(--primary);
-  background: rgba(232, 184, 89, 0.05);
+.dropzone:hover {
+  border-color: rgba(232, 184, 89, 0.6);
+  background: rgba(232, 184, 89, 0.04);
+}
+
+.dropzone.dragover {
+  border-color: var(--primary) !important;
+  background: rgba(232, 184, 89, 0.12) !important;
+  box-shadow: 0 0 25px rgba(232, 184, 89, 0.25), inset 0 0 15px rgba(232, 184, 89, 0.1) !important;
+  transform: scale(1.01);
+}
+
+#dropzone-pptx-reverse.dragover {
+  border-color: #38bdf8 !important;
+  background: rgba(56, 189, 248, 0.12) !important;
+  box-shadow: 0 0 25px rgba(56, 189, 248, 0.25), inset 0 0 15px rgba(56, 189, 248, 0.1) !important;
+}
+
+#dropzone-images.dragover {
+  border-color: var(--accent-purple) !important;
+  background: rgba(168, 85, 247, 0.12) !important;
+  box-shadow: 0 0 25px rgba(168, 85, 247, 0.25), inset 0 0 15px rgba(168, 85, 247, 0.1) !important;
 }
 
 .dropzone-icon {

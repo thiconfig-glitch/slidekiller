@@ -61,6 +61,81 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // ==========================================
+  // PROTEÇÃO GLOBAL DE ARRASTE NO PC
+  // Impede que o navegador abra o PDF em tela cheia ao soltar no site e roteia para o módulo ativo
+  // ==========================================
+  ['dragenter', 'dragover'].forEach(name => {
+    window.addEventListener(name, (e) => {
+      e.preventDefault();
+    }, false);
+  });
+
+  window.addEventListener('dragleave', (e) => {
+    e.preventDefault();
+  }, false);
+
+  window.addEventListener('drop', (e) => {
+    e.preventDefault();
+    const files = e.dataTransfer && e.dataTransfer.files;
+    if (files && files.length > 0) {
+      handleGlobalFileDrop(files);
+    }
+  }, false);
+
+  function handleGlobalFileDrop(files) {
+    if (!files || files.length === 0) return;
+    const firstFile = files[0];
+    const ext = firstFile.name.toLowerCase().split('.').pop();
+
+    if (currentActiveModule === 'slidekiller') {
+      if (activeSlideKillerTab === 'tab-images-ocr') {
+        const imageFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
+        if (imageFiles.length > 0) {
+          handleVerseImagesAdded(imageFiles);
+          return;
+        }
+      }
+      if (ext === 'pdf') {
+        handleFileSelected(firstFile);
+      } else {
+        showToast('Neste módulo, por favor anexe um arquivo .PDF de sermão.', 'error');
+      }
+    } else if (currentActiveModule === 'pdf-to-pptx') {
+      const isReverse = btnSubmodePptx && btnSubmodePptx.classList.contains('active');
+      if (isReverse) {
+        if (ext === 'pptx') {
+          handleReversePptxFileSelected(firstFile);
+        } else {
+          showToast('No modo inverso, por favor anexe um arquivo .PPTX.', 'error');
+        }
+      } else {
+        if (ext === 'pdf') {
+          handleDirectFileSelected(firstFile);
+        } else {
+          showToast('No modo direto, por favor anexe um arquivo .PDF.', 'error');
+        }
+      }
+    } else if (currentActiveModule === 'images-to-pptx') {
+      processIncomingFiles(Array.from(files));
+    } else if (currentActiveModule === 'deckcraft') {
+      if (ext === 'pptx') {
+        const iframe = document.getElementById('deckcraft-standalone-iframe');
+        if (iframe && iframe.contentWindow) {
+          firstFile.arrayBuffer().then(buf => {
+            iframe.contentWindow.postMessage({
+              type: 'LOAD_PPTX_BLOB',
+              blob: firstFile,
+              buffer: buf,
+              name: firstFile.name
+            }, '*');
+            showToast(`Apresentação "${firstFile.name}" carregada no DeckCraft!`, 'success');
+          }).catch(err => showToast('Erro ao ler PPTX: ' + err.message, 'error'));
+        }
+      }
+    }
+  }
+
   // ──────────────────────────────────────────────────
   // GEL PILL — Navegação topo
   // ──────────────────────────────────────────────────
@@ -429,20 +504,39 @@ document.addEventListener('DOMContentLoaded', () => {
   if (dropzone && pdfFileInput) {
     dropzone.addEventListener('click', (e) => {
       if (e.target.closest('.btn-clear') || e.target.closest('#selected-file-info')) return;
+      pdfFileInput.value = '';
       pdfFileInput.click();
+    });
+
+    let dropCounter = 0;
+    dropzone.addEventListener('dragenter', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropCounter++;
+      dropzone.classList.add('dragover');
     });
 
     dropzone.addEventListener('dragover', (e) => {
       e.preventDefault();
-      dropzone.classList.add('dragover');
+      e.stopPropagation();
+      e.dataTransfer.dropEffect = 'copy';
+      if (!dropzone.classList.contains('dragover')) dropzone.classList.add('dragover');
     });
 
-    dropzone.addEventListener('dragleave', () => {
-      dropzone.classList.remove('dragover');
+    dropzone.addEventListener('dragleave', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropCounter--;
+      if (dropCounter <= 0) {
+        dropCounter = 0;
+        dropzone.classList.remove('dragover');
+      }
     });
 
     dropzone.addEventListener('drop', (e) => {
       e.preventDefault();
+      e.stopPropagation();
+      dropCounter = 0;
       dropzone.classList.remove('dragover');
       if (e.dataTransfer.files && e.dataTransfer.files[0]) {
         handleFileSelected(e.dataTransfer.files[0]);
@@ -451,6 +545,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (pdfFileInput) {
+    pdfFileInput.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.target.value = '';
+    });
     pdfFileInput.addEventListener('change', (e) => {
       if (e.target.files && e.target.files[0]) {
         handleFileSelected(e.target.files[0]);
@@ -475,32 +573,56 @@ document.addEventListener('DOMContentLoaded', () => {
     currentFile = file;
     fileNameDisplay.textContent = file.name;
     selectedFileInfo.style.display = 'inline-flex';
+    showToast(`📄 Arquivo "${file.name}" anexado com sucesso!`, 'success');
   }
 
   // Dropzone & Manipulação de Fotos de Versículos / Slides com IA
   if (dropzoneOcr && verseImagesInput) {
     dropzoneOcr.addEventListener('click', (e) => {
       if (e.target.closest('#verse-images-container') || e.target.closest('.btn-clear')) return;
+      verseImagesInput.value = '';
       verseImagesInput.click();
+    });
+
+    let dropCounterOcr = 0;
+    dropzoneOcr.addEventListener('dragenter', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropCounterOcr++;
+      dropzoneOcr.classList.add('dragover');
     });
 
     dropzoneOcr.addEventListener('dragover', (e) => {
       e.preventDefault();
-      dropzoneOcr.classList.add('dragover');
+      e.stopPropagation();
+      e.dataTransfer.dropEffect = 'copy';
+      if (!dropzoneOcr.classList.contains('dragover')) dropzoneOcr.classList.add('dragover');
     });
 
-    dropzoneOcr.addEventListener('dragleave', () => {
-      dropzoneOcr.classList.remove('dragover');
+    dropzoneOcr.addEventListener('dragleave', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropCounterOcr--;
+      if (dropCounterOcr <= 0) {
+        dropCounterOcr = 0;
+        dropzoneOcr.classList.remove('dragover');
+      }
     });
 
     dropzoneOcr.addEventListener('drop', (e) => {
       e.preventDefault();
+      e.stopPropagation();
+      dropCounterOcr = 0;
       dropzoneOcr.classList.remove('dragover');
       if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
         handleVerseImagesAdded(Array.from(e.dataTransfer.files));
       }
     });
 
+    verseImagesInput.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.target.value = '';
+    });
     verseImagesInput.addEventListener('change', (e) => {
       if (e.target.files && e.target.files.length > 0) {
         handleVerseImagesAdded(Array.from(e.target.files));
@@ -2892,26 +3014,49 @@ ${sermonText}`;
   if (dropzoneDirect && pdfDirectInput) {
     dropzoneDirect.addEventListener('click', (e) => {
       if (e.target.closest('.btn-clear') || e.target.closest('.selected-file-info')) return;
+      pdfDirectInput.value = '';
       pdfDirectInput.click();
+    });
+
+    let dropCounterDirect = 0;
+    dropzoneDirect.addEventListener('dragenter', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropCounterDirect++;
+      dropzoneDirect.classList.add('dragover');
     });
 
     dropzoneDirect.addEventListener('dragover', (e) => {
       e.preventDefault();
-      dropzoneDirect.classList.add('dragover');
+      e.stopPropagation();
+      e.dataTransfer.dropEffect = 'copy';
+      if (!dropzoneDirect.classList.contains('dragover')) dropzoneDirect.classList.add('dragover');
     });
 
-    dropzoneDirect.addEventListener('dragleave', () => {
-      dropzoneDirect.classList.remove('dragover');
+    dropzoneDirect.addEventListener('dragleave', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropCounterDirect--;
+      if (dropCounterDirect <= 0) {
+        dropCounterDirect = 0;
+        dropzoneDirect.classList.remove('dragover');
+      }
     });
 
     dropzoneDirect.addEventListener('drop', (e) => {
       e.preventDefault();
+      e.stopPropagation();
+      dropCounterDirect = 0;
       dropzoneDirect.classList.remove('dragover');
       if (e.dataTransfer.files && e.dataTransfer.files[0]) {
         handleDirectFileSelected(e.dataTransfer.files[0]);
       }
     });
 
+    pdfDirectInput.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.target.value = '';
+    });
     pdfDirectInput.addEventListener('change', (e) => {
       if (e.target.files && e.target.files[0]) {
         handleDirectFileSelected(e.target.files[0]);
@@ -2934,32 +3079,56 @@ ${sermonText}`;
     currentDirectFile = file;
     directFileName.textContent = file.name;
     directFileInfo.style.display = 'inline-flex';
+    showToast(`📄 PDF "${file.name}" anexado com sucesso!`, 'success');
   }
 
   // Dropzone Modo Inverso (PPTX)
   if (dropzonePptxReverse && pptxReverseInput) {
     dropzonePptxReverse.addEventListener('click', (e) => {
       if (e.target.closest('.btn-clear') || e.target.closest('.selected-file-info')) return;
+      pptxReverseInput.value = '';
       pptxReverseInput.click();
+    });
+
+    let dropCounterReverse = 0;
+    dropzonePptxReverse.addEventListener('dragenter', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropCounterReverse++;
+      dropzonePptxReverse.classList.add('dragover');
     });
 
     dropzonePptxReverse.addEventListener('dragover', (e) => {
       e.preventDefault();
-      dropzonePptxReverse.classList.add('dragover');
+      e.stopPropagation();
+      e.dataTransfer.dropEffect = 'copy';
+      if (!dropzonePptxReverse.classList.contains('dragover')) dropzonePptxReverse.classList.add('dragover');
     });
 
-    dropzonePptxReverse.addEventListener('dragleave', () => {
-      dropzonePptxReverse.classList.remove('dragover');
+    dropzonePptxReverse.addEventListener('dragleave', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropCounterReverse--;
+      if (dropCounterReverse <= 0) {
+        dropCounterReverse = 0;
+        dropzonePptxReverse.classList.remove('dragover');
+      }
     });
 
     dropzonePptxReverse.addEventListener('drop', (e) => {
       e.preventDefault();
+      e.stopPropagation();
+      dropCounterReverse = 0;
       dropzonePptxReverse.classList.remove('dragover');
       if (e.dataTransfer.files && e.dataTransfer.files[0]) {
         handleReversePptxFileSelected(e.dataTransfer.files[0]);
       }
     });
 
+    pptxReverseInput.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.target.value = '';
+    });
     pptxReverseInput.addEventListener('change', (e) => {
       if (e.target.files && e.target.files[0]) {
         handleReversePptxFileSelected(e.target.files[0]);
@@ -2984,6 +3153,7 @@ ${sermonText}`;
     currentReversePptxFile = file;
     if (pptxReverseFileName) pptxReverseFileName.textContent = file.name;
     if (pptxReverseFileInfo) pptxReverseFileInfo.style.display = 'inline-flex';
+    showToast(`📊 Apresentação "${file.name}" anexada com sucesso!`, 'success');
   }
 
   function showPptxReverseProgress(percent, status) {
@@ -4461,27 +4631,52 @@ ${sermonText}`;
   if (dropzoneImages) {
     dropzoneImages.addEventListener('click', (e) => {
       if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON') {
-        if (imagesFilesInput) imagesFilesInput.click();
+        if (imagesFilesInput) {
+          imagesFilesInput.value = '';
+          imagesFilesInput.click();
+        }
       }
     });
 
-    ['dragenter', 'dragover'].forEach(eventName => {
-      dropzoneImages.addEventListener(eventName, (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        dropzoneImages.classList.add('dragover');
-      });
+    [imagesFilesInput, zipFilesInput, imagesPptxInput].forEach(inp => {
+      if (inp) {
+        inp.addEventListener('click', (e) => {
+          e.stopPropagation();
+          e.target.value = '';
+        });
+      }
     });
 
-    ['dragleave', 'drop'].forEach(eventName => {
-      dropzoneImages.addEventListener(eventName, (e) => {
-        e.preventDefault();
-        e.stopPropagation();
+    let dropCounterImages = 0;
+    dropzoneImages.addEventListener('dragenter', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropCounterImages++;
+      dropzoneImages.classList.add('dragover');
+    });
+
+    dropzoneImages.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      e.dataTransfer.dropEffect = 'copy';
+      if (!dropzoneImages.classList.contains('dragover')) dropzoneImages.classList.add('dragover');
+    });
+
+    dropzoneImages.addEventListener('dragleave', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropCounterImages--;
+      if (dropCounterImages <= 0) {
+        dropCounterImages = 0;
         dropzoneImages.classList.remove('dragover');
-      });
+      }
     });
 
     dropzoneImages.addEventListener('drop', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropCounterImages = 0;
+      dropzoneImages.classList.remove('dragover');
       const files = e.dataTransfer.files;
       if (files && files.length > 0) {
         processIncomingFiles(Array.from(files));
