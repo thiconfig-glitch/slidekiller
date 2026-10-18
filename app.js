@@ -110,8 +110,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // ==========================================
   // MÓDULO 1: SLIDE KILLER
   // ==========================================
-  const tabBtns = document.querySelectorAll('.tab-btn');
-  const tabContents = document.querySelectorAll('.tab-content');
+  const tabBtns = document.querySelectorAll('#main-tabs .tab-btn');
+  const tabContents = document.querySelectorAll('#view-slidekiller .tab-content');
   const dropzone = document.getElementById('dropzone');
   const pdfFileInput = document.getElementById('pdf-file-input');
   const selectedFileInfo = document.getElementById('selected-file-info');
@@ -426,8 +426,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
   // Dropzone events (PDF Original)
-  if (dropzone) {
-    dropzone.addEventListener('click', () => pdfFileInput.click());
+  if (dropzone && pdfFileInput) {
+    dropzone.addEventListener('click', (e) => {
+      if (e.target.closest('.btn-clear') || e.target.closest('#selected-file-info')) return;
+      pdfFileInput.click();
+    });
 
     dropzone.addEventListener('dragover', (e) => {
       e.preventDefault();
@@ -476,7 +479,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Dropzone & Manipulação de Fotos de Versículos / Slides com IA
   if (dropzoneOcr && verseImagesInput) {
-    dropzoneOcr.addEventListener('click', () => verseImagesInput.click());
+    dropzoneOcr.addEventListener('click', (e) => {
+      if (e.target.closest('#verse-images-container') || e.target.closest('.btn-clear')) return;
+      verseImagesInput.click();
+    });
 
     dropzoneOcr.addEventListener('dragover', (e) => {
       e.preventDefault();
@@ -2774,8 +2780,12 @@ ${sermonText}`;
   // ==========================================
   const btnSubmodePdf = document.getElementById('btn-submode-pdf-to-pptx');
   const btnSubmodePptx = document.getElementById('btn-submode-pptx-reverse');
-  const cardDirectPdf = document.getElementById('card-direct-pdf');
-  const cardReversePptx = document.getElementById('card-reverse-pptx');
+  const panelSubmodePdf = document.getElementById('submode-panel-pdf');
+  const panelSubmodePptx = document.getElementById('submode-panel-pptx');
+  const converterBadgeDot = document.getElementById('converter-badge-dot');
+  const converterBadgeText = document.getElementById('converter-badge-text');
+  const converterTitleText = document.getElementById('converter-title-text');
+  const converterDescText = document.getElementById('converter-desc-text');
 
   // Modo Direto (PDF ➔ PPTX)
   const dropzoneDirect = document.getElementById('dropzone-direct');
@@ -2845,24 +2855,45 @@ ${sermonText}`;
     btnSubmodePdf.addEventListener('click', () => {
       btnSubmodePdf.classList.add('active');
       btnSubmodePptx.classList.remove('active');
-      if (cardDirectPdf) cardDirectPdf.style.display = 'block';
-      if (cardReversePptx) cardReversePptx.style.display = 'none';
+      if (panelSubmodePdf) panelSubmodePdf.style.display = 'block';
+      if (panelSubmodePptx) panelSubmodePptx.style.display = 'none';
+      if (converterBadgeDot) {
+        converterBadgeDot.style.backgroundColor = 'var(--primary)';
+        converterBadgeDot.style.boxShadow = '0 0 8px var(--primary)';
+      }
+      if (converterBadgeText) converterBadgeText.textContent = 'MÓDULO CONVERSOR DIRETO • 1 PÁGINA = 1 SLIDE';
+      if (converterTitleText) converterTitleText.textContent = 'Conversão Direta de PDF para PowerPoint';
+      if (converterDescText) converterDescText.textContent = 'Anexe qualquer PDF e receba uma apresentação .pptx onde cada página do PDF se torna exatamente um slide em alta resolução Full HD, sem extração ou alteração de texto. Pronto para telões e softwares de projeção.';
     });
     btnSubmodePptx.addEventListener('click', () => {
       btnSubmodePptx.classList.add('active');
       btnSubmodePdf.classList.remove('active');
-      if (cardDirectPdf) cardDirectPdf.style.display = 'none';
-      if (cardReversePptx) cardReversePptx.style.display = 'block';
+      if (panelSubmodePdf) panelSubmodePdf.style.display = 'none';
+      if (panelSubmodePptx) panelSubmodePptx.style.display = 'block';
+      if (converterBadgeDot) {
+        converterBadgeDot.style.backgroundColor = '#38bdf8';
+        converterBadgeDot.style.boxShadow = '0 0 8px #38bdf8';
+      }
+      if (converterBadgeText) converterBadgeText.textContent = 'MÓDULO CONVERSOR INVERSO • PPTX ➔ IMAGENS / ZIP / PDF';
+      if (converterTitleText) converterTitleText.textContent = 'Conversão Inversa de PowerPoint para Imagens ou PDF';
+      if (converterDescText) converterDescText.textContent = 'Anexe qualquer apresentação .pptx para extrair instantaneamente todas as lâminas em imagens Full HD de alta qualidade (.png), baixar um arquivo compactado .ZIP ou converter tudo diretamente para PDF.';
     });
   }
 
   if (btnSwitchToDirect) {
-    btnSwitchToDirect.addEventListener('click', () => switchModule('pdf-to-pptx'));
+    btnSwitchToDirect.addEventListener('click', () => {
+      const directNavBtn = document.querySelector('.nav-module-btn[data-module="pdf-to-pptx"]');
+      switchModule('pdf-to-pptx');
+      if (directNavBtn) moveNavGelPill(directNavBtn);
+    });
   }
 
   // Dropzone Modo Direto (PDF)
   if (dropzoneDirect && pdfDirectInput) {
-    dropzoneDirect.addEventListener('click', () => pdfDirectInput.click());
+    dropzoneDirect.addEventListener('click', (e) => {
+      if (e.target.closest('.btn-clear') || e.target.closest('.selected-file-info')) return;
+      pdfDirectInput.click();
+    });
 
     dropzoneDirect.addEventListener('dragover', (e) => {
       e.preventDefault();
@@ -2907,7 +2938,10 @@ ${sermonText}`;
 
   // Dropzone Modo Inverso (PPTX)
   if (dropzonePptxReverse && pptxReverseInput) {
-    dropzonePptxReverse.addEventListener('click', () => pptxReverseInput.click());
+    dropzonePptxReverse.addEventListener('click', (e) => {
+      if (e.target.closest('.btn-clear') || e.target.closest('.selected-file-info')) return;
+      pptxReverseInput.click();
+    });
 
     dropzonePptxReverse.addEventListener('dragover', (e) => {
       e.preventDefault();
