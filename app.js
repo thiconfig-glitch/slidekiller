@@ -160,7 +160,147 @@ document.addEventListener('DOMContentLoaded', () => {
   const customBgThumb = document.getElementById('custom-bg-thumb');
   const customBgFilename = document.getElementById('custom-bg-filename');
   const btnRemoveCustomBg = document.getElementById('btn-remove-custom-bg');
-  const btnChangeBgResults = document.getElementById('btn-change-bg-results');
+  // ========================================================
+  // TIPOGRAFIA & FONTES PRINCIPAIS PARA SLIDES (ESTILO DA FOTO)
+  // ========================================================
+  const CHURCH_FONTS = {
+    'impact': {
+      id: 'impact',
+      name: 'Impact / Anton (A da Foto - Padrão)',
+      cssFamily: "'Anton', 'Impact', 'Arial Black', sans-serif",
+      pptxFontFace: 'Impact',
+      fontWeight: '700',
+      letterSpacing: '-0.01em',
+      lineHeight: '1.22'
+    },
+    'oswald': {
+      id: 'oswald',
+      name: 'Oswald (Elegante Hillsong / Bethel)',
+      cssFamily: "'Oswald', sans-serif",
+      pptxFontFace: 'Oswald',
+      fontWeight: '700',
+      letterSpacing: '0.01em',
+      lineHeight: '1.28'
+    },
+    'bebas': {
+      id: 'bebas',
+      name: 'Bebas Neue (Display Caixa Alta)',
+      cssFamily: "'Bebas Neue', 'Impact', sans-serif",
+      pptxFontFace: 'Bebas Neue',
+      fontWeight: '400',
+      letterSpacing: '0.04em',
+      lineHeight: '1.18'
+    },
+    'montserrat': {
+      id: 'montserrat',
+      name: 'Montserrat (Moderna Black)',
+      cssFamily: "'Montserrat', sans-serif",
+      pptxFontFace: 'Montserrat Black',
+      fontWeight: '800',
+      letterSpacing: '-0.02em',
+      lineHeight: '1.25'
+    },
+    'roboto_condensed': {
+      id: 'roboto_condensed',
+      name: 'Roboto Condensed (Clean & Legível)',
+      cssFamily: "'Roboto Condensed', sans-serif",
+      pptxFontFace: 'Roboto Condensed',
+      fontWeight: '700',
+      letterSpacing: '0',
+      lineHeight: '1.25'
+    },
+    'barlow_condensed': {
+      id: 'barlow_condensed',
+      name: 'Barlow Condensed (Dinâmica)',
+      cssFamily: "'Barlow Condensed', sans-serif",
+      pptxFontFace: 'Barlow Condensed',
+      fontWeight: '700',
+      letterSpacing: '0.01em',
+      lineHeight: '1.22'
+    },
+    'arial_black': {
+      id: 'arial_black',
+      name: 'Arial Black (Clássica Forte)',
+      cssFamily: "'Arial Black', sans-serif",
+      pptxFontFace: 'Arial Black',
+      fontWeight: '900',
+      letterSpacing: '-0.01em',
+      lineHeight: '1.25'
+    }
+  };
+
+  const fontSelect = document.getElementById('font-select');
+  const resultsFontSelect = document.getElementById('results-font-select');
+  const alignSelect = document.getElementById('align-select');
+  const resultsAlignSelect = document.getElementById('results-align-select');
+
+  let currentSelectedFont = localStorage.getItem('slidekiller_church_font') || 'impact';
+  let currentSelectedAlign = localStorage.getItem('slidekiller_church_align') || 'left';
+
+  function applySelectedFont(fontKey, shouldRender = false) {
+    if (!CHURCH_FONTS[fontKey]) fontKey = 'impact';
+    currentSelectedFont = fontKey;
+    localStorage.setItem('slidekiller_church_font', fontKey);
+
+    const cfg = CHURCH_FONTS[fontKey];
+    document.documentElement.style.setProperty('--slide-font-family', cfg.cssFamily);
+    document.documentElement.style.setProperty('--slide-font-weight', cfg.fontWeight);
+    document.documentElement.style.setProperty('--slide-font-spacing', cfg.letterSpacing);
+    document.documentElement.style.setProperty('--slide-font-line-height', cfg.lineHeight);
+    document.documentElement.style.setProperty('--slide-ref-font-family', cfg.cssFamily);
+
+    if (fontSelect && fontSelect.value !== fontKey) fontSelect.value = fontKey;
+    if (resultsFontSelect && resultsFontSelect.value !== fontKey) resultsFontSelect.value = fontKey;
+
+    currentDownloadUrl = null;
+    if (shouldRender && currentSlides && currentSlides.length > 0) {
+      renderResults();
+    }
+  }
+
+  function applySelectedAlign(alignVal, shouldRender = false) {
+    if (alignVal !== 'center' && alignVal !== 'left') alignVal = 'left';
+    currentSelectedAlign = alignVal;
+    localStorage.setItem('slidekiller_church_align', alignVal);
+
+    if (alignSelect && alignSelect.value !== alignVal) alignSelect.value = alignVal;
+    if (resultsAlignSelect && resultsAlignSelect.value !== alignVal) resultsAlignSelect.value = alignVal;
+
+    currentDownloadUrl = null;
+    if (shouldRender && currentSlides && currentSlides.length > 0) {
+      renderResults();
+    }
+  }
+
+  if (fontSelect) {
+    fontSelect.addEventListener('change', (e) => {
+      applySelectedFont(e.target.value, true);
+      showToast(`Fonte definida: ${CHURCH_FONTS[e.target.value].name}`, 'info');
+    });
+  }
+
+  if (resultsFontSelect) {
+    resultsFontSelect.addEventListener('change', (e) => {
+      applySelectedFont(e.target.value, true);
+      showToast(`Fonte alterada para: ${CHURCH_FONTS[e.target.value].name}`, 'success');
+    });
+  }
+
+  if (alignSelect) {
+    alignSelect.addEventListener('change', (e) => {
+      applySelectedAlign(e.target.value, true);
+    });
+  }
+
+  if (resultsAlignSelect) {
+    resultsAlignSelect.addEventListener('change', (e) => {
+      applySelectedAlign(e.target.value, true);
+    });
+  }
+
+  // Inicializa imediatamente com a tipografia recomendada (Impact / Anton à esquerda como na foto)
+  applySelectedFont(currentSelectedFont, false);
+  applySelectedAlign(currentSelectedAlign, false);
 
   let currentFile = null;
   let currentSlides = [];
@@ -1220,11 +1360,12 @@ ${sermonText}`;
 
   function formatQuotes(text) {
     let t = (text || '').trim();
-    if (!t.startsWith('“') && !t.startsWith('"')) t = '“' + t;
-    if (!t.endsWith('”') && !t.endsWith('"')) {
-      t = t.replace(/[.]+$/, '') + '”';
+    if (!t) return '';
+    t = t.replace(/^[“"']+|[”"']+$/g, '').trim();
+    if (!/[.!?]$/.test(t)) {
+      t += '.';
     }
-    return t;
+    return `“${t}”`;
   }
 
   function buildRunsFromText(text) {
@@ -1765,10 +1906,10 @@ ${sermonText}`;
             <span class="slide-type-tag">${slide.type || 'versículo'}</span>
           </div>
         </div>
-        <div class="slide-preview-container" style="background-image: url('${slideBgUrl}');">
+        <div class="slide-preview-container ${currentSelectedAlign === 'center' ? 'align-center' : ''}" style="background-image: url('${slideBgUrl}');">
           <div class="slide-preview-content">
             <div class="slide-preview-text">${previewHtml}</div>
-            ${slide.reference ? `<div class="slide-preview-ref">${escapeHtml(slide.reference)}</div>` : ''}
+            ${slide.reference ? `<div class="slide-preview-ref">${escapeHtml(slide.reference.toUpperCase())}</div>` : ''}
           </div>
         </div>
         <div class="slide-editor">
@@ -1942,6 +2083,10 @@ ${sermonText}`;
       } catch (e) {}
     }
 
+    const fontConfig = CHURCH_FONTS[currentSelectedFont] || CHURCH_FONTS['impact'];
+    const pptxFontFace = fontConfig.pptxFontFace;
+    const isLeftAlign = currentSelectedAlign === 'left';
+
     for (const item of currentSlides) {
       const slide = pptx.addSlide();
       if (item.bgImage) {
@@ -1960,44 +2105,51 @@ ${sermonText}`;
 
       if (type === 'verse') {
         const textLength = (item.runs || []).reduce((acc, r) => acc + (r.text || '').length, 0);
-        let fontSize = 52;
-        if (textLength < 70) fontSize = 60;
-        else if (textLength > 160) fontSize = 46;
-        else if (textLength > 120) fontSize = 48;
+        let fontSize = 48;
+        if (textLength < 70) fontSize = 56;
+        else if (textLength > 160) fontSize = 40;
+        else if (textLength > 120) fontSize = 44;
+
+        // Na foto da igreja, o texto fica à esquerda ocupando cerca de 65% da tela,
+        // deixando o respiro à direita para a Bíblia/fundo brilhar!
+        const textWidth = isLeftAlign ? 8.6 : 11.6;
+        const startX = isLeftAlign ? 0.9 : 0.85;
+        const startY = 1.4;
 
         const runs = (item.runs || []).map(r => ({
           text: r.text,
           options: {
-            fontFace: 'Bahnschrift SemiBold Condensed',
+            fontFace: pptxFontFace,
             fontSize: fontSize,
-            color: r.highlight ? 'E8B859' : 'FFFFFF',
-            bold: !!r.highlight,
-            shadow: { type: 'outer', angle: 90, blur: 4, offset: 3, opacity: 0.45, color: '000000' }
+            color: r.highlight ? 'F59E0B' : 'FFFFFF',
+            bold: true,
+            shadow: { type: 'outer', angle: 90, blur: 5, offset: 3, opacity: 0.7, color: '000000' }
           }
         }));
 
         slide.addText(runs, {
-          x: 0.6,
-          y: 1.5,
-          w: 12.1,
-          h: 3.8,
+          x: startX,
+          y: startY,
+          w: textWidth,
+          h: 4.2,
           valign: 'top',
-          align: 'left',
+          align: isLeftAlign ? 'left' : 'center',
           margin: 0,
           wrap: true
         });
 
         if (item.reference) {
-          slide.addText(item.reference, {
-            x: 0.6,
+          slide.addText(item.reference.toUpperCase(), {
+            x: startX,
             y: 5.6,
-            w: 8.0,
-            h: 0.9,
-            fontFace: 'Bebas Neue',
-            fontSize: 44,
-            color: 'E8B859',
-            align: 'left',
-            shadow: { type: 'outer', angle: 90, blur: 4, offset: 3, opacity: 0.45, color: '000000' }
+            w: textWidth,
+            h: 0.8,
+            fontFace: pptxFontFace,
+            fontSize: 38,
+            color: 'F59E0B',
+            bold: true,
+            align: isLeftAlign ? 'left' : 'center',
+            shadow: { type: 'outer', angle: 90, blur: 5, offset: 2, opacity: 0.7, color: '000000' }
           });
         }
 
@@ -2005,17 +2157,18 @@ ${sermonText}`;
         const runs = (item.runs || []).map(r => ({
           text: r.text,
           options: {
-            fontFace: 'Bebas Neue',
-            fontSize: 140,
-            color: r.highlight ? 'E8B859' : 'FFFFFF',
-            shadow: { type: 'outer', angle: 90, blur: 4, offset: 3, opacity: 0.45, color: '000000' }
+            fontFace: pptxFontFace,
+            fontSize: 110,
+            color: r.highlight ? 'F59E0B' : 'FFFFFF',
+            bold: true,
+            shadow: { type: 'outer', angle: 90, blur: 5, offset: 3, opacity: 0.7, color: '000000' }
           }
         }));
 
         slide.addText(runs, {
-          x: 0.5,
+          x: 0.8,
           y: 1.8,
-          w: 12.3,
+          w: 11.7,
           h: 4.0,
           valign: 'middle',
           align: 'center',
@@ -2025,28 +2178,28 @@ ${sermonText}`;
 
       } else if (type === 'reflection') {
         const textLength = (item.runs || []).reduce((acc, r) => acc + (r.text || '').length, 0);
-        let fontSize = 48;
-        if (textLength < 70) fontSize = 54;
-        else if (textLength > 160) fontSize = 44;
+        let fontSize = 44;
+        if (textLength < 70) fontSize = 52;
+        else if (textLength > 160) fontSize = 38;
 
         const runs = (item.runs || []).map(r => ({
           text: r.text,
           options: {
-            fontFace: 'Bahnschrift SemiBold Condensed',
+            fontFace: pptxFontFace,
             fontSize: fontSize,
-            color: r.highlight ? 'E8B859' : 'FFFFFF',
-            bold: !!r.highlight,
-            shadow: { type: 'outer', angle: 90, blur: 4, offset: 3, opacity: 0.45, color: '000000' }
+            color: r.highlight ? 'F59E0B' : 'FFFFFF',
+            bold: true,
+            shadow: { type: 'outer', angle: 90, blur: 5, offset: 3, opacity: 0.7, color: '000000' }
           }
         }));
 
         slide.addText(runs, {
-          x: 0.8,
+          x: 0.9,
           y: 1.6,
-          w: 11.7,
+          w: 11.5,
           h: 4.2,
           valign: 'middle',
-          align: 'center',
+          align: isLeftAlign ? 'left' : 'center',
           margin: 0,
           wrap: true
         });
@@ -2054,27 +2207,28 @@ ${sermonText}`;
       } else {
         // topic / títulos de seção
         const textLength = (item.runs || []).reduce((acc, r) => acc + (r.text || '').length, 0);
-        let fontSize = 70;
-        if (textLength < 40) fontSize = 84;
-        else if (textLength > 90) fontSize = 56;
+        let fontSize = 66;
+        if (textLength < 40) fontSize = 78;
+        else if (textLength > 90) fontSize = 52;
 
         const runs = (item.runs || []).map(r => ({
           text: r.text,
           options: {
-            fontFace: 'Bebas Neue',
+            fontFace: pptxFontFace,
             fontSize: fontSize,
-            color: r.highlight ? 'E8B859' : 'FFFFFF',
-            shadow: { type: 'outer', angle: 90, blur: 4, offset: 3, opacity: 0.45, color: '000000' }
+            color: r.highlight ? 'F59E0B' : 'FFFFFF',
+            bold: true,
+            shadow: { type: 'outer', angle: 90, blur: 5, offset: 3, opacity: 0.7, color: '000000' }
           }
         }));
 
         slide.addText(runs, {
-          x: 0.5,
-          y: 1.9,
-          w: 12.3,
-          h: 3.6,
+          x: 0.8,
+          y: 1.8,
+          w: 11.7,
+          h: 3.8,
           valign: 'middle',
-          align: 'center',
+          align: isLeftAlign ? 'left' : 'center',
           margin: 0,
           wrap: true
         });
@@ -2465,28 +2619,30 @@ ${sermonText}`;
           ctx.fillRect(0, 0, baseW, baseH);
         }
 
+        const fontConfig = CHURCH_FONTS[currentSelectedFont] || CHURCH_FONTS['impact'];
+        const isLeftAlign = currentSelectedAlign === 'left';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
 
         const fullText = (item.runs || []).map(r => r.text).join('');
-        let fontSize = 56;
-        if (fullText.length > 150) fontSize = 44;
-        else if (fullText.length < 70) fontSize = 66;
+        let fontSize = 54;
+        if (fullText.length > 150) fontSize = 42;
+        else if (fullText.length < 70) fontSize = 64;
 
-        ctx.font = `bold ${fontSize}px 'Inter', sans-serif`;
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
-        ctx.shadowBlur = 4;
-        ctx.shadowOffsetX = 2;
-        ctx.shadowOffsetY = 2;
+        ctx.font = `bold ${fontSize}px ${fontConfig.cssFamily}`;
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.75)';
+        ctx.shadowBlur = 6;
+        ctx.shadowOffsetX = 3;
+        ctx.shadowOffsetY = 3;
 
-        const startX = 120;
+        const startX = isLeftAlign ? 140 : 160;
         let curX = startX;
-        let curY = 160;
-        const maxWidth = 1680;
-        const lineHeight = fontSize * 1.45;
+        let curY = 180;
+        const maxWidth = isLeftAlign ? 1220 : 1600;
+        const lineHeight = fontSize * 1.25;
 
         for (const run of (item.runs || [])) {
-          ctx.fillStyle = run.highlight ? '#E8B859' : '#FFFFFF';
+          ctx.fillStyle = run.highlight ? '#F59E0B' : '#FFFFFF';
           const words = run.text.split(/(\s+)/);
 
           for (const w of words) {
@@ -2502,9 +2658,9 @@ ${sermonText}`;
 
         // Referência Bíblica
         if (item.reference) {
-          ctx.font = `bold 44px 'Bebas Neue', 'Inter', sans-serif`;
-          ctx.fillStyle = '#E8B859';
-          ctx.fillText(item.reference, startX, baseH - 180);
+          ctx.font = `bold 42px ${fontConfig.cssFamily}`;
+          ctx.fillStyle = '#F59E0B';
+          ctx.fillText(item.reference.toUpperCase(), startX, baseH - 180);
         }
 
         const slideImgData = canvas.toDataURL('image/jpeg', 0.92);
