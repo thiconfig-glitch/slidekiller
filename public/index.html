@@ -116,7 +116,7 @@
         <div>
           <div style="display: flex; align-items: center; gap: 8px;">
             <h1 class="brand-title">Central Multimídia Church</h1>
-            <span class="version-tag">v2.9.0</span>
+            <span class="version-tag">v2.11.0</span>
           </div>
           <span class="brand-subtitle">Plataforma Unificada de Mídia & Culto</span>
         </div>
@@ -381,6 +381,7 @@ texto exemplo ii eii
             <button class="btn btn-secondary" id="btn-add-slide">+ Novo Slide</button>
             <button class="btn btn-secondary" id="btn-change-bg-results" title="Alterar ou anexar imagem de fundo dos slides">🖼️ Trocar Fundo</button>
             <button class="btn btn-secondary" id="btn-rebuild">💾 Salvar Edições</button>
+            <button class="btn btn-deckcraft" id="btn-edit-deckcraft" title="Editar apresentação completa no DeckCraft Studio (Editor estilo PowerPoint web)">🎨 Editar com DeckCraft</button>
             <button class="btn btn-secondary" id="btn-download-pdf-sk" title="Baixar slides em PDF">📄 Baixar PDF</button>
             <button class="btn btn-primary" id="btn-download-main">📥 Baixar .pptx</button>
             <button class="btn btn-outline-gold" id="btn-download-both-sk" title="Baixar PPTX e PDF juntos">✨ Ambos</button>
@@ -789,11 +790,70 @@ texto exemplo ii eii
       </div>
     </div>
 
+    <!-- Modal DeckCraft Studio (PowerPoint Web Editor) -->
+    <div id="modalDeckcraft" class="deckcraft-modal-overlay" style="display:none;">
+      <div class="deckcraft-modal-container">
+        <div class="deckcraft-modal-header">
+          <div class="deckcraft-header-left">
+            <span class="deckcraft-logo-icon">🎨</span>
+            <div>
+              <div class="deckcraft-title-row">
+                <h3 class="deckcraft-title">DeckCraft Studio</h3>
+                <span class="deckcraft-badge">PowerPoint Web • v0.7.0</span>
+              </div>
+              <span class="deckcraft-subtitle" id="deckcraft-filename-badge">SLIDES_CULTO.pptx</span>
+            </div>
+          </div>
+
+          <div class="deckcraft-header-actions">
+            <button type="button" class="btn btn-primary btn-sm" id="btn-deckcraft-quick-download" title="Baixar arquivo PPTX gerado para seu computador">
+              📥 Baixar PPTX do Culto
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-deckcraft-open-file" title="Escolher outro arquivo .pptx do computador">
+              📂 Abrir Outro Arquivo
+            </button>
+            <input type="file" id="deckcraft-file-input" accept=".pptx" style="display:none;" />
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-deckcraft-fullscreen" title="Alternar Modo Tela Cheia">
+              ⛶ Tela Cheia
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-deckcraft-new-tab" title="Abrir DeckCraft em uma nova aba">
+              ↗️ Nova Aba
+            </button>
+            <button type="button" class="deckcraft-close-btn" id="btn-close-deckcraft-modal" title="Fechar editor e voltar para galeria">✖</button>
+          </div>
+        </div>
+
+        <!-- Barra Informativa / Dica com Drop Zone -->
+        <div class="deckcraft-helper-bar" id="deckcraft-helper-bar">
+          <div class="deckcraft-helper-text">
+            <span>💡 <strong>Dica Pro:</strong> O DeckCraft é uma recriação moderna do PowerPoint em Rust/WASM. O arquivo <code>.pptx</code> do seu culto está preparado! Se não abrir automaticamente na tela abaixo, clique em <strong>"📥 Baixar PPTX"</strong> e <strong>arraste o arquivo para dentro da tela</strong> ou use o menu <strong>File ➔ Open</strong>.</span>
+          </div>
+          <button type="button" class="deckcraft-helper-dismiss" id="btn-dismiss-deckcraft-helper" title="Ocultar dica">✕</button>
+        </div>
+
+        <!-- Container do Iframe com Loading Overlay -->
+        <div class="deckcraft-iframe-wrapper" id="deckcraft-iframe-wrapper">
+          <div class="deckcraft-loading-overlay" id="deckcraft-loading-overlay" style="display:none;">
+            <div class="deckcraft-spinner"></div>
+            <span>Inicializando motor DeckCraft WebAssembly...</span>
+          </div>
+          <iframe 
+            id="deckcraft-iframe" 
+            src="about:blank"
+            title="DeckCraft PowerPoint Editor"
+            allow="fullscreen; clipboard-read; clipboard-write; autoplay"
+            sandbox="allow-scripts allow-same-origin allow-downloads allow-popups allow-forms allow-modals"
+            style="width: 100%; height: 100%; border: none; display: block;"
+          ></iframe>
+        </div>
+      </div>
+    </div>
+
     <!-- Modal / Toast de Notificação -->
     <div id="toast" class="toast"></div>
   </main>
 
-  <script src="app.js?v=2.10.0"></script>
+  <script src="app.js?v=2.11.0"></script>
 </body>
 </html>
 

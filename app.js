@@ -123,6 +123,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const btnDownloadPdfSk = document.getElementById('btn-download-pdf-sk');
   const btnDownloadBothSk = document.getElementById('btn-download-both-sk');
+  const btnEditDeckcraft = document.getElementById('btn-edit-deckcraft');
   
   const inputSection = document.getElementById('input-section');
   const resultsSection = document.getElementById('results-section');
@@ -1887,6 +1888,185 @@ ${sermonText}`;
     });
   }
 
+  // Construir instância configurada do PptxGenJS com todos os slides e estilos oficiais
+  async function buildSlideKillerPptxInstance() {
+    if (typeof PptxGenJS === 'undefined') {
+      throw new Error('Biblioteca PptxGenJS não carregada. Tente novamente em instantes.');
+    }
+    const pptx = new PptxGenJS();
+    pptx.defineLayout({ name: 'CHURCH_FULL_HD', width: 13.333, height: 7.5 });
+    pptx.layout = 'CHURCH_FULL_HD';
+
+    const bgUrl = getActiveBackgroundUrl();
+
+    // Pré-carregar imagem de fundo para garantir embutimento perfeito e leve em qualquer dispositivo
+    let bgBase64 = null;
+    if (customBgDataUrl && templateSelect && templateSelect.value === '__custom_active__') {
+      bgBase64 = customBgDataUrl;
+    } else {
+      try {
+        const bgImg = new Image();
+        bgImg.crossOrigin = 'anonymous';
+        await new Promise((resolve) => {
+          bgImg.onload = () => {
+            try {
+              const cv = document.createElement('canvas');
+              cv.width = 1920;
+              cv.height = 1080;
+              const cx = cv.getContext('2d');
+              cx.drawImage(bgImg, 0, 0, 1920, 1080);
+              bgBase64 = cv.toDataURL('image/jpeg', 0.88);
+            } catch(e) {}
+            resolve();
+          };
+          bgImg.onerror = () => resolve();
+          bgImg.src = bgUrl;
+        });
+      } catch (e) {}
+    }
+
+    for (const item of currentSlides) {
+      const slide = pptx.addSlide();
+      if (item.bgImage) {
+        if (item.bgImage.startsWith('data:')) {
+          slide.background = { data: item.bgImage };
+        } else {
+          slide.background = { path: item.bgImage };
+        }
+      } else if (bgBase64) {
+        slide.background = { data: bgBase64 };
+      } else {
+        slide.background = { path: bgUrl };
+      }
+
+      const type = item.type || 'verse';
+
+      if (type === 'verse') {
+        const textLength = (item.runs || []).reduce((acc, r) => acc + (r.text || '').length, 0);
+        let fontSize = 52;
+        if (textLength < 70) fontSize = 60;
+        else if (textLength > 160) fontSize = 46;
+        else if (textLength > 120) fontSize = 48;
+
+        const runs = (item.runs || []).map(r => ({
+          text: r.text,
+          options: {
+            fontFace: 'Bahnschrift SemiBold Condensed',
+            fontSize: fontSize,
+            color: r.highlight ? 'E8B859' : 'FFFFFF',
+            bold: !!r.highlight,
+            shadow: { type: 'outer', angle: 90, blur: 4, offset: 3, opacity: 0.45, color: '000000' }
+          }
+        }));
+
+        slide.addText(runs, {
+          x: 0.6,
+          y: 1.5,
+          w: 12.1,
+          h: 3.8,
+          valign: 'top',
+          align: 'left',
+          margin: 0,
+          wrap: true
+        });
+
+        if (item.reference) {
+          slide.addText(item.reference, {
+            x: 0.6,
+            y: 5.6,
+            w: 8.0,
+            h: 0.9,
+            fontFace: 'Bebas Neue',
+            fontSize: 44,
+            color: 'E8B859',
+            align: 'left',
+            shadow: { type: 'outer', angle: 90, blur: 4, offset: 3, opacity: 0.45, color: '000000' }
+          });
+        }
+
+      } else if (type === 'question_short') {
+        const runs = (item.runs || []).map(r => ({
+          text: r.text,
+          options: {
+            fontFace: 'Bebas Neue',
+            fontSize: 140,
+            color: r.highlight ? 'E8B859' : 'FFFFFF',
+            shadow: { type: 'outer', angle: 90, blur: 4, offset: 3, opacity: 0.45, color: '000000' }
+          }
+        }));
+
+        slide.addText(runs, {
+          x: 0.5,
+          y: 1.8,
+          w: 12.3,
+          h: 4.0,
+          valign: 'middle',
+          align: 'center',
+          margin: 0,
+          wrap: true
+        });
+
+      } else if (type === 'reflection') {
+        const textLength = (item.runs || []).reduce((acc, r) => acc + (r.text || '').length, 0);
+        let fontSize = 48;
+        if (textLength < 70) fontSize = 54;
+        else if (textLength > 160) fontSize = 44;
+
+        const runs = (item.runs || []).map(r => ({
+          text: r.text,
+          options: {
+            fontFace: 'Bahnschrift SemiBold Condensed',
+            fontSize: fontSize,
+            color: r.highlight ? 'E8B859' : 'FFFFFF',
+            bold: !!r.highlight,
+            shadow: { type: 'outer', angle: 90, blur: 4, offset: 3, opacity: 0.45, color: '000000' }
+          }
+        }));
+
+        slide.addText(runs, {
+          x: 0.8,
+          y: 1.6,
+          w: 11.7,
+          h: 4.2,
+          valign: 'middle',
+          align: 'center',
+          margin: 0,
+          wrap: true
+        });
+
+      } else {
+        // topic / títulos de seção
+        const textLength = (item.runs || []).reduce((acc, r) => acc + (r.text || '').length, 0);
+        let fontSize = 70;
+        if (textLength < 40) fontSize = 84;
+        else if (textLength > 90) fontSize = 56;
+
+        const runs = (item.runs || []).map(r => ({
+          text: r.text,
+          options: {
+            fontFace: 'Bebas Neue',
+            fontSize: fontSize,
+            color: r.highlight ? 'E8B859' : 'FFFFFF',
+            shadow: { type: 'outer', angle: 90, blur: 4, offset: 3, opacity: 0.45, color: '000000' }
+          }
+        }));
+
+        slide.addText(runs, {
+          x: 0.5,
+          y: 1.9,
+          w: 12.3,
+          h: 3.6,
+          valign: 'middle',
+          align: 'center',
+          margin: 0,
+          wrap: true
+        });
+      }
+    }
+
+    return pptx;
+  }
+
   // Download PPTX no cliente com PptxGenJS (100% fiel ao estilo da igreja)
   async function exportSlideKillerPptx() {
     if (currentSlides.length === 0) {
@@ -1894,185 +2074,10 @@ ${sermonText}`;
       return;
     }
 
-    if (typeof PptxGenJS === 'undefined') {
-      showToast('Biblioteca PptxGenJS não carregada. Tente novamente em instantes.', 'error');
-      return;
-    }
-
     showToast('Gerando apresentação em PowerPoint (.pptx)...', 'info');
 
     try {
-      const pptx = new PptxGenJS();
-      pptx.defineLayout({ name: 'CHURCH_FULL_HD', width: 13.333, height: 7.5 });
-      pptx.layout = 'CHURCH_FULL_HD';
-
-      const bgUrl = getActiveBackgroundUrl();
-
-      // Pré-carregar imagem de fundo para garantir embutimento perfeito e leve em qualquer dispositivo
-      let bgBase64 = null;
-      if (customBgDataUrl && templateSelect && templateSelect.value === '__custom_active__') {
-        bgBase64 = customBgDataUrl;
-      } else {
-        try {
-          const bgImg = new Image();
-          bgImg.crossOrigin = 'anonymous';
-          await new Promise((resolve) => {
-            bgImg.onload = () => {
-              try {
-                const cv = document.createElement('canvas');
-                cv.width = 1920;
-                cv.height = 1080;
-                const cx = cv.getContext('2d');
-                cx.drawImage(bgImg, 0, 0, 1920, 1080);
-                bgBase64 = cv.toDataURL('image/jpeg', 0.88);
-              } catch(e) {}
-              resolve();
-            };
-            bgImg.onerror = () => resolve();
-            bgImg.src = bgUrl;
-          });
-        } catch (e) {}
-      }
-
-      for (const item of currentSlides) {
-        const slide = pptx.addSlide();
-        if (item.bgImage) {
-          if (item.bgImage.startsWith('data:')) {
-            slide.background = { data: item.bgImage };
-          } else {
-            slide.background = { path: item.bgImage };
-          }
-        } else if (bgBase64) {
-          slide.background = { data: bgBase64 };
-        } else {
-          slide.background = { path: bgUrl };
-        }
-
-        const type = item.type || 'verse';
-
-        if (type === 'verse') {
-          const textLength = (item.runs || []).reduce((acc, r) => acc + (r.text || '').length, 0);
-          let fontSize = 52;
-          if (textLength < 70) fontSize = 60;
-          else if (textLength > 160) fontSize = 46;
-          else if (textLength > 120) fontSize = 48;
-
-          const runs = (item.runs || []).map(r => ({
-            text: r.text,
-            options: {
-              fontFace: 'Bahnschrift SemiBold Condensed',
-              fontSize: fontSize,
-              color: r.highlight ? 'E8B859' : 'FFFFFF',
-              bold: !!r.highlight,
-              shadow: { type: 'outer', angle: 90, blur: 4, offset: 3, opacity: 0.45, color: '000000' }
-            }
-          }));
-
-          slide.addText(runs, {
-            x: 0.6,
-            y: 1.5,
-            w: 12.1,
-            h: 3.8,
-            valign: 'top',
-            align: 'left',
-            margin: 0,
-            wrap: true
-          });
-
-          if (item.reference) {
-            slide.addText(item.reference, {
-              x: 0.6,
-              y: 5.6,
-              w: 8.0,
-              h: 0.9,
-              fontFace: 'Bebas Neue',
-              fontSize: 44,
-              color: 'E8B859',
-              align: 'left',
-              shadow: { type: 'outer', angle: 90, blur: 4, offset: 3, opacity: 0.45, color: '000000' }
-            });
-          }
-
-        } else if (type === 'question_short') {
-          const runs = (item.runs || []).map(r => ({
-            text: r.text,
-            options: {
-              fontFace: 'Bebas Neue',
-              fontSize: 140,
-              color: r.highlight ? 'E8B859' : 'FFFFFF',
-              shadow: { type: 'outer', angle: 90, blur: 4, offset: 3, opacity: 0.45, color: '000000' }
-            }
-          }));
-
-          slide.addText(runs, {
-            x: 0.5,
-            y: 1.8,
-            w: 12.3,
-            h: 4.0,
-            valign: 'middle',
-            align: 'center',
-            margin: 0,
-            wrap: true
-          });
-
-        } else if (type === 'reflection') {
-          const textLength = (item.runs || []).reduce((acc, r) => acc + (r.text || '').length, 0);
-          let fontSize = 48;
-          if (textLength < 70) fontSize = 54;
-          else if (textLength > 160) fontSize = 44;
-
-          const runs = (item.runs || []).map(r => ({
-            text: r.text,
-            options: {
-              fontFace: 'Bahnschrift SemiBold Condensed',
-              fontSize: fontSize,
-              color: r.highlight ? 'E8B859' : 'FFFFFF',
-              bold: !!r.highlight,
-              shadow: { type: 'outer', angle: 90, blur: 4, offset: 3, opacity: 0.45, color: '000000' }
-            }
-          }));
-
-          slide.addText(runs, {
-            x: 0.8,
-            y: 1.6,
-            w: 11.7,
-            h: 4.2,
-            valign: 'middle',
-            align: 'center',
-            margin: 0,
-            wrap: true
-          });
-
-        } else {
-          // topic / títulos de seção
-          const textLength = (item.runs || []).reduce((acc, r) => acc + (r.text || '').length, 0);
-          let fontSize = 70;
-          if (textLength < 40) fontSize = 84;
-          else if (textLength > 90) fontSize = 56;
-
-          const runs = (item.runs || []).map(r => ({
-            text: r.text,
-            options: {
-              fontFace: 'Bebas Neue',
-              fontSize: fontSize,
-              color: r.highlight ? 'E8B859' : 'FFFFFF',
-              shadow: { type: 'outer', angle: 90, blur: 4, offset: 3, opacity: 0.45, color: '000000' }
-            }
-          }));
-
-          slide.addText(runs, {
-            x: 0.5,
-            y: 1.9,
-            w: 12.3,
-            h: 3.6,
-            valign: 'middle',
-            align: 'center',
-            margin: 0,
-            wrap: true
-          });
-        }
-      }
-
+      const pptx = await buildSlideKillerPptxInstance();
       const fileName = 'SLIDES_CULTO_' + Date.now() + '.pptx';
       await pptx.writeFile({ fileName });
       showToast('🎉 Apresentação PPTX baixada com sucesso!', 'success');
@@ -2081,6 +2086,207 @@ ${sermonText}`;
       showToast('Erro ao exportar PPTX: ' + err.message, 'error');
     }
   }
+
+  // Gerar dados binários (Blob e ArrayBuffer) da apresentação atual
+  let activeDeckcraftPptxData = null;
+
+  async function getSlideKillerPptxData() {
+    if (!currentSlides || currentSlides.length === 0) return null;
+    const pptx = await buildSlideKillerPptxInstance();
+    const fileName = 'SLIDES_CULTO_' + Date.now() + '.pptx';
+    const blob = await pptx.write({ outputType: 'blob' });
+    const arrayBuffer = await blob.arrayBuffer();
+    return { blob, arrayBuffer, fileName };
+  }
+
+  // Abrir DeckCraft Studio para edição estilo PowerPoint
+  async function openDeckcraftModal() {
+    if (!currentSlides || currentSlides.length === 0) {
+      showToast('Nenhum slide disponível para editar no DeckCraft.', 'error');
+      return;
+    }
+
+    const modal = document.getElementById('modalDeckcraft');
+    const iframe = document.getElementById('deckcraft-iframe');
+    const filenameBadge = document.getElementById('deckcraft-filename-badge');
+    const loadingOverlay = document.getElementById('deckcraft-loading-overlay');
+    if (!modal || !iframe) return;
+
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+
+    // Se o iframe ainda não estiver carregado, define a URL do DeckCraft
+    if (iframe.src === 'about:blank' || !iframe.src.includes('/deckcraft/')) {
+      if (loadingOverlay) loadingOverlay.style.display = 'flex';
+      iframe.src = '/deckcraft/?blank';
+    }
+
+    showToast('Preparando apresentação para o DeckCraft Studio...', 'info');
+
+    try {
+      const data = await getSlideKillerPptxData();
+      if (data) {
+        activeDeckcraftPptxData = data;
+        if (filenameBadge) filenameBadge.textContent = data.fileName;
+
+        const sendPptxToDeckcraft = () => {
+          try {
+            if (iframe.contentWindow) {
+              iframe.contentWindow.postMessage({
+                type: 'LOAD_PPTX_BLOB',
+                blob: data.blob,
+                buffer: data.arrayBuffer,
+                name: data.fileName
+              }, '*');
+            }
+          } catch(e) {
+            console.warn('[DeckCraft] Aviso ao comunicar via postMessage:', e);
+          }
+        };
+
+        sendPptxToDeckcraft();
+        setTimeout(sendPptxToDeckcraft, 1200);
+        setTimeout(sendPptxToDeckcraft, 2800);
+      }
+    } catch (err) {
+      console.warn('Erro ao preparar PPTX para DeckCraft:', err);
+    }
+  }
+
+  function closeDeckcraftModal() {
+    const modal = document.getElementById('modalDeckcraft');
+    if (modal) {
+      modal.style.display = 'none';
+      document.body.style.overflow = '';
+    }
+  }
+
+  // Inicializar controles do modal DeckCraft
+  function initDeckcraftModalControls() {
+    const btnCloseModal = document.getElementById('btn-close-deckcraft-modal');
+    if (btnCloseModal) btnCloseModal.addEventListener('click', closeDeckcraftModal);
+
+    const btnQuickDownload = document.getElementById('btn-deckcraft-quick-download');
+    if (btnQuickDownload) {
+      btnQuickDownload.addEventListener('click', async () => {
+        try {
+          if (!activeDeckcraftPptxData) {
+            activeDeckcraftPptxData = await getSlideKillerPptxData();
+          }
+          if (!activeDeckcraftPptxData) {
+            showToast('Nenhum slide disponível para download.', 'error');
+            return;
+          }
+          const url = URL.createObjectURL(activeDeckcraftPptxData.blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = activeDeckcraftPptxData.fileName;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(() => URL.revokeObjectURL(url), 5000);
+          showToast('📥 Download do PPTX iniciado! Você pode arrastá-lo para dentro do editor.', 'success');
+        } catch (err) {
+          showToast('Erro ao baixar PPTX: ' + err.message, 'error');
+        }
+      });
+    }
+
+    const btnOpenFile = document.getElementById('btn-deckcraft-open-file');
+    const fileInput = document.getElementById('deckcraft-file-input');
+    const filenameBadge = document.getElementById('deckcraft-filename-badge');
+    if (btnOpenFile && fileInput) {
+      btnOpenFile.addEventListener('click', () => fileInput.click());
+      fileInput.addEventListener('change', async (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        try {
+          const arrayBuf = await file.arrayBuffer();
+          const iframe = document.getElementById('deckcraft-iframe');
+          if (iframe && iframe.contentWindow) {
+            iframe.contentWindow.postMessage({
+              type: 'LOAD_PPTX_BLOB',
+              blob: file,
+              buffer: arrayBuf,
+              name: file.name
+            }, '*');
+          }
+          if (filenameBadge) filenameBadge.textContent = file.name;
+          showToast(`Arquivo "${file.name}" enviado para o DeckCraft!`, 'success');
+        } catch (err) {
+          showToast('Erro ao carregar arquivo: ' + err.message, 'error');
+        }
+      });
+    }
+
+    const btnFullscreen = document.getElementById('btn-deckcraft-fullscreen');
+    const container = document.querySelector('.deckcraft-modal-container');
+    if (btnFullscreen && container) {
+      btnFullscreen.addEventListener('click', () => {
+        if (!document.fullscreenElement) {
+          container.requestFullscreen().catch(() => {
+            container.classList.toggle('is-fullscreen');
+          });
+        } else {
+          document.exitFullscreen().catch(() => {});
+        }
+      });
+      document.addEventListener('fullscreenchange', () => {
+        if (document.fullscreenElement) {
+          btnFullscreen.textContent = '⛶ Sair da Tela Cheia';
+          container.classList.add('is-fullscreen');
+        } else {
+          btnFullscreen.textContent = '⛶ Tela Cheia';
+          container.classList.remove('is-fullscreen');
+        }
+      });
+    }
+
+    const btnNewTab = document.getElementById('btn-deckcraft-new-tab');
+    if (btnNewTab) {
+      btnNewTab.addEventListener('click', () => {
+        window.open('/deckcraft/?blank', '_blank');
+      });
+    }
+
+    const btnDismissHelper = document.getElementById('btn-dismiss-deckcraft-helper');
+    const helperBar = document.getElementById('deckcraft-helper-bar');
+    if (btnDismissHelper && helperBar) {
+      btnDismissHelper.addEventListener('click', () => {
+        helperBar.style.display = 'none';
+      });
+    }
+
+    // Ouvinte para ocultar loading quando o DeckCraft WebAssembly estiver pronto
+    window.addEventListener('message', (e) => {
+      if (e.data && e.data.type === 'DECKCRAFT_READY') {
+        const loadingOverlay = document.getElementById('deckcraft-loading-overlay');
+        if (loadingOverlay) loadingOverlay.style.display = 'none';
+        if (activeDeckcraftPptxData) {
+          const iframe = document.getElementById('deckcraft-iframe');
+          if (iframe && iframe.contentWindow) {
+            iframe.contentWindow.postMessage({
+              type: 'LOAD_PPTX_BLOB',
+              blob: activeDeckcraftPptxData.blob,
+              buffer: activeDeckcraftPptxData.arrayBuffer,
+              name: activeDeckcraftPptxData.fileName
+            }, '*');
+          }
+        }
+      }
+    });
+
+    const iframe = document.getElementById('deckcraft-iframe');
+    if (iframe) {
+      iframe.addEventListener('load', () => {
+        const loadingOverlay = document.getElementById('deckcraft-loading-overlay');
+        if (loadingOverlay) {
+          setTimeout(() => { loadingOverlay.style.display = 'none'; }, 800);
+        }
+      });
+    }
+  }
+  initDeckcraftModalControls();
 
   // Download PDF no cliente com jsPDF
   async function exportSlideKillerPdf() {
@@ -2228,6 +2434,7 @@ ${sermonText}`;
   if (btnDownloadMain) btnDownloadMain.addEventListener('click', triggerDownload);
   if (btnDownloadPdfSk) btnDownloadPdfSk.addEventListener('click', exportSlideKillerPdf);
   if (btnDownloadBothSk) btnDownloadBothSk.addEventListener('click', exportSlideKillerBoth);
+  if (btnEditDeckcraft) btnEditDeckcraft.addEventListener('click', openDeckcraftModal);
 
   // Novo Documento
   if (btnNewPresentation) {
