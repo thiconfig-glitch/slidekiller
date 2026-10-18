@@ -82,11 +82,33 @@ window.addEventListener('drop', (e) => {
       dataTransfer: e.dataTransfer
     });
     canvas.dispatchEvent(dropEvt);
+  // Pré-carregamento das fontes oficiais para o motor WebAssembly
+  if (document.fonts) {
+    Promise.all([
+      document.fonts.load('600 16px "Bahnschrift SemiBold Condensed"'),
+      document.fonts.load('700 16px "Anton"'),
+      document.fonts.load('400 16px "Bebas Neue"'),
+      document.fonts.load('700 16px "Oswald"'),
+      document.fonts.load('700 16px "Roboto Condensed"')
+    ]).catch(() => {});
   }
 });
 </script>
   <link rel="icon" href="./ai.storyteller.deckcraft-74e97653dd8dd002.png" integrity="sha384-THDce39ERZRgdnEtM/35FnmU4IExPfz9k2XrApCGWP0NUMC98NUWG1VYUMNXNCiD"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:wght@600;700;800&family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&family=Montserrat:wght@700;800;900&family=Oswald:wght@600;700&family=Roboto+Condensed:wght@600;700;800;900&display=swap" rel="stylesheet">
   <style>
+    @font-face {
+      font-family: 'Bahnschrift SemiBold Condensed';
+      src: local('Bahnschrift SemiBold Condensed'), local('Bahnschrift-SemiBoldCondensed'), local('Bahnschrift');
+      font-weight: 600;
+      font-stretch: condensed;
+    }
+    @font-face {
+      font-family: 'Bahnschrift';
+      src: local('Bahnschrift');
+    }
     html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #262626; }
     #deckcraft_canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
     #deckcraft_loading { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
