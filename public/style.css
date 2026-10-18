@@ -664,6 +664,9 @@ textarea:focus {
   border-radius: 10px;
   margin-bottom: 22px;
   width: 100%;
+  position: relative !important;
+  z-index: 5 !important;
+  pointer-events: auto !important;
 }
 
 .converter-mode-tabs .submode-pill-btn {
@@ -687,7 +690,7 @@ textarea:focus {
   font-weight: 500;
   padding: 7px 16px;
   border-radius: 7px;
-  cursor: pointer;
+  cursor: pointer !important;
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -695,6 +698,11 @@ textarea:focus {
   font-family: inherit;
   line-height: 1.2;
   user-select: none;
+  position: relative !important;
+  z-index: 6 !important;
+  pointer-events: auto !important;
+  touch-action: manipulation !important;
+  -webkit-tap-highlight-color: transparent !important;
 }
 
 .submode-pill-btn:hover {
@@ -2139,12 +2147,19 @@ textarea:focus {
     flex-direction: column !important;
     gap: 6px !important;
     padding: 6px !important;
+    position: relative !important;
+    z-index: 5 !important;
+    pointer-events: auto !important;
   }
 
   .converter-mode-tabs .submode-pill-btn {
     width: 100% !important;
-    padding: 10px 14px !important;
-    font-size: 12.5px !important;
+    padding: 12px 14px !important;
+    font-size: 13px !important;
+    position: relative !important;
+    z-index: 6 !important;
+    pointer-events: auto !important;
+    touch-action: manipulation !important;
   }
 
   .header-right {

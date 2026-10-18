@@ -15,7 +15,51 @@
   <!-- Firebase SDKs para sincronização Celular ➔ PC -->
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
-  <link rel="stylesheet" href="style.css?v=2.12.3">
+  <link rel="stylesheet" href="style.css?v=2.12.4">
+  <script>
+    // Submode switcher acessível globalmente de imediato
+    window.switchConverterSubmode = function(mode) {
+      var btnPdf = document.getElementById('btn-submode-pdf-to-pptx');
+      var btnPptx = document.getElementById('btn-submode-pptx-reverse');
+      var panelPdf = document.getElementById('submode-panel-pdf');
+      var panelPptx = document.getElementById('submode-panel-pptx');
+      var badgeDot = document.getElementById('converter-badge-dot');
+      var badgeText = document.getElementById('converter-badge-text');
+      var titleText = document.getElementById('converter-title-text');
+      var descText = document.getElementById('converter-desc-text');
+      var secInput = document.getElementById('section-direct-input');
+      var secResults = document.getElementById('section-direct-results');
+
+      if (secInput) secInput.style.display = 'block';
+      if (secResults) secResults.style.display = 'none';
+
+      if (mode === 'pptx-reverse') {
+        if (btnPptx) btnPptx.classList.add('active');
+        if (btnPdf) btnPdf.classList.remove('active');
+        if (panelPdf) panelPdf.style.display = 'none';
+        if (panelPptx) panelPptx.style.display = 'block';
+        if (badgeDot) {
+          badgeDot.style.backgroundColor = '#38bdf8';
+          badgeDot.style.boxShadow = '0 0 8px #38bdf8';
+        }
+        if (badgeText) badgeText.textContent = 'MÓDULO CONVERSOR INVERSO • PPTX ➔ IMAGENS / ZIP / PDF';
+        if (titleText) titleText.textContent = 'Conversão Inversa de PowerPoint para Imagens ou PDF';
+        if (descText) descText.textContent = 'Anexe qualquer apresentação .pptx para extrair instantaneamente todas as lâminas em imagens Full HD de alta qualidade (.png), baixar um arquivo compactado .ZIP ou converter tudo diretamente para PDF.';
+      } else {
+        if (btnPdf) btnPdf.classList.add('active');
+        if (btnPptx) btnPptx.classList.remove('active');
+        if (panelPdf) panelPdf.style.display = 'block';
+        if (panelPptx) panelPptx.style.display = 'none';
+        if (badgeDot) {
+          badgeDot.style.backgroundColor = 'var(--primary)';
+          badgeDot.style.boxShadow = '0 0 8px var(--primary)';
+        }
+        if (badgeText) badgeText.textContent = 'MÓDULO CONVERSOR DIRETO • 1 PÁGINA = 1 SLIDE';
+        if (titleText) titleText.textContent = 'Conversão Direta de PDF para PowerPoint';
+        if (descText) descText.textContent = 'Anexe qualquer PDF e receba uma apresentação .pptx onde cada página do PDF se torna exatamente um slide em alta resolução Full HD, sem extração ou alteração de texto. Pronto para telões e softwares de projeção.';
+      }
+    };
+  </script>
   <style>
     /* Estilos imediatos garantidos para os botões de formato (Esboço vs Direção Teams) */
     .text-mode-config-bar {
@@ -123,7 +167,7 @@
         <div>
           <div style="display: flex; align-items: center; gap: 8px;">
             <h1 class="brand-title">Central Multimídia Church</h1>
-            <span class="version-tag">v2.12.3</span>
+            <span class="version-tag">v2.12.4</span>
           </div>
           <span class="brand-subtitle">Plataforma Unificada de Mídia & Culto</span>
         </div>
@@ -232,7 +276,7 @@
           <!-- Aba 1: Upload PDF -->
           <div class="tab-content active" id="tab-pdf">
             <input type="file" id="pdf-file-input" accept=".pdf" style="display: none;">
-            <div class="dropzone" id="dropzone">
+            <div class="dropzone" id="dropzone" onclick="if (!event.target.closest('.btn-clear') && !event.target.closest('.selected-file-info')) { var fi = document.getElementById('pdf-file-input'); if (fi) { fi.value = ''; fi.click(); } }">
               <div class="dropzone-icon">📄</div>
               <div class="dropzone-text">
                 <strong>Arraste o arquivo PDF do pastor aqui</strong>
@@ -288,7 +332,7 @@
           <!-- Aba 3: Fotos de Slides / Versículos com IA Gemini Vision -->
           <div class="tab-content" id="tab-images-ocr">
             <input type="file" id="verse-images-input" accept="image/*" multiple style="display: none;">
-            <div class="dropzone" id="dropzone-ocr">
+            <div class="dropzone" id="dropzone-ocr" onclick="if (!event.target.closest('.btn-clear') && !event.target.closest('#verse-images-container')) { var fi = document.getElementById('verse-images-input'); if (fi) { fi.value = ''; fi.click(); } }">
               <div class="dropzone-icon">📷</div>
               <div class="dropzone-text">
                 <strong>Arraste fotos de telões, slides ou páginas da Bíblia aqui</strong>
@@ -488,10 +532,10 @@ texto exemplo ii eii
 
           <!-- Abas de Modo (Direto vs Inverso) -->
           <div class="converter-mode-tabs" id="converter-mode-tabs">
-            <button type="button" class="submode-pill-btn active" id="btn-submode-pdf-to-pptx" data-submode="pdf-to-pptx">
+            <button type="button" class="submode-pill-btn active" id="btn-submode-pdf-to-pptx" data-submode="pdf-to-pptx" onclick="window.switchConverterSubmode('pdf-to-pptx')">
               <span>📄</span> PDF ➔ PowerPoint (Direto)
             </button>
-            <button type="button" class="submode-pill-btn" id="btn-submode-pptx-reverse" data-submode="pptx-reverse">
+            <button type="button" class="submode-pill-btn" id="btn-submode-pptx-reverse" data-submode="pptx-reverse" onclick="window.switchConverterSubmode('pptx-reverse')">
               <span>🔄</span> PPTX ➔ Imagens, ZIP &amp; PDF (Inverso)
             </button>
           </div>
@@ -499,7 +543,7 @@ texto exemplo ii eii
           <!-- SUBMODO 1: PDF ➔ PPTX DIRETO -->
           <div id="submode-panel-pdf" class="submode-panel" style="display: block;">
             <input type="file" id="pdf-direct-input" accept=".pdf" style="display: none;">
-            <div class="dropzone" id="dropzone-direct">
+            <div class="dropzone" id="dropzone-direct" onclick="if (!event.target.closest('.btn-clear') && !event.target.closest('.selected-file-info')) { var fi = document.getElementById('pdf-direct-input'); if (fi) { fi.value = ''; fi.click(); } }">
               <div class="dropzone-icon">📄</div>
               <div class="dropzone-text">
                 <strong>Arraste o arquivo PDF aqui</strong>
@@ -538,7 +582,7 @@ texto exemplo ii eii
           <!-- SUBMODO 2: PPTX ➔ IMAGENS / ZIP / PDF INVERSO -->
           <div id="submode-panel-pptx" class="submode-panel" style="display: none;">
             <input type="file" id="pptx-reverse-input" accept=".pptx" style="display: none;">
-            <div class="dropzone" id="dropzone-pptx-reverse">
+            <div class="dropzone" id="dropzone-pptx-reverse" onclick="if (!event.target.closest('.btn-clear') && !event.target.closest('.selected-file-info')) { var fi = document.getElementById('pptx-reverse-input'); if (fi) { fi.value = ''; fi.click(); } }">
               <div class="dropzone-icon">📊</div>
               <div class="dropzone-text">
                 <strong>Arraste a apresentação .pptx aqui</strong>
@@ -700,7 +744,7 @@ texto exemplo ii eii
           <input type="file" id="images-files-input" accept="image/*,.zip,.pptx" multiple style="display: none;">
           <input type="file" id="zip-files-input" accept=".zip" style="display: none;">
           <input type="file" id="images-pptx-input" accept=".pptx" style="display: none;">
-          <div class="dropzone" id="dropzone-images">
+          <div class="dropzone" id="dropzone-images" onclick="if (!event.target.closest('.btn-clear') && !event.target.closest('.selected-file-info')) { var fi = document.getElementById('images-files-input'); if (fi) { fi.value = ''; fi.click(); } }">
             <div class="dropzone-icon">🖼️</div>
             <div class="dropzone-text">
               <strong>Arraste suas imagens, arquivo ZIP ou apresentação .PPTX aqui</strong>
@@ -1070,7 +1114,7 @@ texto exemplo ii eii
     <div id="toast" class="toast"></div>
   </main>
 
-  <script src="app.js?v=2.12.3"></script>
+  <script src="app.js?v=2.12.4"></script>
 </body>
 </html>
 
