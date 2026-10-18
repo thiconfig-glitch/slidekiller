@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:wght@600;700;800&family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&family=Montserrat:wght@700;800;900&family=Oswald:wght@600;700&family=Roboto+Condensed:wght@600;700;800;900&display=swap" rel="stylesheet">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+  <script src="pdf.min.js" onerror="this.onerror=null;this.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js';"></script>
   <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/libs/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/dist/pptxgen.min.js"></script>
   <!-- jsPDF para exportação instantânea em PDF no navegador -->
@@ -496,9 +496,14 @@ texto exemplo ii eii
             </div>
           </div>
 
-          <button class="btn btn-action" id="btn-convert-direct" style="margin-top: 18px;">
-            <span class="btn-icon">⚡</span> Processar PDF e Abrir no Organizador
-          </button>
+          <div style="display: flex; gap: 12px; margin-top: 18px; flex-wrap: wrap;">
+            <button class="btn btn-action" id="btn-convert-and-download-direct" style="flex: 1; min-width: 260px;">
+              <span class="btn-icon">⚡</span> Converter e Baixar PowerPoint (.pptx) Direto
+            </button>
+            <button class="btn btn-secondary" id="btn-convert-direct" style="padding: 12px 22px;">
+              <span class="btn-icon">📋</span> Abrir no Organizador
+            </button>
+          </div>
         </div>
       </section>
 

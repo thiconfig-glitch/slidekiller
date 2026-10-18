@@ -996,13 +996,54 @@ Retorne ESTRITAMENTE em formato JSON puro, sem crases ou markdown adicional:
     })
     .catch(() => {});
 
+  // ========================================================
+  // INICIALIZAÇÃO RESILIENTE DO MOTOR PDF.JS
+  // ========================================================
+  function initPdfJsWorker() {
+    if (typeof pdfjsLib === 'undefined') return;
+    try {
+      // 1. Tenta a URL absoluta do worker local no mesmo domínio (100% livre de restrições CORS)
+      const workerUrl = new URL('pdf.worker.min.js', window.location.href).href;
+      pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
+    } catch (e) {
+      console.warn('Worker local init:', e);
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'pdf.worker.min.js';
+    }
+  }
+  initPdfJsWorker();
+
+  async function loadPdfDocumentSafely(dataBuffer) {
+    if (typeof pdfjsLib === 'undefined') {
+      throw new Error('Biblioteca PDF.js não carregada. Recarregue a página.');
+    }
+    initPdfJsWorker();
+
+    try {
+      return await pdfjsLib.getDocument({ data: dataBuffer }).promise;
+    } catch (firstErr) {
+      console.warn('Primeira tentativa de carregar PDF falhou, tentando fallback com Blob Worker:', firstErr);
+      try {
+        // Fallback 1: Worker via Blob com importScripts
+        const blobCode = `importScripts("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js");`;
+        const blob = new Blob([blobCode], { type: 'application/javascript' });
+        pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(blob);
+        return await pdfjsLib.getDocument({ data: dataBuffer }).promise;
+      } catch (secondErr) {
+        console.warn('Tentando carregar PDF sem worker (modo direto):', secondErr);
+        // Fallback 2: Sem worker (inline main thread)
+        pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+        return await pdfjsLib.getDocument({ data: dataBuffer, disableWorker: true, isEvalSupported: false }).promise;
+      }
+    }
+  }
+
   // Extração de texto de PDF no navegador com detecção de destaques/cores originais
   async function extractTextFromPdfInBrowser(file) {
     if (typeof pdfjsLib === 'undefined') {
       throw new Error('Biblioteca pdf.js não disponível no navegador.');
     }
     const arr = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: arr }).promise;
+    const pdf = await loadPdfDocumentSafely(arr);
     let fullText = '';
 
     for (let i = 1; i <= pdf.numPages; i++) {
@@ -2845,6 +2886,32 @@ ${sermonText}`;
     resetDirectInput();
   });
 
+  const btnConvertAndDownloadDirect = document.getElementById('btn-convert-and-download-direct');
+
+  // Conversão direta em 1 clique (processa páginas e já baixa o PPTX)
+  if (btnConvertAndDownloadDirect) {
+    btnConvertAndDownloadDirect.addEventListener('click', async () => {
+      if (!currentDirectFile) {
+        showToast('Por favor, anexe um arquivo PDF para converter.', 'error');
+        return;
+      }
+      btnConvertAndDownloadDirect.disabled = true;
+      btnConvertAndDownloadDirect.innerHTML = '<span>⏳</span> Convertendo e baixando PPTX...';
+      try {
+        const ok = await processPdfIntoSlides(currentDirectFile, false);
+        if (ok && directSlides.length > 0) {
+          await generateDirectExport('pptx');
+          showToast('🎉 Conversão direta concluída! Arquivo PPTX baixado com sucesso.', 'success');
+        }
+      } catch (err) {
+        console.error('Erro na conversão direta:', err);
+      } finally {
+        btnConvertAndDownloadDirect.disabled = false;
+        btnConvertAndDownloadDirect.innerHTML = '<span class="btn-icon">⚡</span> Converter e Baixar PowerPoint (.pptx) Direto';
+      }
+    });
+  }
+
   // Processar PDF inicial e abrir no organizador
   if (btnConvertDirect) {
     btnConvertDirect.addEventListener('click', async () => {
@@ -2870,10 +2937,8 @@ ${sermonText}`;
   async function processPdfIntoSlides(file, isAppend = false) {
     if (typeof pdfjsLib === 'undefined' || typeof PptxGenJS === 'undefined') {
       showToast('Bibliotecas de conversão estão carregando. Tente novamente em instantes.', 'error');
-      return;
+      return false;
     }
-
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
     if (btnConvertDirect) {
       btnConvertDirect.disabled = true;
@@ -2888,7 +2953,7 @@ ${sermonText}`;
 
     try {
       const arrayBuffer = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      const pdf = await loadPdfDocumentSafely(arrayBuffer);
       const totalPages = pdf.numPages;
 
       if (totalPages === 0) {
@@ -2911,19 +2976,19 @@ ${sermonText}`;
 
         // Renderização Full HD (mínimo 1920px de largura para máxima nitidez no telão da igreja)
         const targetWidth = 1920;
-        const scale = Math.max(targetWidth / unscaledViewport.width, 1.8);
+        const scale = Math.max(targetWidth / (unscaledViewport.width || 800), 1.5);
         const viewport = page.getViewport({ scale });
 
         const canvas = document.createElement('canvas');
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
+        canvas.width = Math.floor(viewport.width);
+        canvas.height = Math.floor(viewport.height);
         const ctx = canvas.getContext('2d', { alpha: false });
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         await page.render({ canvasContext: ctx, viewport }).promise;
 
-        const imgData = canvas.toDataURL('image/jpeg', 0.92);
+        const imgData = canvas.toDataURL('image/jpeg', 0.90);
         const pageRatio = viewport.width / viewport.height;
 
         directSlides.push({
@@ -2945,14 +3010,16 @@ ${sermonText}`;
 
       renderDirectOrganizer();
       showToast(`${totalPages} página(s) extraída(s) com sucesso para o organizador!`, 'success');
+      return true;
 
     } catch (err) {
       console.error('Erro na conversão de PDF para slides:', err);
       showToast(err.message || 'Erro ao processar PDF.', 'error');
+      return false;
     } finally {
       if (btnConvertDirect) {
         btnConvertDirect.disabled = false;
-        btnConvertDirect.innerHTML = '<span class="btn-icon">⚡</span> Processar PDF e Abrir no Organizador';
+        btnConvertDirect.innerHTML = '<span class="btn-icon">📋</span> Abrir no Organizador';
       }
       if (directProgressContainer) {
         setTimeout(() => {
