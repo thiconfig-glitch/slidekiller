@@ -41,7 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (targetModule === 'deckcraft') {
       const standaloneIframe = document.getElementById('deckcraft-standalone-iframe');
       const standaloneLoading = document.getElementById('deckcraft-standalone-loading');
-      if (standaloneIframe && (standaloneIframe.src === 'about:blank' || !standaloneIframe.src.includes('deckcraft'))) {
+      if (standaloneIframe && (!standaloneIframe.src || standaloneIframe.src === 'about:blank' || !standaloneIframe.src.includes('deckcraft'))) {
         if (standaloneLoading) standaloneLoading.style.display = 'flex';
         standaloneIframe.src = 'deckcraft/?blank';
         standaloneIframe.onload = () => {
@@ -102,7 +102,8 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast('Neste módulo, por favor anexe um arquivo .PDF de sermão.', 'error');
       }
     } else if (currentActiveModule === 'pdf-to-pptx') {
-      const isReverse = btnSubmodePptx && btnSubmodePptx.classList.contains('active');
+      const btnRev = document.getElementById('btn-submode-pptx-reverse');
+      const isReverse = btnRev && btnRev.classList.contains('active');
       if (isReverse) {
         if (ext === 'pptx') {
           handleReversePptxFileSelected(firstFile);
@@ -235,6 +236,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const customBgThumb = document.getElementById('custom-bg-thumb');
   const customBgFilename = document.getElementById('custom-bg-filename');
   const btnRemoveCustomBg = document.getElementById('btn-remove-custom-bg');
+  const btnChangeBgResults = document.getElementById('btn-change-bg-results');
   // ========================================================
   // TIPOGRAFIA & FONTES PRINCIPAIS PARA SLIDES (ESTILO DA FOTO)
   // ========================================================
@@ -309,6 +311,15 @@ document.addEventListener('DOMContentLoaded', () => {
   const alignSelect = document.getElementById('align-select');
   const resultsAlignSelect = document.getElementById('results-align-select');
 
+  let currentFile = null;
+  let currentSlides = [];
+  let currentDownloadUrl = null;
+  let sermonImageFiles = [];
+  let activeSlideKillerTab = 'tab-pdf';
+  let customBgDataUrl = null;
+  let customBgFile = null;
+  let customBgServerUrl = null;
+
   let currentSelectedFont = localStorage.getItem('slidekiller_church_font') || 'impact';
   let currentSelectedAlign = localStorage.getItem('slidekiller_church_align') || 'left';
 
@@ -318,11 +329,13 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.setItem('slidekiller_church_font', fontKey);
 
     const cfg = CHURCH_FONTS[fontKey];
-    document.documentElement.style.setProperty('--slide-font-family', cfg.cssFamily);
-    document.documentElement.style.setProperty('--slide-font-weight', cfg.fontWeight);
-    document.documentElement.style.setProperty('--slide-font-spacing', cfg.letterSpacing);
-    document.documentElement.style.setProperty('--slide-font-line-height', cfg.lineHeight);
-    document.documentElement.style.setProperty('--slide-ref-font-family', cfg.cssFamily);
+    if (document.documentElement && document.documentElement.style) {
+      document.documentElement.style.setProperty('--slide-font-family', cfg.cssFamily);
+      document.documentElement.style.setProperty('--slide-font-weight', cfg.fontWeight);
+      document.documentElement.style.setProperty('--slide-font-spacing', cfg.letterSpacing);
+      document.documentElement.style.setProperty('--slide-font-line-height', cfg.lineHeight);
+      document.documentElement.style.setProperty('--slide-ref-font-family', cfg.cssFamily);
+    }
 
     if (fontSelect && fontSelect.value !== fontKey) fontSelect.value = fontKey;
     if (resultsFontSelect && resultsFontSelect.value !== fontKey) resultsFontSelect.value = fontKey;
@@ -376,16 +389,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // Inicializa imediatamente com a tipografia recomendada (Impact / Anton à esquerda como na foto)
   applySelectedFont(currentSelectedFont, false);
   applySelectedAlign(currentSelectedAlign, false);
-
-  let currentFile = null;
-  let currentSlides = [];
-  let currentDownloadUrl = null;
-  let sermonImageFiles = [];
-  let activeSlideKillerTab = 'tab-pdf';
-
-  let customBgDataUrl = null;
-  let customBgFile = null;
-  let customBgServerUrl = null;
 
   // Elementos do seletor de formato de texto (Esboço vs Direção Teams)
   // ⚠️ Scoped to #format-pill-group to avoid selecting submode-pill-btn buttons in other modules
@@ -2115,23 +2118,29 @@ ${sermonText}`;
       const btnBg = card.querySelector('.btn-slide-bg');
       const btnResetBg = card.querySelector('.btn-reset-slide-bg');
 
-      textEdit.addEventListener('input', (e) => {
-        const val = e.target.value;
-        currentSlides[index].runs = [{ text: val, highlight: false }];
-        if (previewText) previewText.textContent = val;
-        currentDownloadUrl = null;
-      });
+      if (textEdit) {
+        textEdit.addEventListener('input', (e) => {
+          const val = e.target.value;
+          currentSlides[index].runs = [{ text: val, highlight: false }];
+          if (previewText) previewText.textContent = val;
+          currentDownloadUrl = null;
+        });
+      }
 
-      refEdit.addEventListener('input', (e) => {
-        currentSlides[index].reference = e.target.value;
-        if (previewRef) previewRef.textContent = e.target.value;
-        currentDownloadUrl = null;
-      });
+      if (refEdit) {
+        refEdit.addEventListener('input', (e) => {
+          currentSlides[index].reference = e.target.value;
+          if (previewRef) previewRef.textContent = e.target.value;
+          currentDownloadUrl = null;
+        });
+      }
 
-      btnDelete.addEventListener('click', () => {
-        currentSlides.splice(index, 1);
-        renderResults();
-      });
+      if (btnDelete) {
+        btnDelete.addEventListener('click', () => {
+          currentSlides.splice(index, 1);
+          renderResults();
+        });
+      }
 
       if (btnBg && bgInput) {
         btnBg.addEventListener('click', () => bgInput.click());
@@ -2461,7 +2470,7 @@ ${sermonText}`;
     document.body.style.overflow = 'hidden';
 
     // Se o iframe ainda não estiver carregado, define a URL do DeckCraft
-    if (iframe.src === 'about:blank' || !iframe.src.includes('deckcraft')) {
+    if (!iframe.src || iframe.src === 'about:blank' || !iframe.src.includes('deckcraft')) {
       if (loadingOverlay) loadingOverlay.style.display = 'flex';
       iframe.src = 'deckcraft/?blank';
     }
@@ -2973,33 +2982,54 @@ ${sermonText}`;
   let draggedDirectSlideIndex = null;
 
   // Alternador de Submodo: Direto (PDF ➔ PPTX) vs Inverso (PPTX ➔ Imagens/ZIP/PDF)
-  if (btnSubmodePdf && btnSubmodePptx) {
-    btnSubmodePdf.addEventListener('click', () => {
-      btnSubmodePdf.classList.add('active');
-      btnSubmodePptx.classList.remove('active');
-      if (panelSubmodePdf) panelSubmodePdf.style.display = 'block';
-      if (panelSubmodePptx) panelSubmodePptx.style.display = 'none';
-      if (converterBadgeDot) {
-        converterBadgeDot.style.backgroundColor = 'var(--primary)';
-        converterBadgeDot.style.boxShadow = '0 0 8px var(--primary)';
+  function switchConverterSubmode(mode) {
+    const btnPdf = document.getElementById('btn-submode-pdf-to-pptx');
+    const btnPptx = document.getElementById('btn-submode-pptx-reverse');
+    const panelPdf = document.getElementById('submode-panel-pdf');
+    const panelPptx = document.getElementById('submode-panel-pptx');
+    const badgeDot = document.getElementById('converter-badge-dot');
+    const badgeText = document.getElementById('converter-badge-text');
+    const titleText = document.getElementById('converter-title-text');
+    const descText = document.getElementById('converter-desc-text');
+    const secInput = document.getElementById('section-direct-input');
+    const secResults = document.getElementById('section-direct-results');
+
+    if (secInput) secInput.style.display = 'block';
+    if (secResults) secResults.style.display = 'none';
+
+    if (mode === 'pptx-reverse') {
+      if (btnPptx) btnPptx.classList.add('active');
+      if (btnPdf) btnPdf.classList.remove('active');
+      if (panelPdf) panelPdf.style.display = 'none';
+      if (panelPptx) panelPptx.style.display = 'block';
+      if (badgeDot) {
+        badgeDot.style.backgroundColor = '#38bdf8';
+        badgeDot.style.boxShadow = '0 0 8px #38bdf8';
       }
-      if (converterBadgeText) converterBadgeText.textContent = 'MÓDULO CONVERSOR DIRETO • 1 PÁGINA = 1 SLIDE';
-      if (converterTitleText) converterTitleText.textContent = 'Conversão Direta de PDF para PowerPoint';
-      if (converterDescText) converterDescText.textContent = 'Anexe qualquer PDF e receba uma apresentação .pptx onde cada página do PDF se torna exatamente um slide em alta resolução Full HD, sem extração ou alteração de texto. Pronto para telões e softwares de projeção.';
-    });
-    btnSubmodePptx.addEventListener('click', () => {
-      btnSubmodePptx.classList.add('active');
-      btnSubmodePdf.classList.remove('active');
-      if (panelSubmodePdf) panelSubmodePdf.style.display = 'none';
-      if (panelSubmodePptx) panelSubmodePptx.style.display = 'block';
-      if (converterBadgeDot) {
-        converterBadgeDot.style.backgroundColor = '#38bdf8';
-        converterBadgeDot.style.boxShadow = '0 0 8px #38bdf8';
+      if (badgeText) badgeText.textContent = 'MÓDULO CONVERSOR INVERSO • PPTX ➔ IMAGENS / ZIP / PDF';
+      if (titleText) titleText.textContent = 'Conversão Inversa de PowerPoint para Imagens ou PDF';
+      if (descText) descText.textContent = 'Anexe qualquer apresentação .pptx para extrair instantaneamente todas as lâminas em imagens Full HD de alta qualidade (.png), baixar um arquivo compactado .ZIP ou converter tudo diretamente para PDF.';
+    } else {
+      if (btnPdf) btnPdf.classList.add('active');
+      if (btnPptx) btnPptx.classList.remove('active');
+      if (panelPdf) panelPdf.style.display = 'block';
+      if (panelPptx) panelPptx.style.display = 'none';
+      if (badgeDot) {
+        badgeDot.style.backgroundColor = 'var(--primary)';
+        badgeDot.style.boxShadow = '0 0 8px var(--primary)';
       }
-      if (converterBadgeText) converterBadgeText.textContent = 'MÓDULO CONVERSOR INVERSO • PPTX ➔ IMAGENS / ZIP / PDF';
-      if (converterTitleText) converterTitleText.textContent = 'Conversão Inversa de PowerPoint para Imagens ou PDF';
-      if (converterDescText) converterDescText.textContent = 'Anexe qualquer apresentação .pptx para extrair instantaneamente todas as lâminas em imagens Full HD de alta qualidade (.png), baixar um arquivo compactado .ZIP ou converter tudo diretamente para PDF.';
-    });
+      if (badgeText) badgeText.textContent = 'MÓDULO CONVERSOR DIRETO • 1 PÁGINA = 1 SLIDE';
+      if (titleText) titleText.textContent = 'Conversão Direta de PDF para PowerPoint';
+      if (descText) descText.textContent = 'Anexe qualquer PDF e receba uma apresentação .pptx onde cada página do PDF se torna exatamente um slide em alta resolução Full HD, sem extração ou alteração de texto. Pronto para telões e softwares de projeção.';
+    }
+  }
+  window.switchConverterSubmode = switchConverterSubmode;
+
+  if (btnSubmodePdf) {
+    btnSubmodePdf.addEventListener('click', () => switchConverterSubmode('pdf-to-pptx'));
+  }
+  if (btnSubmodePptx) {
+    btnSubmodePptx.addEventListener('click', () => switchConverterSubmode('pptx-reverse'));
   }
 
   if (btnSwitchToDirect) {
