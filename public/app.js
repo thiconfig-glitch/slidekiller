@@ -3658,93 +3658,17 @@ ${sermonText}`;
     }
   }
 
-  // Renderiza um slide XML em um canvas 1080p
+  // Renderiza um slide XML em um canvas 1080p preservando a ordem exata das camadas (z-index natural do PowerPoint)
   async function renderPptxSlideToCanvas({ xml, rels, mediaDataUrls, presWidth, presHeight, ratio, slideIndex }) {
-    // 1. Pictures
-    const picBlocks = xml.match(/<p:pic>[\s\S]*?<\/p:pic>/gi) || [];
-    const pictures = [];
-    for (const pb of picBlocks) {
-      const blipM = pb.match(/<a:blip[^>]+r:embed="([^"]+)"/i);
-      if (!blipM) continue;
-      const offM = pb.match(/<a:off\s+x="(-?\d+)"\s+y="(-?\d+)"/i);
-      const extM = pb.match(/<a:ext\s+cx="(\d+)"\s+cy="(\d+)"/i);
-      pictures.push({
-        rId: blipM[1],
-        target: rels[blipM[1]],
-        x: offM ? parseInt(offM[1], 10) : 0,
-        y: offM ? parseInt(offM[2], 10) : 0,
-        cx: extM ? parseInt(extM[1], 10) : presWidth,
-        cy: extM ? parseInt(extM[2], 10) : presHeight
-      });
-    }
+    const canvasW = 1920;
+    const canvasH = Math.round(1920 / ratio);
+    const scaleX = canvasW / presWidth;
+    const scaleY = canvasH / presHeight;
 
-    // 2. Shapes & Text
-    const spBlocks = xml.match(/<p:sp>[\s\S]*?<\/p:sp>/gi) || [];
-    const shapes = [];
-    let titleFound = '';
-
-    for (const sp of spBlocks) {
-      const txBody = sp.match(/<p:txBody>[\s\S]*?<\/p:txBody>/i);
-      const offM = sp.match(/<a:off\s+x="(-?\d+)"\s+y="(-?\d+)"/i);
-      const extM = sp.match(/<a:ext\s+cx="(\d+)"\s+cy="(\d+)"/i);
-      const x = offM ? parseInt(offM[1], 10) : 0;
-      const y = offM ? parseInt(offM[2], 10) : 0;
-      const cx = extM ? parseInt(extM[1], 10) : presWidth;
-      const cy = extM ? parseInt(extM[2], 10) : presHeight;
-
-      let shapeFill = null;
-      const fillM = sp.match(/<p:spPr>[\s\S]*?<a:solidFill>[\s\S]*?<a:srgbClr\s+val="([0-9a-fA-F]{6})"/i);
-      if (fillM) shapeFill = '#' + fillM[1];
-
-      if (!txBody) {
-        if (shapeFill) shapes.push({ x, y, cx, cy, fill: shapeFill, paragraphs: [] });
-        continue;
-      }
-
-      const pBlocks = txBody[0].match(/<a:p>[\s\S]*?<\/a:p>/gi) || [];
-      const paragraphs = [];
-      for (const pb of pBlocks) {
-        const alignM = pb.match(/<a:pPr[^>]*algn="([a-zA-Z]+)"/i);
-        const align = alignM ? alignM[1] : 'l';
-
-        const rBlocks = pb.match(/<a:r>[\s\S]*?<\/a:r>/gi) || [];
-        const runs = [];
-        for (const rb of rBlocks) {
-          const tMatch = rb.match(/<a:t>([^<]*)<\/a:t>/i);
-          if (!tMatch) continue;
-          const rawText = decodeXmlEntities(tMatch[1]);
-          if (!titleFound && rawText.trim().length > 3) {
-            titleFound = rawText.trim().replace(/^“|”$/g, '').substring(0, 45);
-          }
-          const szMatch = rb.match(/<a:rPr[^>]*sz="(\d+)"/i);
-          const sz = szMatch ? parseInt(szMatch[1], 10) : 4000;
-          const boldMatch = rb.match(/<a:rPr[^>]*b="([01])"/i);
-          const bold = boldMatch ? boldMatch[1] === '1' : false;
-          const clrMatch = rb.match(/<a:srgbClr\s+val="([0-9a-fA-F]{6})"/i);
-          const clrScheme = rb.match(/<a:schemeClr\s+val="([^"]+)"/i);
-          let color = '#FFFFFF';
-          if (clrMatch) color = '#' + clrMatch[1];
-          else if (clrScheme) {
-            if (clrScheme[1] === 'tx1') color = '#000000';
-            else if (clrScheme[1] === 'bg1') color = '#FFFFFF';
-          }
-          const typefaceM = rb.match(/<a:latin\s+[^>]*typeface="([^"]+)"/i);
-          const typeface = typefaceM ? typefaceM[1] : null;
-
-          runs.push({ text: rawText, sz, bold, color, typeface });
-        }
-        if (runs.length > 0) paragraphs.push({ align, runs });
-      }
-
-      if (paragraphs.length > 0 || shapeFill) {
-        shapes.push({ x, y, cx, cy, fill: shapeFill, paragraphs });
-      }
-    }
-
-    // 3. Background
+    // 1. Extração dos dados de fundo (Background declarado em <p:bg>)
     let bgBlipTarget = null;
     let bgColor = '#0b0f19';
-    const bgMatch = xml.match(/<p:bg>[\s\S]*?<\/p:bg>/i);
+    const bgMatch = xml.match(/<p:bg\b[\s\S]*?<\/p:bg>/i);
     if (bgMatch) {
       const bgXml = bgMatch[0];
       const blipM = bgXml.match(/<a:blip[^>]+r:embed="([^"]+)"/i);
@@ -3753,9 +3677,136 @@ ${sermonText}`;
       if (clrM) bgColor = '#' + clrM[1];
     }
 
-    // Shortcut: se for um slide puramente de imagem cheia sem texto (ex: slides vindos de PDF ou Canva)
-    if (shapes.length === 0 && pictures.length === 1 && pictures[0].cx >= presWidth * 0.88 && pictures[0].cy >= presHeight * 0.88) {
-      const directUrl = mediaDataUrls[pictures[0].target];
+    // 2. Extração sequencial dos elementos de spTree (ordem exata do documento = camadas z-index)
+    const spTreeMatch = xml.match(/<p:spTree>([\s\S]*?)<\/p:spTree>/i);
+    const elements = [];
+    let titleFound = '';
+
+    if (spTreeMatch) {
+      const innerXml = spTreeMatch[1];
+      const tagRegex = /<p:(sp|pic|grpSp|graphicFrame)\b([\s\S]*?)<\/p:\1>/gi;
+      let match;
+
+      while ((match = tagRegex.exec(innerXml)) !== null) {
+        const type = match[1];
+        const rawXml = match[0];
+
+        // Bounds
+        const offM = rawXml.match(/<a:off\s+x="(-?\d+)"\s+y="(-?\d+)"/i);
+        const extM = rawXml.match(/<a:ext\s+cx="(\d+)"\s+cy="(\d+)"/i);
+        const x = offM ? parseInt(offM[1], 10) : 0;
+        const y = offM ? parseInt(offM[2], 10) : 0;
+        const cx = extM ? parseInt(extM[1], 10) : presWidth;
+        const cy = extM ? parseInt(extM[2], 10) : presHeight;
+
+        if (type === 'pic') {
+          const blipM = rawXml.match(/<a:blip[^>]+r:embed="([^"]+)"/i);
+          const rId = blipM ? blipM[1] : null;
+          const target = rId && rels[rId] ? rels[rId] : null;
+          elements.push({
+            type: 'pic',
+            target,
+            x, y, cx, cy
+          });
+        } else if (type === 'sp') {
+          // Fill do formato estritamente delimitado por p:spPr e respeitando a:noFill
+          const spPrM = rawXml.match(/<p:spPr\b[\s\S]*?<\/p:spPr>/i);
+          let shapeFill = null;
+          if (spPrM) {
+            const pr = spPrM[0];
+            if (!pr.includes('<a:noFill')) {
+              const solidM = pr.match(/<a:solidFill>[\s\S]*?<a:srgbClr\s+val="([0-9a-fA-F]{6})"/i);
+              if (solidM) shapeFill = '#' + solidM[1];
+            }
+          }
+
+          // Corpo de texto txBody
+          const txBodyM = rawXml.match(/<p:txBody\b[\s\S]*?<\/p:txBody>/i);
+          const paragraphs = [];
+          let anchor = 't';
+
+          if (txBodyM) {
+            const txBody = txBodyM[0];
+            const bodyPrM = txBody.match(/<a:bodyPr\b[^>]*anchor="([a-zA-Z]+)"/i);
+            if (bodyPrM) anchor = bodyPrM[1];
+
+            const pBlocks = txBody.match(/<a:p\b[\s\S]*?<\/a:p>/gi) || [];
+            for (const pb of pBlocks) {
+              const alignM = pb.match(/<a:pPr\b[^>]*algn="([a-zA-Z]+)"/i);
+              const align = alignM ? alignM[1] : 'l';
+
+              const rBlocks = pb.match(/<a:r\b[\s\S]*?<\/a:r>/gi) || [];
+              const runs = [];
+              for (const rb of rBlocks) {
+                const tMatch = rb.match(/<a:t>([^<]*)<\/a:t>/i);
+                if (!tMatch) continue;
+                const rawText = decodeXmlEntities(tMatch[1]);
+                if (!titleFound && rawText.trim().length > 3) {
+                  titleFound = rawText.trim().replace(/^["“'”]+|["“'”]+$/g, '').substring(0, 45);
+                }
+
+                const rPrM = rb.match(/<a:rPr\b[\s\S]*?<\/a:rPr>/i);
+                let sz = 4000;
+                let bold = false;
+                let italic = false;
+                let color = '#FFFFFF';
+                let typeface = null;
+
+                if (rPrM) {
+                  const rPr = rPrM[0];
+                  const szM = rPr.match(/sz="(\d+)"/i);
+                  if (szM) sz = parseInt(szM[1], 10);
+                  bold = /b="1"/i.test(rPr);
+                  italic = /i="1"/i.test(rPr);
+
+                  // Isola estritamente a cor do texto de a:solidFill dentro de a:rPr
+                  const solidFillM = rPr.match(/<a:solidFill>([\s\S]*?)<\/a:solidFill>/i);
+                  if (solidFillM) {
+                    const sf = solidFillM[1];
+                    const srgb = sf.match(/<a:srgbClr\s+val="([0-9a-fA-F]{6})"/i);
+                    const scheme = sf.match(/<a:schemeClr\s+val="([^"]+)"/i);
+                    if (srgb) {
+                      color = '#' + srgb[1];
+                    } else if (scheme) {
+                      const sval = scheme[1].toLowerCase();
+                      if (sval === 'tx1') color = '#000000';
+                      else if (sval === 'bg1') color = '#FFFFFF';
+                      else if (sval === 'accent1') color = '#38bdf8';
+                      else if (sval === 'accent2') color = '#e8b859';
+                    }
+                  }
+
+                  const latinM = rPr.match(/<a:latin\s+[^>]*typeface="([^"]+)"/i);
+                  if (latinM) typeface = latinM[1];
+                }
+
+                runs.push({ text: rawText, sz, bold, italic, color, typeface });
+              }
+
+              if (runs.length > 0) {
+                paragraphs.push({ align, runs });
+              }
+            }
+          }
+
+          if (shapeFill || paragraphs.length > 0) {
+            elements.push({
+              type: 'sp',
+              shapeFill,
+              anchor,
+              paragraphs,
+              x, y, cx, cy
+            });
+          }
+        }
+      }
+    }
+
+    // Shortcut: se for um slide puramente de 1 imagem cheia sem texto (ex: slides vindos de PDF ou Canva)
+    const spElements = elements.filter(e => e.type === 'sp');
+    const picElements = elements.filter(e => e.type === 'pic');
+    if (spElements.length === 0 && picElements.length === 1 && picElements[0].cx >= presWidth * 0.88 && picElements[0].cy >= presHeight * 0.88) {
+      const directUrl = mediaDataUrls[picElements[0].target];
       if (directUrl) {
         return {
           dataUrl: directUrl,
@@ -3766,7 +3817,7 @@ ${sermonText}`;
       }
     }
 
-    if (shapes.length === 0 && pictures.length === 0 && bgBlipTarget) {
+    if (spElements.length === 0 && picElements.length === 0 && bgBlipTarget) {
       const directUrl = mediaDataUrls[bgBlipTarget];
       if (directUrl) {
         return {
@@ -3778,114 +3829,190 @@ ${sermonText}`;
       }
     }
 
-    // Renderização completa no Canvas
-    const canvasW = 1920;
-    const canvasH = Math.round(1920 / ratio);
-    const scaleX = canvasW / presWidth;
-    const scaleY = canvasH / presHeight;
-
+    // Criação do Canvas de renderização 1080p
     const canvas = document.createElement('canvas');
     canvas.width = canvasW;
     canvas.height = canvasH;
     const ctx = canvas.getContext('2d');
 
-    // Fundo
+    // Fundo da apresentação
     ctx.fillStyle = bgColor;
     ctx.fillRect(0, 0, canvasW, canvasH);
 
-    // Imagem de fundo
+    // Imagem de fundo se declarada em <p:bg>
     if (bgBlipTarget && mediaDataUrls[bgBlipTarget]) {
       const bgImg = await loadImageAsync(mediaDataUrls[bgBlipTarget]);
       if (bgImg) ctx.drawImage(bgImg, 0, 0, canvasW, canvasH);
     }
 
-    // Imagens do slide
-    for (const pic of pictures) {
-      const picUrl = mediaDataUrls[pic.target];
-      if (picUrl) {
-        const img = await loadImageAsync(picUrl);
-        if (img) {
-          const px = Math.round(pic.x * scaleX);
-          const py = Math.round(pic.y * scaleY);
-          const pw = Math.round(pic.cx * scaleX);
-          const ph = Math.round(pic.cy * scaleY);
-          ctx.drawImage(img, px, py, pw, ph);
+    // Renderização sequencial na ordem EXATA das camadas (z-index natural do PowerPoint)
+    for (const el of elements) {
+      if (el.type === 'pic') {
+        const picUrl = el.target ? mediaDataUrls[el.target] : null;
+        if (picUrl) {
+          const img = await loadImageAsync(picUrl);
+          if (img) {
+            const px = Math.round(el.x * scaleX);
+            const py = Math.round(el.y * scaleY);
+            const pw = Math.round(el.cx * scaleX);
+            const ph = Math.round(el.cy * scaleY);
+            ctx.drawImage(img, px, py, pw, ph);
+          }
+        }
+      } else if (el.type === 'sp') {
+        const sx = Math.round(el.x * scaleX);
+        const sy = Math.round(el.y * scaleY);
+        const sw = Math.round(el.cx * scaleX);
+        const sh = Math.round(el.cy * scaleY);
+
+        if (el.shapeFill) {
+          ctx.fillStyle = el.shapeFill;
+          ctx.fillRect(sx, sy, sw, sh);
+        }
+
+        if (el.paragraphs && el.paragraphs.length > 0) {
+          renderPptxShapeText(ctx, el, sx, sy, sw, sh, canvasH);
         }
       }
     }
 
-    // Formas e Caixas de Texto
-    for (const shape of shapes) {
-      const sx = Math.round(shape.x * scaleX);
-      const sy = Math.round(shape.y * scaleY);
-      const sw = Math.round(shape.cx * scaleX);
-      const sh = Math.round(shape.cy * scaleY);
+    return {
+      dataUrl: canvas.toDataURL('image/jpeg', 0.94),
+      title: titleFound || `Slide ${slideIndex}`,
+      width: canvasW,
+      height: canvasH
+    };
+  }
 
-      if (shape.fill) {
-        ctx.fillStyle = shape.fill;
-        ctx.fillRect(sx, sy, sw, sh);
-      }
+  // Renderiza texto de uma forma (sp) com quebra de linhas inteligente, auto-fit e alinhamento
+  function renderPptxShapeText(ctx, shape, sx, sy, sw, sh, canvasH) {
+    const paragraphLayouts = [];
 
-      if (shape.paragraphs && shape.paragraphs.length > 0) {
-        let curY = sy;
-        for (const p of shape.paragraphs) {
-          const align = p.align;
-          for (const run of p.runs) {
-            if (!run.text) continue;
-            const szPt = (run.sz || 4000) / 100;
-            const fontSizePx = Math.max(16, Math.min(180, Math.round(szPt * (canvasH / 540))));
-            const isBold = run.bold ? 'bold ' : '';
-            const family = run.typeface ? `"${run.typeface}", Impact, Anton, sans-serif` : 'Impact, Anton, "Montserrat", sans-serif';
-
-            ctx.font = `${isBold}${fontSizePx}px ${family}`;
-            ctx.fillStyle = run.color || '#FFFFFF';
-
-            ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
-            ctx.shadowBlur = 8;
-            ctx.shadowOffsetX = 3;
-            ctx.shadowOffsetY = 3;
-
-            const lineHeight = Math.round(fontSizePx * 1.25);
-            const words = run.text.split(' ');
-            let line = '';
-
-            for (let n = 0; n < words.length; n++) {
-              const testLine = line + (line ? ' ' : '') + words[n];
-              const metrics = ctx.measureText(testLine);
-              if (metrics.width > sw && n > 0) {
-                curY += lineHeight;
-                let lineX = sx;
-                if (align === 'ctr' || align === 'center') {
-                  ctx.textAlign = 'center';
-                  lineX = sx + sw / 2;
-                } else if (align === 'r' || align === 'right') {
-                  ctx.textAlign = 'right';
-                  lineX = sx + sw;
-                } else {
-                  ctx.textAlign = 'left';
-                }
-                ctx.fillText(line, lineX, curY);
-                line = words[n];
-              } else {
-                line = testLine;
-              }
+    for (const p of shape.paragraphs) {
+      const tokens = [];
+      for (const r of p.runs) {
+        if (!r.text) continue;
+        const parts = r.text.split(/(\s+)/);
+        for (const part of parts) {
+          if (!part) continue;
+          if (/^\s+$/.test(part)) {
+            if (tokens.length > 0) {
+              tokens[tokens.length - 1].hasSpaceAfter = true;
             }
-            if (line) {
-              curY += lineHeight;
-              let lineX = sx;
-              if (align === 'ctr' || align === 'center') {
-                ctx.textAlign = 'center';
-                lineX = sx + sw / 2;
-              } else if (align === 'r' || align === 'right') {
-                ctx.textAlign = 'right';
-                lineX = sx + sw;
-              } else {
-                ctx.textAlign = 'left';
-              }
-              ctx.fillText(line, lineX, curY);
-            }
+          } else {
+            tokens.push({
+              text: part,
+              hasSpaceAfter: false,
+              style: r
+            });
           }
         }
+      }
+      paragraphLayouts.push({ align: p.align, tokens });
+    }
+
+    function getFont(style, autoFitScale) {
+      const szPt = (style.sz || 4000) / 100;
+      const basePx = Math.round(szPt * (canvasH / 540));
+      const fontSizePx = Math.max(12, Math.round(basePx * autoFitScale));
+      const isBold = style.bold ? 'bold ' : '';
+      const isItalic = style.italic ? 'italic ' : '';
+      const family = style.typeface
+        ? `"${style.typeface}", Impact, "Montserrat", "Segoe UI", sans-serif`
+        : 'Impact, "Montserrat", "Segoe UI", sans-serif';
+      return {
+        font: `${isItalic}${isBold}${fontSizePx}px ${family}`,
+        fontSizePx
+      };
+    }
+
+    function layoutAll(autoFitScale) {
+      const result = [];
+      let totalH = 0;
+
+      for (const pLayout of paragraphLayouts) {
+        const pLines = [];
+        let curLine = { tokens: [], width: 0, maxHeight: 0 };
+
+        for (const token of pLayout.tokens) {
+          const fontInfo = getFont(token.style, autoFitScale);
+          ctx.font = fontInfo.font;
+          const tokenW = ctx.measureText(token.text).width;
+          const spaceW = token.hasSpaceAfter ? ctx.measureText(' ').width : 0;
+          const tokenH = Math.round(fontInfo.fontSizePx * 1.25);
+
+          if (curLine.tokens.length > 0 && (curLine.width + tokenW > sw)) {
+            pLines.push(curLine);
+            totalH += curLine.maxHeight;
+            curLine = { tokens: [], width: 0, maxHeight: 0 };
+          }
+
+          curLine.tokens.push({
+            text: token.text,
+            style: token.style,
+            font: fontInfo.font,
+            fontSizePx: fontInfo.fontSizePx,
+            width: tokenW,
+            spaceWidth: spaceW
+          });
+          curLine.width += tokenW + spaceW;
+          curLine.maxHeight = Math.max(curLine.maxHeight, tokenH);
+        }
+
+        if (curLine.tokens.length > 0) {
+          pLines.push(curLine);
+          totalH += curLine.maxHeight;
+        }
+
+        result.push({ align: pLayout.align, lines: pLines });
+      }
+
+      return { paragraphs: result, totalH };
+    }
+
+    let scale = 1.0;
+    let layout = layoutAll(scale);
+    if (layout.totalH > sh && sh > 40) {
+      scale = Math.max(0.4, (sh * 0.95) / layout.totalH);
+      layout = layoutAll(scale);
+    }
+
+    let startY = sy;
+    if (shape.anchor === 'ctr' || shape.anchor === 'center') {
+      startY = sy + Math.max(0, (sh - layout.totalH) / 2);
+    } else if (shape.anchor === 'b' || shape.anchor === 'bottom') {
+      startY = sy + Math.max(0, sh - layout.totalH);
+    }
+
+    ctx.textBaseline = 'top';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
+    ctx.shadowBlur = 9;
+    ctx.shadowOffsetX = 3;
+    ctx.shadowOffsetY = 3;
+
+    let currentY = startY;
+    for (const p of layout.paragraphs) {
+      const align = p.align;
+      for (const line of p.lines) {
+        let lineX = sx;
+        const lastTok = line.tokens[line.tokens.length - 1];
+        const trimmedLineWidth = line.width - (lastTok ? lastTok.spaceWidth : 0);
+
+        if (align === 'ctr' || align === 'center') {
+          lineX = sx + Math.max(0, (sw - trimmedLineWidth) / 2);
+        } else if (align === 'r' || align === 'right') {
+          lineX = sx + Math.max(0, sw - trimmedLineWidth);
+        }
+
+        let wordX = lineX;
+        for (const tok of line.tokens) {
+          ctx.font = tok.font;
+          ctx.fillStyle = tok.style.color || '#FFFFFF';
+          ctx.fillText(tok.text, wordX, currentY);
+          wordX += tok.width + tok.spaceWidth;
+        }
+
+        currentY += line.maxHeight;
       }
     }
 
@@ -3893,13 +4020,6 @@ ${sermonText}`;
     ctx.shadowBlur = 0;
     ctx.shadowOffsetX = 0;
     ctx.shadowOffsetY = 0;
-
-    return {
-      dataUrl: canvas.toDataURL('image/jpeg', 0.92),
-      title: titleFound || `Slide ${slideIndex}`,
-      width: canvasW,
-      height: canvasH
-    };
   }
 
   // Extrair slides de um PowerPoint diretamente para o Módulo 3 (Organizador de Imagens)
@@ -3936,7 +4056,12 @@ ${sermonText}`;
       const mediaDataUrls = {};
       for (const mf of mediaFiles) {
         const ext = mf.split('.').pop().toLowerCase();
-        let mime = (ext === 'jpg' || ext === 'jpeg') ? 'image/jpeg' : 'image/png';
+        let mime = 'image/png';
+        if (ext === 'jpg' || ext === 'jpeg') mime = 'image/jpeg';
+        else if (ext === 'webp') mime = 'image/webp';
+        else if (ext === 'gif') mime = 'image/gif';
+        else if (ext === 'svg') mime = 'image/svg+xml';
+
         const b64 = await zip.file(mf).async('base64');
         mediaDataUrls[mf] = `data:${mime};base64,${b64}`;
       }
