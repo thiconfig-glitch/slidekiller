@@ -966,11 +966,11 @@ textarea:focus {
 }
 
 .slide-preview-text {
-  font-family: var(--slide-font-family, 'Anton', 'Impact', sans-serif);
-  font-weight: var(--slide-font-weight, 700);
+  font-family: var(--slide-font-family, 'Bahnschrift SemiBold Condensed', 'Bahnschrift', 'Roboto Condensed', 'Arial Narrow', sans-serif);
+  font-weight: var(--slide-font-weight, 600);
   font-size: 17px;
-  line-height: var(--slide-font-line-height, 1.22);
-  letter-spacing: var(--slide-font-spacing, -0.01em);
+  line-height: var(--slide-font-line-height, 1.20);
+  letter-spacing: var(--slide-font-spacing, 0);
   color: #ffffff;
   margin-bottom: 4px;
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.95), 0 1px 3px rgba(0, 0, 0, 0.9);
@@ -978,14 +978,14 @@ textarea:focus {
 }
 
 .slide-preview-text .highlight {
-  color: #f59e0b;
+  color: #e8b859;
   font-weight: 800;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.95), 0 0 12px rgba(245, 158, 11, 0.4);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.95), 0 0 12px rgba(232, 184, 89, 0.4);
 }
 
 .slide-preview-ref {
-  font-family: var(--slide-ref-font-family, 'Anton', 'Impact', 'Bebas Neue', sans-serif);
-  color: #f59e0b;
+  font-family: var(--slide-ref-font-family, 'Bahnschrift SemiBold Condensed', 'Bahnschrift', 'Bebas Neue', 'Roboto Condensed', sans-serif);
+  color: #e8b859;
   font-size: 13.5px;
   font-weight: 700;
   letter-spacing: 0.8px;
