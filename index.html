@@ -15,7 +15,7 @@
   <!-- Firebase SDKs para sincronização Celular ➔ PC -->
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
-  <link rel="stylesheet" href="style.css?v=2.12.4">
+  <link rel="stylesheet" href="style.css?v=2.12.5">
   <script>
     // Submode switcher acessível globalmente de imediato
     window.switchConverterSubmode = function(mode) {
@@ -30,7 +30,7 @@
       var secInput = document.getElementById('section-direct-input');
       var secResults = document.getElementById('section-direct-results');
 
-      if (secInput) secInput.style.display = 'block';
+      if (secInput) secInput.style.display = 'flex';
       if (secResults) secResults.style.display = 'none';
 
       if (mode === 'pptx-reverse') {
@@ -167,7 +167,7 @@
         <div>
           <div style="display: flex; align-items: center; gap: 8px;">
             <h1 class="brand-title">Central Multimídia Church</h1>
-            <span class="version-tag">v2.12.4</span>
+            <span class="version-tag">v2.12.5</span>
           </div>
           <span class="brand-subtitle">Plataforma Unificada de Mídia & Culto</span>
         </div>
@@ -610,13 +610,13 @@ texto exemplo ii eii
 
             <!-- Ações Rápidas de Conversão e Download Inverso -->
             <div style="display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap;">
-              <button class="btn btn-action" id="btn-pptx-to-zip" style="flex: 1; min-width: 220px; background: linear-gradient(135deg, #38bdf8, #0284c7); color: #000; font-weight: 700; box-shadow: 0 4px 14px rgba(56, 189, 248, 0.3);">
-                <span class="btn-icon">📦</span> Converter e Baixar ZIP (Imagens PNG)
+              <button class="btn btn-action" id="btn-pptx-to-zip" style="flex: 1 1 200px; min-width: 200px; background: linear-gradient(135deg, #38bdf8, #0284c7); color: #000; font-weight: 700; box-shadow: 0 4px 14px rgba(56, 189, 248, 0.3); justify-content: center;">
+                <span class="btn-icon">📦</span> Converter e Baixar ZIP (PNG)
               </button>
-              <button class="btn btn-action" id="btn-pptx-to-pdf" style="flex: 1; min-width: 220px; background: linear-gradient(135deg, #e8b859, #ca9a3e); color: #000; font-weight: 700; box-shadow: 0 4px 14px rgba(232, 184, 89, 0.3);">
-                <span class="btn-icon">📄</span> Converter e Baixar PDF (.pdf)
+              <button class="btn btn-action" id="btn-pptx-to-pdf" style="flex: 1 1 200px; min-width: 200px; background: linear-gradient(135deg, #e8b859, #ca9a3e); color: #000; font-weight: 700; box-shadow: 0 4px 14px rgba(232, 184, 89, 0.3); justify-content: center;">
+                <span class="btn-icon">📄</span> Converter e Baixar PDF
               </button>
-              <button class="btn btn-secondary" id="btn-pptx-to-organizer" style="padding: 12px 22px;">
+              <button class="btn btn-secondary" id="btn-pptx-to-organizer" style="flex: 1 1 180px; min-width: 180px; padding: 12px 20px; justify-content: center;">
                 <span class="btn-icon">📋</span> Abrir no Organizador
               </button>
             </div>
@@ -1114,7 +1114,7 @@ texto exemplo ii eii
     <div id="toast" class="toast"></div>
   </main>
 
-  <script src="app.js?v=2.12.4"></script>
+  <script src="app.js?v=2.12.5"></script>
 </body>
 </html>
 

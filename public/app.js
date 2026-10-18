@@ -2886,7 +2886,7 @@ ${sermonText}`;
   // Novo Documento
   if (btnNewPresentation) {
     btnNewPresentation.addEventListener('click', () => {
-      inputSection.style.display = 'block';
+      inputSection.style.display = 'flex';
       resultsSection.style.display = 'none';
       if (btnDownloadTop) btnDownloadTop.style.display = 'none';
       currentFile = null;
@@ -2994,7 +2994,7 @@ ${sermonText}`;
     const secInput = document.getElementById('section-direct-input');
     const secResults = document.getElementById('section-direct-results');
 
-    if (secInput) secInput.style.display = 'block';
+    if (secInput) secInput.style.display = 'flex';
     if (secResults) secResults.style.display = 'none';
 
     if (mode === 'pptx-reverse') {
@@ -3289,7 +3289,7 @@ ${sermonText}`;
     if (pptxReverseProgressBar) pptxReverseProgressBar.style.width = '0%';
     if (directExportProgressContainer) directExportProgressContainer.style.display = 'none';
     if (sectionDirectResults) sectionDirectResults.style.display = 'none';
-    if (sectionDirectInput) sectionDirectInput.style.display = 'block';
+    if (sectionDirectInput) sectionDirectInput.style.display = 'flex';
     if (btnDownloadDirectTop) btnDownloadDirectTop.style.display = 'none';
     directGeneratedPptx = null;
     directSlides = [];
@@ -3978,7 +3978,7 @@ ${sermonText}`;
     if (!sectionDirectInput || !sectionDirectResults) return;
 
     if (directSlides.length === 0) {
-      sectionDirectInput.style.display = 'block';
+      sectionDirectInput.style.display = 'flex';
       sectionDirectResults.style.display = 'none';
       if (btnDownloadDirectTop) btnDownloadDirectTop.style.display = 'none';
       return;
@@ -4837,7 +4837,7 @@ ${sermonText}`;
     if (!sectionImagesInput || !sectionImagesOrganizer) return;
 
     if (imageSlides.length === 0) {
-      sectionImagesInput.style.display = 'block';
+      sectionImagesInput.style.display = 'flex';
       sectionImagesOrganizer.style.display = 'none';
       if (btnDownloadImagesTop) btnDownloadImagesTop.style.display = 'none';
       return;
@@ -5789,7 +5789,7 @@ ${sermonText}`;
           renderResults();
         } else if (task.data.inputText && sermonTextInput) {
           sermonTextInput.value = task.data.inputText;
-          if (inputSection) inputSection.style.display = 'block';
+          if (inputSection) inputSection.style.display = 'flex';
           if (resultsSection) resultsSection.style.display = 'none';
         }
         showToast(`Tarefa "${task.title}" carregada com sucesso!`, 'success');
