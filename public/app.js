@@ -313,7 +313,11 @@ document.addEventListener('DOMContentLoaded', () => {
   let customBgServerUrl = null;
 
   // Elementos do seletor de formato de texto (Esboço vs Direção Teams)
-  const formatPillBtns = document.querySelectorAll('.format-pill-btn');
+  // ⚠️ Scoped to #format-pill-group to avoid selecting submode-pill-btn buttons in other modules
+  const formatPillGroup = document.getElementById('format-pill-group');
+  const formatPillBtns = formatPillGroup
+    ? formatPillGroup.querySelectorAll('.format-pill-btn')
+    : document.querySelectorAll('#format-pill-group .format-pill-btn');
   const teamsOptionsContainer = document.getElementById('teams-options-container');
   const teamsOptionBtns = document.querySelectorAll('.teams-option-btn');
 
