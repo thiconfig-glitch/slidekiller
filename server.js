@@ -30,7 +30,10 @@ if (!fs.existsSync(downloadsDir)) {
 app.use(express.static(path.join(__dirname, 'public'), {
   etag: false,
   maxAge: 0,
-  setHeaders: (res) => {
+  setHeaders: (res, filePath) => {
+    if (filePath && filePath.endsWith('.wasm')) {
+      res.setHeader('Content-Type', 'application/wasm');
+    }
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');

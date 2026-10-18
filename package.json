@@ -1,7 +1,7 @@
 {
   "name": "slidekiller",
-  "version": "2.2.0",
-  "description": "Central Multimídia Church — Plataforma Modular de Mídia, Slides PPTX, Vídeo OpenCut e Projeção",
+  "version": "2.11.0",
+  "description": "Central Multimídia Church — Plataforma Modular de Mídia, Slides PPTX, DeckCraft Editor e Projeção",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

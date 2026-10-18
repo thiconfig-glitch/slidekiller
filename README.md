@@ -6,7 +6,8 @@ Reúne em uma única interface inteligente os principais módulos de apoio à eq
 1. ⚡ **Slide Killer**: Gerador automatizado de slides em PowerPoint (.pptx 16:9 Full HD) a partir de PDFs ou anotações de sermões com quebra inteligente de versículos e destaque tipográfico.
 2. 📄 **PDF ➔ PPTX Direto (1 Página = 1 Slide)**: Conversor direto e fiel de qualquer arquivo PDF para PowerPoint (.pptx 16:9 Full HD) onde cada página do PDF vira exatamente uma página de slide em alta definição, sem alterar ou reformatar o conteúdo original (ideal para apresentações prontas do Canva, avisos e telões).
 3. 🖼️ **Imagens / ZIP ➔ PPTX (Organizador Visual)**: Anexe fotos avulsas ou um arquivo .ZIP com dezenas de imagens, reorganize visualmente a ordem de cada slide (arrastando com o mouse ou usando botões de posição ⬅ / ➡) e exporte para PowerPoint (.pptx 16:9 Full HD) com ajuste de proporção e fundo personalizável.
-4. 🎬 **Editor de Vídeo (OpenCut)**: Estúdio de edição de vídeo open-source completo estilo CapCut, com timeline multi-pistas, cortes instantâneos e exportação Full HD direto no navegador.
+4. 🎨 **DeckCraft Studio (Editor PowerPoint Web)**: Suíte open-source de apresentação estilo PowerPoint em Rust/WASM, integrada diretamente à galeria para edição visual completa de slides, temas, formas e textos.
+5. 🎬 **Editor de Vídeo (OpenCut)**: Estúdio de edição de vídeo open-source completo estilo CapCut, com timeline multi-pistas, cortes instantâneos e exportação Full HD direto no navegador.
 
 ---
 
@@ -41,7 +42,13 @@ Reúne em uma única interface inteligente os principais módulos de apoio à eq
   - Fundo customizável (Preto, Escuro Church ou Branco).
   - Download imediato do arquivo `.pptx`.
 
-### 4. Editor de Vídeo (OpenCut Studio)
+### 4. DeckCraft Studio (Editor PowerPoint Web em Rust/WASM)
+- **Editor Completo Estilo PowerPoint**: Recriação moderna e de alta performance do Microsoft PowerPoint em Rust compilado para WebAssembly.
+- **Edição Direta da Apresentação**: Abra os slides gerados no Slide Killer com 1 clique diretamente na galeria ("🎨 Editar com DeckCraft").
+- **Suporte a Elementos PPTX**: Altere textos, posições, formas, cores, temas, transições e leiautes em tempo real sem precisar do Office instalado.
+- **Fluxo Ágil & Offline**: Baixe a apresentação atualizada, abra arquivos locais ou projete em tela cheia / nova aba para múltiplos monitores.
+
+### 5. Editor de Vídeo (OpenCut Studio)
 - **Alternativa Open-Source ao CapCut**: Interface profissional com timeline para edição ágil de reels, pregações, avisos e clipes de louvor.
 - **Processamento no Cliente**: Roda direto no navegador com WebCodecs e WASM, sem marca d'água e sem filas de renderização.
 - **Modo Tela Cheia & Foco**: Permite maximizar o editor para trabalhar com precisão milimétrica nos cortes.
