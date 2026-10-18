@@ -2116,9 +2116,9 @@ ${sermonText}`;
     document.body.style.overflow = 'hidden';
 
     // Se o iframe ainda não estiver carregado, define a URL do DeckCraft
-    if (iframe.src === 'about:blank' || !iframe.src.includes('/deckcraft/')) {
+    if (iframe.src === 'about:blank' || !iframe.src.includes('deckcraft')) {
       if (loadingOverlay) loadingOverlay.style.display = 'flex';
-      iframe.src = '/deckcraft/?blank';
+      iframe.src = 'deckcraft/?blank';
     }
 
     showToast('Preparando apresentação para o DeckCraft Studio...', 'info');
@@ -2245,7 +2245,7 @@ ${sermonText}`;
     const btnNewTab = document.getElementById('btn-deckcraft-new-tab');
     if (btnNewTab) {
       btnNewTab.addEventListener('click', () => {
-        window.open('/deckcraft/?blank', '_blank');
+        window.open('deckcraft/?blank', '_blank');
       });
     }
 
