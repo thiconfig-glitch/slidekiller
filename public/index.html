@@ -6,7 +6,7 @@
   <title>Central Multimídia Church — Hub de Produção e Mídia</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:wght@600;700;800&family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&family=Montserrat:wght@700;800;900&family=Oswald:wght@600;700&family=Roboto+Condensed:wght@600;700;800;900&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/libs/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/dist/pptxgen.min.js"></script>
@@ -356,6 +356,26 @@ texto exemplo ii eii
                 <option value="NVI">Validar / Ajustar pela NVI (Nova Versão Internacional)</option>
               </select>
             </div>
+            <!-- Seletor de Tipografia / Fontes Principais -->
+            <div class="option-item option-font-selector">
+              <label for="font-select">Fonte dos Slides:</label>
+              <select id="font-select" class="form-select font-picker-select">
+                <option value="impact" selected>🔥 Impact / Anton (A da Foto - Padrão)</option>
+                <option value="oswald">✨ Oswald (Elegante Hillsong / Bethel)</option>
+                <option value="bebas">⚡ Bebas Neue (Display Caixa Alta)</option>
+                <option value="montserrat">💎 Montserrat (Moderna Black)</option>
+                <option value="roboto_condensed">🎯 Roboto Condensed (Clean & Legível)</option>
+                <option value="barlow_condensed">🚀 Barlow Condensed (Dinâmica)</option>
+                <option value="arial_black">🏛️ Arial Black (Clássica Forte)</option>
+              </select>
+            </div>
+            <div class="option-item option-align-selector">
+              <label for="align-select">Alinhamento:</label>
+              <select id="align-select" class="form-select">
+                <option value="left" selected>⬅️ Esquerda (Estilo da Foto)</option>
+                <option value="center">↔️ Centralizado</option>
+              </select>
+            </div>
             <div class="option-item" id="option-use-ai-check">
               <label class="checkbox-container">
                 <input type="checkbox" id="check-use-ai">
@@ -404,6 +424,25 @@ texto exemplo ii eii
             <span class="badge" id="slide-count-badge">0 slides</span>
           </div>
           <div class="results-actions" style="flex-wrap: wrap; gap: 8px;">
+            <div class="results-font-picker-pill" title="Trocar a fonte de todos os slides em tempo real">
+              <span class="pill-label">Fonte:</span>
+              <select id="results-font-select" class="form-select form-select-sm font-picker-select">
+                <option value="impact" selected>🔥 Impact / Anton (A da Foto)</option>
+                <option value="oswald">✨ Oswald (Elegante)</option>
+                <option value="bebas">⚡ Bebas Neue (Display)</option>
+                <option value="montserrat">💎 Montserrat (Black)</option>
+                <option value="roboto_condensed">🎯 Roboto Condensed</option>
+                <option value="barlow_condensed">🚀 Barlow Condensed</option>
+                <option value="arial_black">🏛️ Arial Black</option>
+              </select>
+            </div>
+            <div class="results-font-picker-pill" title="Alternar alinhamento dos slides">
+              <span class="pill-label">Alinhar:</span>
+              <select id="results-align-select" class="form-select form-select-sm">
+                <option value="left" selected>⬅️ Esquerda</option>
+                <option value="center">↔️ Centro</option>
+              </select>
+            </div>
             <button class="btn btn-outline-gold" id="btn-open-verse-modal">📖 Inserir Versículo</button>
             <button class="btn btn-secondary" id="btn-add-slide">+ Novo Slide</button>
             <button class="btn btn-secondary" id="btn-change-bg-results" title="Alterar ou anexar imagem de fundo dos slides">🖼️ Trocar Fundo</button>
