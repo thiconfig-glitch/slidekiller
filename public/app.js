@@ -2316,7 +2316,7 @@ ${sermonText}`;
           options: {
             fontFace: pptxFontFace,
             fontSize: fontSize,
-            color: r.highlight ? 'F59E0B' : 'FFFFFF',
+            color: r.highlight ? 'E8B859' : 'FFFFFF',
             bold: true,
             shadow: { type: 'outer', angle: 90, blur: 5, offset: 3, opacity: 0.7, color: '000000' }
           }
@@ -2341,7 +2341,7 @@ ${sermonText}`;
             h: 0.8,
             fontFace: pptxFontFace,
             fontSize: 38,
-            color: 'F59E0B',
+            color: 'E8B859',
             bold: true,
             align: isLeftAlign ? 'left' : 'center',
             shadow: { type: 'outer', angle: 90, blur: 5, offset: 2, opacity: 0.7, color: '000000' }
@@ -2354,7 +2354,7 @@ ${sermonText}`;
           options: {
             fontFace: pptxFontFace,
             fontSize: 110,
-            color: r.highlight ? 'F59E0B' : 'FFFFFF',
+            color: r.highlight ? 'E8B859' : 'FFFFFF',
             bold: true,
             shadow: { type: 'outer', angle: 90, blur: 5, offset: 3, opacity: 0.7, color: '000000' }
           }
@@ -2382,7 +2382,7 @@ ${sermonText}`;
           options: {
             fontFace: pptxFontFace,
             fontSize: fontSize,
-            color: r.highlight ? 'F59E0B' : 'FFFFFF',
+            color: r.highlight ? 'E8B859' : 'FFFFFF',
             bold: true,
             shadow: { type: 'outer', angle: 90, blur: 5, offset: 3, opacity: 0.7, color: '000000' }
           }
@@ -2411,7 +2411,7 @@ ${sermonText}`;
           options: {
             fontFace: pptxFontFace,
             fontSize: fontSize,
-            color: r.highlight ? 'F59E0B' : 'FFFFFF',
+            color: r.highlight ? 'E8B859' : 'FFFFFF',
             bold: true,
             shadow: { type: 'outer', angle: 90, blur: 5, offset: 3, opacity: 0.7, color: '000000' }
           }
@@ -2837,7 +2837,7 @@ ${sermonText}`;
         const lineHeight = fontSize * 1.25;
 
         for (const run of (item.runs || [])) {
-          ctx.fillStyle = run.highlight ? '#F59E0B' : '#FFFFFF';
+          ctx.fillStyle = run.highlight ? '#E8B859' : '#FFFFFF';
           const words = run.text.split(/(\s+)/);
 
           for (const w of words) {
@@ -2854,7 +2854,7 @@ ${sermonText}`;
         // Referência Bíblica
         if (item.reference) {
           ctx.font = `bold 42px ${fontConfig.cssFamily}`;
-          ctx.fillStyle = '#F59E0B';
+          ctx.fillStyle = '#E8B859';
           ctx.fillText(item.reference.toUpperCase(), startX, baseH - 180);
         }
 
