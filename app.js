@@ -2433,6 +2433,94 @@ ${sermonText}`;
     return pptx;
   }
 
+  // Enriquecer o arquivo PPTX definindo a fonte padrão no tema (theme1.xml) e embutindo a fonte oficial se acessível
+  async function enrichPptxWithChurchTheme(blob, fontFaceName = 'Bahnschrift SemiBold Condensed') {
+    if (typeof JSZip === 'undefined') return blob;
+    try {
+      const zip = await JSZip.loadAsync(blob);
+      let modified = false;
+
+      // 1. Atualizar ppt/theme/theme1.xml para que o DeckCraft e o PowerPoint usem a fonte como tema Major e Minor
+      if (zip.file('ppt/theme/theme1.xml')) {
+        let themeXml = await zip.file('ppt/theme/theme1.xml').async('text');
+        themeXml = themeXml.replace(/<a:latin typeface="[^"]*"/g, `<a:latin typeface="${fontFaceName}"`);
+        zip.file('ppt/theme/theme1.xml', themeXml);
+        modified = true;
+      }
+
+      // 2. Se a fonte for Bahnschrift, embutir bahnschrift.ttf caso acessível
+      if (fontFaceName.includes('Bahnschrift')) {
+        try {
+          let fontBuf = null;
+          try {
+            const fontResp = await fetch('deckcraft/bahnschrift.ttf');
+            if (fontResp && fontResp.ok) fontBuf = await fontResp.arrayBuffer();
+          } catch(e) {}
+          if (!fontBuf) {
+            try {
+              const fontResp = await fetch('assets/bahnschrift.ttf');
+              if (fontResp && fontResp.ok) fontBuf = await fontResp.arrayBuffer();
+            } catch(e) {}
+          }
+          if (fontBuf) {
+            zip.file('ppt/fonts/font1.fntdata', fontBuf);
+
+            if (zip.file('[Content_Types].xml')) {
+              let ct = await zip.file('[Content_Types].xml').async('text');
+              if (!ct.includes('Extension="fntdata"')) {
+                ct = ct.replace('</Types>', '<Default Extension="fntdata" ContentType="application/x-fontdata"/></Types>');
+                zip.file('[Content_Types].xml', ct);
+              }
+            }
+
+            if (zip.file('ppt/_rels/presentation.xml.rels')) {
+              let rels = await zip.file('ppt/_rels/presentation.xml.rels').async('text');
+              if (!rels.includes('rIdFontBahnschrift')) {
+                const rel = '<Relationship Id="rIdFontBahnschrift" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/font" Target="fonts/font1.fntdata"/>';
+                rels = rels.replace('</Relationships>', rel + '</Relationships>');
+                zip.file('ppt/_rels/presentation.xml.rels', rels);
+              }
+            }
+
+            if (zip.file('ppt/presentation.xml')) {
+              let pres = await zip.file('ppt/presentation.xml').async('text');
+              if (!pres.includes('embeddedFontLst')) {
+                const embedded = '<p:embeddedFontLst>' +
+                  '<p:embeddedFont>' +
+                    '<p:font typeface="Bahnschrift SemiBold Condensed"/>' +
+                    '<p:regular r:id="rIdFontBahnschrift"/>' +
+                    '<p:bold r:id="rIdFontBahnschrift"/>' +
+                  '</p:embeddedFont>' +
+                  '<p:embeddedFont>' +
+                    '<p:font typeface="Bahnschrift"/>' +
+                    '<p:regular r:id="rIdFontBahnschrift"/>' +
+                    '<p:bold r:id="rIdFontBahnschrift"/>' +
+                  '</p:embeddedFont>' +
+                '</p:embeddedFontLst>';
+                pres = pres.replace('</p:presentation>', embedded + '</p:presentation>');
+                zip.file('ppt/presentation.xml', pres);
+              }
+            }
+            modified = true;
+          }
+        } catch(fontErr) {
+          console.warn('[DeckCraft] Aviso ao carregar arquivo de fonte para embutimento:', fontErr);
+        }
+      }
+
+      if (modified) {
+        return await zip.generateAsync({
+          type: 'blob',
+          mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+          compression: 'DEFLATE'
+        });
+      }
+    } catch (e) {
+      console.warn('[DeckCraft] Aviso ao enriquecer tema do PPTX:', e);
+    }
+    return blob;
+  }
+
   // Download PPTX no cliente com PptxGenJS (100% fiel ao estilo da igreja)
   async function exportSlideKillerPptx() {
     if (currentSlides.length === 0) {
@@ -2445,7 +2533,19 @@ ${sermonText}`;
     try {
       const pptx = await buildSlideKillerPptxInstance();
       const fileName = 'SLIDES_CULTO_' + Date.now() + '.pptx';
-      await pptx.writeFile({ fileName });
+      const rawBlob = await pptx.write({ outputType: 'blob' });
+      const fontName = (CHURCH_FONTS[currentSelectedFont] || CHURCH_FONTS['bahnschrift_semibold_condensed']).pptxFontFace;
+      const enrichedBlob = await enrichPptxWithChurchTheme(rawBlob, fontName);
+
+      const downloadUrl = URL.createObjectURL(enrichedBlob);
+      const downloadLink = document.createElement('a');
+      downloadLink.href = downloadUrl;
+      downloadLink.download = fileName;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+      setTimeout(() => URL.revokeObjectURL(downloadUrl), 10000);
+
       showToast('🎉 Apresentação PPTX baixada com sucesso!', 'success');
     } catch (err) {
       console.error('Erro ao exportar PPTX:', err);
@@ -2460,7 +2560,9 @@ ${sermonText}`;
     if (!currentSlides || currentSlides.length === 0) return null;
     const pptx = await buildSlideKillerPptxInstance();
     const fileName = 'SLIDES_CULTO_' + Date.now() + '.pptx';
-    const blob = await pptx.write({ outputType: 'blob' });
+    const rawBlob = await pptx.write({ outputType: 'blob' });
+    const fontName = (CHURCH_FONTS[currentSelectedFont] || CHURCH_FONTS['bahnschrift_semibold_condensed']).pptxFontFace;
+    const blob = await enrichPptxWithChurchTheme(rawBlob, fontName);
     const arrayBuffer = await blob.arrayBuffer();
     return { blob, arrayBuffer, fileName };
   }

@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const PptxGenJS = require('pptxgenjs');
+const JSZip = require('jszip');
 
 /**
  * Builds a 16:9 presentation adhering strictly to the church's sermon style.
@@ -157,7 +158,58 @@ async function buildSermonPptx(slidesData, bgImagePath, outputFilePath) {
     }
   }
 
-  await pptx.writeFile({ fileName: outputFilePath });
+  const rawBuffer = await pptx.write({ outputType: 'nodebuffer' });
+  try {
+    const zip = await JSZip.loadAsync(rawBuffer);
+    if (zip.file('ppt/theme/theme1.xml')) {
+      let themeXml = await zip.file('ppt/theme/theme1.xml').async('text');
+      themeXml = themeXml.replace(/<a:latin typeface="[^"]*"/g, '<a:latin typeface="Bahnschrift SemiBold Condensed"');
+      zip.file('ppt/theme/theme1.xml', themeXml);
+    }
+    const fontPath = 'C:/Windows/Fonts/bahnschrift.ttf';
+    if (fs.existsSync(fontPath)) {
+      const fontBuf = fs.readFileSync(fontPath);
+      zip.file('ppt/fonts/font1.fntdata', fontBuf);
+      if (zip.file('[Content_Types].xml')) {
+        let ct = await zip.file('[Content_Types].xml').async('text');
+        if (!ct.includes('Extension="fntdata"')) {
+          ct = ct.replace('</Types>', '<Default Extension="fntdata" ContentType="application/x-fontdata"/></Types>');
+          zip.file('[Content_Types].xml', ct);
+        }
+      }
+      if (zip.file('ppt/_rels/presentation.xml.rels')) {
+        let rels = await zip.file('ppt/_rels/presentation.xml.rels').async('text');
+        if (!rels.includes('rIdFontBahnschrift')) {
+          const rel = '<Relationship Id="rIdFontBahnschrift" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/font" Target="fonts/font1.fntdata"/>';
+          rels = rels.replace('</Relationships>', rel + '</Relationships>');
+          zip.file('ppt/_rels/presentation.xml.rels', rels);
+        }
+      }
+      if (zip.file('ppt/presentation.xml')) {
+        let pres = await zip.file('ppt/presentation.xml').async('text');
+        if (!pres.includes('embeddedFontLst')) {
+          const embedded = '<p:embeddedFontLst>' +
+            '<p:embeddedFont>' +
+              '<p:font typeface="Bahnschrift SemiBold Condensed"/>' +
+              '<p:regular r:id="rIdFontBahnschrift"/>' +
+              '<p:bold r:id="rIdFontBahnschrift"/>' +
+            '</p:embeddedFont>' +
+            '<p:embeddedFont>' +
+              '<p:font typeface="Bahnschrift"/>' +
+              '<p:regular r:id="rIdFontBahnschrift"/>' +
+              '<p:bold r:id="rIdFontBahnschrift"/>' +
+            '</p:embeddedFont>' +
+          '</p:embeddedFontLst>';
+          pres = pres.replace('</p:presentation>', embedded + '</p:presentation>');
+          zip.file('ppt/presentation.xml', pres);
+        }
+      }
+    }
+    const finalBuffer = await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
+    fs.writeFileSync(outputFilePath, finalBuffer);
+  } catch(e) {
+    fs.writeFileSync(outputFilePath, rawBuffer);
+  }
   return {
     slideCount: slidesData.length,
     outputFilePath
