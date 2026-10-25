@@ -18,10 +18,13 @@ try {
   window.parent.postMessage({ type: 'DECKCRAFT_READY' }, '*');
 } catch(e) {}
 
+let fileLoaded = false;
+
 // Ouvinte de mensagens da Central Multimídia para carregar arquivos PPTX automaticamente
 window.addEventListener('message', async (e) => {
   if (!e.data) return;
   if (e.data.type === 'LOAD_PPTX_BLOB' || e.data.type === 'LOAD_PPTX') {
+    fileLoaded = true;
     try {
       const { blob, buffer, name } = e.data;
       const fileData = blob || (buffer ? new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' }) : null);
@@ -69,6 +72,7 @@ window.addEventListener('dragover', (e) => {
   if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
 });
 window.addEventListener('drop', (e) => {
+  fileLoaded = true;
   dragCounter = 0;
   const overlay = document.getElementById('deckcraft_drop_overlay');
   if (overlay) overlay.style.display = 'none';
@@ -89,12 +93,42 @@ window.addEventListener('drop', (e) => {
 if (document.fonts) {
   Promise.all([
     document.fonts.load('600 16px "Bahnschrift SemiBold Condensed"'),
+    document.fonts.load('400 16px "Bahnschrift"'),
     document.fonts.load('700 16px "Anton"'),
     document.fonts.load('400 16px "Bebas Neue"'),
     document.fonts.load('700 16px "Oswald"'),
     document.fonts.load('700 16px "Roboto Condensed"')
   ]).catch(() => {});
 }
+
+// Se nenhum arquivo específico for enviado pela janela-mãe nos primeiros 1.2s (ex: abertura standalone do DeckCraft),
+// carrega o template oficial padrão com a fonte Bahnschrift SemiBold Condensed
+setTimeout(async () => {
+  if (fileLoaded) return;
+  try {
+    const res = await fetch('./template.pptx');
+    if (res.ok && !fileLoaded) {
+      const blob = await res.blob();
+      const file = new File([blob], 'apresentacao_padrao.pptx', {
+        type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+      });
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      const canvas = document.getElementById('deckcraft_canvas');
+      if (canvas && !fileLoaded) {
+        const dropEvt = new DragEvent('drop', {
+          bubbles: true,
+          cancelable: true,
+          dataTransfer: dt
+        });
+        canvas.dispatchEvent(dropEvt);
+        console.log('[DeckCraft] Template padrão Bahnschrift SemiBold Condensed carregado com sucesso!');
+      }
+    }
+  } catch (err) {
+    console.warn('[DeckCraft] Aviso ao carregar template padrão:', err);
+  }
+}, 1200);
 </script>
   <link rel="icon" href="./ai.storyteller.deckcraft-74e97653dd8dd002.png" integrity="sha384-THDce39ERZRgdnEtM/35FnmU4IExPfz9k2XrApCGWP0NUMC98NUWG1VYUMNXNCiD"/>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -103,13 +137,13 @@ if (document.fonts) {
   <style>
     @font-face {
       font-family: 'Bahnschrift SemiBold Condensed';
-      src: local('Bahnschrift SemiBold Condensed'), local('Bahnschrift-SemiBoldCondensed'), local('Bahnschrift');
+      src: local('Bahnschrift SemiBold Condensed'), local('Bahnschrift-SemiBoldCondensed'), local('Bahnschrift'), url('./bahnschrift.ttf') format('truetype');
       font-weight: 600;
       font-stretch: condensed;
     }
     @font-face {
       font-family: 'Bahnschrift';
-      src: local('Bahnschrift');
+      src: local('Bahnschrift'), url('./bahnschrift.ttf') format('truetype');
     }
     html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #262626; }
     #deckcraft_canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
