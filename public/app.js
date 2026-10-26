@@ -5694,7 +5694,7 @@ ${sermonText}`;
 
   // ==========================================
   // GERENCIADOR DE TAREFAS EM ANDAMENTO (MÁX 3)
-  // Sincronização em Nuvem: Celular ➔ Computador
+  // Sincronização Híbrida: Servidor Local (Wi-Fi) + IndexedDB + Cache
   // ==========================================
   const MAX_ACTIVE_TASKS = 3;
   const btnOpenTasksPanel = document.getElementById('btn-open-tasks-panel');
@@ -5703,29 +5703,82 @@ ${sermonText}`;
   const btnSaveCurrentTask = document.getElementById('btn-save-current-task');
   const tasksListContainer = document.getElementById('tasks-list-container');
   const tasksDrawerOverlay = document.getElementById('tasks-drawer-overlay');
+  const tasksSyncStatusMsg = document.getElementById('tasks-sync-status-msg');
 
   let cachedTasks = [];
-  let firestoreDb = null;
+  let isServerOnline = false;
+  let syncIntervalId = null;
 
-  // Inicialização do Firebase Firestore (compat v10)
-  const firebaseConfig = {
-    apiKey: (typeof atob === 'function' ? atob("QUl6YVN5QnJjV1djRkppaUdETndtdEhmQzA2b24wN3lqVjAxWHZv") : ""),
-    authDomain: "cifraceros.firebaseapp.com",
-    projectId: "cifraceros",
-    storageBucket: "cifraceros.firebasestorage.app",
-    messagingSenderId: "64746643957",
-    appId: "1:64746643957:web:fff80c22e795e1410180bc"
-  };
+  // Banco de Dados IndexedDB (sem limite de 5MB do localStorage)
+  const IDB_NAME = 'SlideKillerTasksDB';
+  const IDB_STORE = 'active_tasks';
+  const IDB_VERSION = 1;
 
-  if (typeof firebase !== 'undefined') {
-    try {
-      if (!firebase.apps.length) {
-        firebase.initializeApp(firebaseConfig);
+  function openTasksDB() {
+    return new Promise((resolve) => {
+      if (!('indexedDB' in window)) return resolve(null);
+      try {
+        const req = indexedDB.open(IDB_NAME, IDB_VERSION);
+        req.onupgradeneeded = (e) => {
+          const db = e.target.result;
+          if (!db.objectStoreNames.contains(IDB_STORE)) {
+            db.createObjectStore(IDB_STORE, { keyPath: 'id' });
+          }
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => resolve(null);
+      } catch (e) {
+        resolve(null);
       }
-      firestoreDb = firebase.firestore();
-    } catch(e) {
-      console.warn('Firebase init fallback:', e);
-    }
+    });
+  }
+
+  async function idbGetTasks() {
+    const db = await openTasksDB();
+    if (!db) return null;
+    return new Promise((resolve) => {
+      try {
+        const tx = db.transaction(IDB_STORE, 'readonly');
+        const store = tx.objectStore(IDB_STORE);
+        const req = store.getAll();
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror = () => resolve(null);
+      } catch (e) {
+        resolve(null);
+      }
+    });
+  }
+
+  async function idbSaveTask(task) {
+    const db = await openTasksDB();
+    if (!db) return false;
+    return new Promise((resolve) => {
+      try {
+        const tx = db.transaction(IDB_STORE, 'readwrite');
+        const store = tx.objectStore(IDB_STORE);
+        store.put(task);
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => resolve(false);
+      } catch (e) {
+        resolve(false);
+      }
+    });
+  }
+
+  async function idbDeleteTask(taskId) {
+    const db = await openTasksDB();
+    if (!db) return false;
+    return new Promise((resolve) => {
+      try {
+        const tx = db.transaction(IDB_STORE, 'readwrite');
+        const store = tx.objectStore(IDB_STORE);
+        store.delete(taskId);
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => resolve(false);
+      } catch (e) {
+        resolve(false);
+      }
+    });
   }
 
   function getDeviceType() {
@@ -5739,18 +5792,18 @@ ${sermonText}`;
       const diffSec = Math.floor((Date.now() - new Date(isoString).getTime()) / 1000);
       if (diffSec < 60) return 'agora';
       const diffMin = Math.floor(diffSec / 60);
-      if (diffMin < 60) return `há ${diffMin}m`;
+      if (diffMin < 60) return 'há ' + diffMin + 'm';
       const diffHours = Math.floor(diffMin / 60);
-      if (diffHours < 24) return `há ${diffHours}h`;
+      if (diffHours < 24) return 'há ' + diffHours + 'h';
       const diffDays = Math.floor(diffHours / 24);
-      return `há ${diffDays}d`;
+      return 'há ' + diffDays + 'd';
     } catch(e) {
       return '';
     }
   }
 
-  // Redimensionamento/compressão para respeitar limite do documento Firestore (1MB)
-  function compressDataUrlForCloud(dataUrl, maxDim = 640, quality = 0.55) {
+  // Redimensionamento/compressão equilibrada de imagens para armazenar com agilidade
+  function compressDataUrlForCloud(dataUrl, maxDim = 800, quality = 0.70) {
     return new Promise((resolve) => {
       if (!dataUrl || !dataUrl.startsWith('data:image')) {
         resolve(dataUrl);
@@ -5783,33 +5836,54 @@ ${sermonText}`;
     });
   }
 
-  // Sincronização em tempo real (onSnapshot) com fallback em localStorage
-  function initTasksSync() {
-    if (firestoreDb) {
+  // Consulta o servidor backend (/api/tasks) para sincronização automática entre dispositivos
+  async function fetchServerTasks() {
+    try {
+      const res = await fetch('/api/tasks', { method: 'GET', cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.status === 'success' && Array.isArray(data.tasks)) {
+          isServerOnline = true;
+          return data.tasks;
+        }
+      }
+    } catch (e) {
+      // Servidor inacessível ou rodando como página estática
+    }
+    isServerOnline = false;
+    return null;
+  }
+
+  function updateSyncStatusUI() {
+    if (!tasksSyncStatusMsg) return;
+    if (isServerOnline) {
+      tasksSyncStatusMsg.innerHTML = '🟢 <strong>Sincronização em Rede Ativa:</strong> Salve no celular e continue no PC pelo mesmo Wi-Fi. (Limite: até 3 tarefas)';
+    } else {
+      tasksSyncStatusMsg.innerHTML = '💾 <strong>Armazenamento Seguro Ativo:</strong> Tarefas salvas com persistência garantida neste dispositivo. (Limite: até 3 tarefas)';
+    }
+  }
+
+  function persistLocalCache(tasks) {
+    try {
+      localStorage.setItem('obnotion_cached_tasks', JSON.stringify(tasks));
+    } catch(e) {
       try {
-        firestoreDb.collection('obnotion_active_tasks')
-          .orderBy('updatedAt', 'desc')
-          .limit(10)
-          .onSnapshot((snapshot) => {
-            const tasks = [];
-            snapshot.forEach(doc => {
-              tasks.push({ id: doc.id, ...doc.data() });
-            });
-            cachedTasks = tasks;
-            try {
-              localStorage.setItem('obnotion_cached_tasks', JSON.stringify(tasks));
-            } catch(e) {}
-            renderTasksList();
-          }, (err) => {
-            console.warn('Firestore onSnapshot fallback to local:', err);
-            loadLocalTasks();
-          });
-        return;
-      } catch(e) {
-        console.warn('Firestore subscription error:', e);
+        const light = tasks.map(t => ({
+          id: t.id,
+          title: t.title,
+          module: t.module,
+          moduleName: t.moduleName,
+          moduleIcon: t.moduleIcon,
+          slideCount: t.slideCount,
+          device: t.device,
+          createdAt: t.createdAt,
+          updatedAt: t.updatedAt
+        }));
+        localStorage.setItem('obnotion_cached_tasks', JSON.stringify(light));
+      } catch(e2) {
+        console.warn('LocalStorage quota excedida, conteúdo completo preservado em IndexedDB');
       }
     }
-    loadLocalTasks();
   }
 
   function loadLocalTasks() {
@@ -5822,21 +5896,82 @@ ${sermonText}`;
     renderTasksList();
   }
 
+  // Carrega tarefas em cascata: Servidor -> IndexedDB -> LocalStorage
+  async function loadAllTasks() {
+    // 1. Tenta carregar do Servidor Local
+    const serverTasks = await fetchServerTasks();
+    if (serverTasks !== null) {
+      cachedTasks = serverTasks;
+      persistLocalCache(cachedTasks);
+      for (const t of cachedTasks) {
+        await idbSaveTask(t);
+      }
+      renderTasksList();
+      updateSyncStatusUI();
+      return;
+    }
+
+    // 2. Se o servidor não responder, busca do IndexedDB local
+    const idbTasks = await idbGetTasks();
+    if (idbTasks && idbTasks.length > 0) {
+      idbTasks.sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
+      cachedTasks = idbTasks.slice(0, MAX_ACTIVE_TASKS);
+      persistLocalCache(cachedTasks);
+      renderTasksList();
+      updateSyncStatusUI();
+      return;
+    }
+
+    // 3. Fallback para localStorage
+    loadLocalTasks();
+    updateSyncStatusUI();
+  }
+
+  function startPeriodicSync() {
+    if (syncIntervalId) clearInterval(syncIntervalId);
+    syncIntervalId = setInterval(async () => {
+      const srvTasks = await fetchServerTasks();
+      if (srvTasks !== null) {
+        const srvJson = JSON.stringify(srvTasks);
+        if (srvJson !== JSON.stringify(cachedTasks)) {
+          cachedTasks = srvTasks;
+          persistLocalCache(cachedTasks);
+          for (const t of cachedTasks) {
+            await idbSaveTask(t);
+          }
+          renderTasksList();
+          updateSyncStatusUI();
+        }
+      }
+    }, 6000);
+  }
+
+  function initTasksSync() {
+    loadAllTasks().then(() => {
+      startPeriodicSync();
+    });
+
+    // Atualiza ao focar na aba
+    window.addEventListener('focus', () => {
+      loadAllTasks();
+    });
+  }
+
   function renderTasksList() {
     const count = cachedTasks.length;
-    const countText = `${count}/${MAX_ACTIVE_TASKS}`;
+    const countText = count + '/' + MAX_ACTIVE_TASKS;
     if (tasksCounterBadge) tasksCounterBadge.textContent = countText;
     if (drawerTasksCounterBadge) drawerTasksCounterBadge.textContent = countText;
 
     if (!tasksListContainer) return;
 
     if (count === 0) {
-      tasksListContainer.innerHTML = `
-        <div class="empty-tasks-msg">
-          Nenhuma tarefa salva no momento.<br>
-          Clique em <strong>Salvar Trabalho Atual</strong> para sincronizar com o PC ou Celular.
-        </div>
-      `;
+      tasksListContainer.innerHTML = [
+        '<div class="empty-tasks-msg">',
+        '  Nenhuma tarefa salva no momento.<br>',
+        '  Clique em <strong>Salvar Trabalho Atual</strong> para guardar seu progresso.',
+        '</div>'
+      ].join('\n');
       return;
     }
 
@@ -5844,40 +5979,32 @@ ${sermonText}`;
     cachedTasks.forEach(task => {
       const card = document.createElement('div');
       card.className = 'task-card';
-      card.innerHTML = `
-        <div class="task-card-header">
-          <div style="display:flex; align-items:center; gap:6px; min-width:0;">
-            <span style="font-size:16px;">${task.moduleIcon || '📌'}</span>
-            <strong class="task-card-title">${escapeHtml(task.title || 'Sem título')}</strong>
-          </div>
-          <button type="button" class="btn-clear" title="Excluir tarefa" onclick="window.obnotionDeleteTask('${task.id}', event)" style="color:var(--danger); font-size:14px; padding:2px 6px;">
-            🗑️
-          </button>
-        </div>
-        <div class="task-card-meta">
-          <span class="task-module-pill">${escapeHtml(task.moduleName || 'Slides')} • ${task.slideCount || 0} slides</span>
-          <span style="font-size:11px; color:var(--text-muted);">${escapeHtml(task.device || 'Nuvem')} • ${formatTimeAgo(task.updatedAt)}</span>
-        </div>
-        <div class="task-card-actions">
-          <button type="button" class="btn btn-secondary btn-sm" style="width:100%; justify-content:center; font-size:12px; font-weight:600;" onclick="window.obnotionLoadTask('${task.id}')">
-            <span>📂</span> Continuar Editando Aqui
-          </button>
-        </div>
-      `;
+      card.innerHTML = [
+        '<div class="task-card-header">',
+        '  <div style="display:flex; align-items:center; gap:6px; min-width:0;">',
+        '    <span style="font-size:16px;">' + (task.moduleIcon || '📌') + '</span>',
+        '    <strong class="task-card-title">' + escapeHtml(task.title || 'Sem título') + '</strong>',
+        '  </div>',
+        '  <button type="button" class="btn-clear" title="Excluir tarefa" onclick="window.obnotionDeleteTask(\'' + task.id + '\', event)" style="color:var(--danger); font-size:14px; padding:2px 6px;">',
+        '    🗑️',
+        '  </button>',
+        '</div>',
+        '<div class="task-card-meta">',
+        '  <span class="task-module-pill">' + escapeHtml(task.moduleName || 'Slides') + ' • ' + (task.slideCount || 0) + ' ' + (task.slideCount === 1 ? 'slide' : 'slides') + '</span>',
+        '  <span style="font-size:11px; color:var(--text-muted);">' + escapeHtml(task.device || 'Dispositivo') + ' • ' + formatTimeAgo(task.updatedAt) + '</span>',
+        '</div>',
+        '<div class="task-card-actions">',
+        '  <button type="button" class="btn btn-secondary btn-sm" style="width:100%; justify-content:center; font-size:12px; font-weight:600;" onclick="window.obnotionLoadTask(\'' + task.id + '\')">',
+        '    <span>📂</span> Continuar Editando Aqui',
+        '  </button>',
+        '</div>'
+      ].join('\n');
       tasksListContainer.appendChild(card);
     });
   }
 
-  // Salva o trabalho em andamento (com validação estrita de no máx 3)
+  // Salva o trabalho em andamento (com limite de 3 tarefas)
   async function handleSaveCurrentTask() {
-    // 1. Validação estrita do limite de 3 tarefas
-    if (cachedTasks.length >= MAX_ACTIVE_TASKS) {
-      showToast('⚠️ Limite de 3 tarefas atingido! Exclua uma tarefa para salvar nova.', 'error');
-      alert(`⚠️ LIMITE DE 3 TAREFAS ATINGIDO!\n\nPara não sobrecarregar o Firebase e manter a Central sempre leve e rápida, é permitido ter no máximo 3 tarefas em andamento simultaneamente.\n\nPor favor, exclua ou conclua uma das 3 tarefas salvas na lista antes de guardar uma nova.`);
-      return;
-    }
-
-    // 2. Extrai dados do módulo ativo
     let taskData = null;
     let defaultTitle = '';
     let slideCount = 0;
@@ -5885,20 +6012,19 @@ ${sermonText}`;
     let modIcon = '📌';
 
     if (currentActiveModule === 'images-to-pptx') {
-      if (imageSlides.length === 0) {
+      if (!imageSlides || imageSlides.length === 0) {
         showToast('Nenhuma imagem adicionada para salvar.', 'error');
         return;
       }
       modName = 'Imagens / ZIP';
       modIcon = '🖼️';
       slideCount = imageSlides.length;
-      defaultTitle = `Lote de Imagens (${slideCount} slides)`;
+      defaultTitle = 'Lote de Imagens (' + slideCount + ' slides)';
 
-      // Otimiza imagens para caber no documento Firestore (<1MB)
-      showToast('Compactando slides para sincronização em nuvem...', 'info');
+      showToast('Otimizando slides para salvar...', 'info');
       const optimizedSlides = [];
       for (const s of imageSlides) {
-        const compUrl = await compressDataUrlForCloud(s.dataUrl, 640, 0.55);
+        const compUrl = await compressDataUrlForCloud(s.dataUrl, 800, 0.70);
         optimizedSlides.push({
           id: s.id,
           name: s.name,
@@ -5909,19 +6035,35 @@ ${sermonText}`;
 
     } else if (currentActiveModule === 'slidekiller') {
       const textVal = sermonTextInput ? sermonTextInput.value.trim() : '';
-      if (currentSlides.length === 0 && !textVal) {
-        showToast('Nenhum sermão ou slide montado para salvar.', 'error');
+      const pInput = document.getElementById('paragrafo-text-input');
+      const paragrafoVal = pInput ? pInput.value.trim() : '';
+      const hasSlides = currentSlides && currentSlides.length > 0;
+      const hasPdf = currentFile != null;
+
+      if (!hasSlides && !textVal && !paragrafoVal && !hasPdf) {
+        showToast('Nenhum sermão, texto ou slide adicionado para salvar.', 'error');
         return;
       }
       modName = 'Slide Killer';
       modIcon = '⚡';
-      slideCount = currentSlides.length || 1;
-      const fileName = (fileNameDisplay && fileNameDisplay.textContent) ? fileNameDisplay.textContent : 'Sermão';
-      defaultTitle = `${fileName} (${slideCount} slides)`;
+      slideCount = hasSlides ? currentSlides.length : (paragrafoVal ? 1 : 1);
+      
+      const fileName = (fileNameDisplay && fileNameDisplay.textContent && fileNameDisplay.textContent !== 'Nenhum arquivo selecionado') 
+        ? fileNameDisplay.textContent 
+        : (hasSlides ? 'Apresentação' : (paragrafoVal ? 'Parágrafos' : 'Sermão'));
+
+      defaultTitle = hasSlides 
+        ? (fileName + ' (' + slideCount + ' slides)') 
+        : (paragrafoVal ? 'Rascunho de Parágrafos' : (textVal ? 'Rascunho de Sermão' : ('PDF: ' + fileName)));
+
       taskData = {
-        slides: currentSlides,
+        slides: currentSlides || [],
         inputText: textVal,
-        fileName: fileName
+        paragrafoText: paragrafoVal,
+        fileName: fileName,
+        customBg: (typeof customBgDataUrl !== 'undefined' ? customBgDataUrl : null),
+        template: (templateSelect ? templateSelect.value : ''),
+        font: (fontSelect ? fontSelect.value : '')
       };
 
     } else if (currentActiveModule === 'pdf-to-pptx') {
@@ -5932,12 +6074,12 @@ ${sermonText}`;
       modName = 'PDF ➔ PPTX';
       modIcon = '📄';
       slideCount = directSlides.length;
-      defaultTitle = (currentDirectFile ? currentDirectFile.name.replace(/\.[^/.]+$/, '') : 'PDF Direto') + ` (${slideCount} slides)`;
+      defaultTitle = (currentDirectFile ? currentDirectFile.name.replace(/\.[^/.]+$/, '') : 'PDF Direto') + ' (' + slideCount + ' slides)';
       
-      showToast('Compactando slides para sincronização em nuvem...', 'info');
+      showToast('Otimizando slides para salvar...', 'info');
       const optimizedSlides = [];
       for (const s of directSlides) {
-        const compUrl = await compressDataUrlForCloud(s.imgData, 640, 0.55);
+        const compUrl = await compressDataUrlForCloud(s.imgData, 800, 0.70);
         optimizedSlides.push({
           id: s.id,
           title: s.title,
@@ -5947,14 +6089,38 @@ ${sermonText}`;
         });
       }
       taskData = { slides: optimizedSlides };
+    } else if (currentActiveModule === 'deckcraft') {
+      showToast('O DeckCraft salva diretamente ao baixar o arquivo .pptx.', 'info');
+      alert('🎨 DeckCraft Studio:\n\nPara salvar alterações feitas no DeckCraft Studio, utilize o botão "Baixar PowerPoint (.pptx)" ou exporte a apresentação diretamente pelo painel do editor.');
+      return;
     } else {
       showToast('Nenhum conteúdo elegível para salvar neste módulo.', 'error');
       return;
     }
 
+    // 2. Validação do limite de 3 tarefas com opção de substituir a mais antiga
+    if (cachedTasks.length >= MAX_ACTIVE_TASKS) {
+      const confirmReplace = confirm(
+        '⚠️ LIMITE DE 3 TAREFAS ATINGIDO!\n\n' +
+        'Você já tem 3 tarefas salvas:\n' +
+        cachedTasks.map((t, i) => ' ' + (i + 1) + '. ' + t.title).join('\n') +
+        '\n\nDeseja substituir a tarefa mais antiga ("' + cachedTasks[cachedTasks.length - 1].title + '") pela nova?'
+      );
+      if (!confirmReplace) {
+        return;
+      }
+      const oldest = cachedTasks.pop();
+      if (oldest) {
+        await idbDeleteTask(oldest.id);
+        if (isServerOnline) {
+          try { await fetch('/api/tasks/' + oldest.id, { method: 'DELETE' }); } catch(e) {}
+        }
+      }
+    }
+
     // 3. Nome da tarefa (com valor padrão inteligente)
     const taskTitle = prompt('Nome para identificar esta tarefa no Celular ou PC:', defaultTitle);
-    if (taskTitle === null) return; // Usuário cancelou
+    if (taskTitle === null) return;
 
     const taskId = 'task_' + Date.now();
     const newTask = {
@@ -5973,39 +6139,73 @@ ${sermonText}`;
     try {
       if (btnSaveCurrentTask) {
         btnSaveCurrentTask.disabled = true;
-        btnSaveCurrentTask.innerHTML = '<span>⏳</span> Salvando na Nuvem...';
+        btnSaveCurrentTask.innerHTML = '<span>⏳</span> Salvando...';
       }
 
-      if (firestoreDb) {
-        await firestoreDb.collection('obnotion_active_tasks').doc(taskId).set(newTask);
-      } else {
-        cachedTasks.unshift(newTask);
-        if (cachedTasks.length > MAX_ACTIVE_TASKS) cachedTasks = cachedTasks.slice(0, MAX_ACTIVE_TASKS);
-        localStorage.setItem('obnotion_cached_tasks', JSON.stringify(cachedTasks));
-        renderTasksList();
-      }
-
-      showToast('✅ Tarefa salva na nuvem! Você pode abrir no PC ou Celular a qualquer momento.', 'success');
-    } catch(err) {
-      console.warn('Erro ao salvar no Firestore (possível payload grande), salvando em cache local:', err);
-      cachedTasks.unshift(newTask);
-      if (cachedTasks.length > MAX_ACTIVE_TASKS) cachedTasks = cachedTasks.slice(0, MAX_ACTIVE_TASKS);
+      // Salva no Servidor Local (se conectado)
+      let savedOnServer = false;
       try {
-        localStorage.setItem('obnotion_cached_tasks', JSON.stringify(cachedTasks));
-      } catch(e) {}
+        const srvRes = await fetch('/api/tasks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newTask)
+        });
+        if (srvRes.ok) {
+          const srvData = await srvRes.json();
+          if (srvData && srvData.status === 'success' && Array.isArray(srvData.tasks)) {
+            cachedTasks = srvData.tasks;
+            savedOnServer = true;
+            isServerOnline = true;
+          }
+        }
+      } catch (err) {
+        // Servidor offline ou estático
+      }
+
+      // Salva no IndexedDB do navegador (persistência garantida e sem cota de 5MB)
+      await idbSaveTask(newTask);
+
+      if (!savedOnServer) {
+        const existIdx = cachedTasks.findIndex(t => t.id === taskId);
+        if (existIdx >= 0) {
+          cachedTasks[existIdx] = newTask;
+        } else {
+          cachedTasks.unshift(newTask);
+        }
+        if (cachedTasks.length > MAX_ACTIVE_TASKS) cachedTasks = cachedTasks.slice(0, MAX_ACTIVE_TASKS);
+      }
+
+      persistLocalCache(cachedTasks);
       renderTasksList();
-      showToast('✅ Tarefa salva localmente neste dispositivo!', 'success');
+      updateSyncStatusUI();
+
+      if (savedOnServer) {
+        showToast('✅ Tarefa salva e sincronizada! Disponível no PC e no Celular via Wi-Fi.', 'success');
+      } else {
+        showToast('✅ Tarefa salva com segurança neste dispositivo!', 'success');
+      }
+    } catch(err) {
+      console.error('Erro ao salvar tarefa:', err);
+      showToast('Erro ao salvar: ' + err.message, 'error');
     } finally {
       if (btnSaveCurrentTask) {
         btnSaveCurrentTask.disabled = false;
-        btnSaveCurrentTask.innerHTML = '<span>💾</span> Salvar Trabalho Atual na Nuvem';
+        btnSaveCurrentTask.innerHTML = '<span>💾</span> Salvar Trabalho Atual';
       }
     }
   }
 
   // Carrega a tarefa selecionada
   async function loadTask(taskId) {
-    const task = cachedTasks.find(t => t.id === taskId);
+    let task = cachedTasks.find(t => t.id === taskId);
+    if (!task || !task.data) {
+      const idbTasks = await idbGetTasks();
+      if (idbTasks) {
+        const found = idbTasks.find(t => t.id === taskId);
+        if (found) task = found;
+      }
+    }
+
     if (!task) {
       showToast('Tarefa não encontrada.', 'error');
       return;
@@ -6017,35 +6217,61 @@ ${sermonText}`;
       if (task.data && task.data.slides) {
         imageSlides = task.data.slides;
         renderImagesOrganizer();
-        showToast(`Tarefa "${task.title}" carregada com ${imageSlides.length} slides!`, 'success');
+        showToast('Tarefa "' + task.title + '" carregada com ' + imageSlides.length + ' slides!', 'success');
       }
     } else if (task.module === 'slidekiller') {
       if (task.data) {
+        if (task.data.font && fontSelect) {
+          fontSelect.value = task.data.font;
+          if (resultsFontSelect) resultsFontSelect.value = task.data.font;
+        }
+        if (task.data.template && templateSelect) {
+          templateSelect.value = task.data.template;
+        }
+        if (task.data.customBg) {
+          customBgDataUrl = task.data.customBg;
+          if (customBgPreviewBadge) customBgPreviewBadge.style.display = 'inline-flex';
+          if (customBgThumb) customBgThumb.src = customBgDataUrl;
+          if (templateSelect) templateSelect.value = '__custom_active__';
+        }
+        if (task.data.fileName && fileNameDisplay) {
+          fileNameDisplay.textContent = task.data.fileName;
+        }
+
         if (task.data.slides && task.data.slides.length > 0) {
           currentSlides = task.data.slides;
           if (inputSection) inputSection.style.display = 'none';
           if (resultsSection) resultsSection.style.display = 'block';
           if (btnDownloadTop) btnDownloadTop.style.display = 'inline-flex';
           renderResults();
+        } else if (task.data.paragrafoText) {
+          const pInput = document.getElementById('paragrafo-text-input');
+          if (pInput) pInput.value = task.data.paragrafoText;
+          const tabBtn = document.querySelector('.tab-btn[data-tab="tab-paragrafo"]');
+          if (tabBtn) tabBtn.click();
+          if (inputSection) inputSection.style.display = 'flex';
+          if (resultsSection) resultsSection.style.display = 'none';
         } else if (task.data.inputText && sermonTextInput) {
           sermonTextInput.value = task.data.inputText;
+          const tabBtn = document.querySelector('.tab-btn[data-tab="tab-text"]');
+          if (tabBtn) tabBtn.click();
           if (inputSection) inputSection.style.display = 'flex';
           if (resultsSection) resultsSection.style.display = 'none';
         }
-        showToast(`Tarefa "${task.title}" carregada com sucesso!`, 'success');
+        showToast('Tarefa "' + task.title + '" carregada com sucesso!', 'success');
       }
     } else if (task.module === 'pdf-to-pptx') {
       if (task.data && (task.data.slides || task.data.pages)) {
         const items = task.data.slides || task.data.pages;
         directSlides = items.map((item, idx) => ({
           id: item.id || ('slide_' + Date.now() + '_' + idx),
-          title: item.title || `Página ${item.pageNum || idx + 1}`,
+          title: item.title || ('Página ' + (item.pageNum || (idx + 1))),
           type: item.type || 'pdf',
           imgData: item.imgData,
           ratio: item.ratio || (16 / 9)
         }));
         renderDirectOrganizer();
-        showToast(`Tarefa "${task.title}" carregada com ${directSlides.length} slides!`, 'success');
+        showToast('Tarefa "' + task.title + '" carregada com ' + directSlides.length + ' slides!', 'success');
       }
     }
 
@@ -6055,18 +6281,23 @@ ${sermonText}`;
   // Exclui a tarefa liberando espaço no limite de 3
   async function deleteTask(taskId, evt) {
     if (evt) evt.stopPropagation();
-    if (!confirm('Deseja excluir esta tarefa e liberar 1 vaga na nuvem?')) return;
+    if (!confirm('Deseja excluir esta tarefa e liberar 1 vaga?')) return;
 
     try {
-      if (firestoreDb) {
-        await firestoreDb.collection('obnotion_active_tasks').doc(taskId).delete();
+      if (isServerOnline) {
+        try {
+          await fetch('/api/tasks/' + taskId, { method: 'DELETE' });
+        } catch(e) {}
       }
+
+      await idbDeleteTask(taskId);
+
       cachedTasks = cachedTasks.filter(t => t.id !== taskId);
-      try {
-        localStorage.setItem('obnotion_cached_tasks', JSON.stringify(cachedTasks));
-      } catch(e) {}
+      persistLocalCache(cachedTasks);
       renderTasksList();
-      showToast('🗑️ Tarefa excluída. Vaga liberada na nuvem!', 'info');
+      updateSyncStatusUI();
+
+      showToast('🗑️ Tarefa excluída. Vaga liberada!', 'info');
     } catch(err) {
       console.error('Erro ao excluir tarefa:', err);
       showToast('Erro ao excluir: ' + err.message, 'error');
@@ -6079,6 +6310,7 @@ ${sermonText}`;
     if (overlay) {
       if (show) {
         overlay.classList.add('open');
+        loadAllTasks();
       } else {
         overlay.classList.remove('open');
       }
@@ -6103,7 +6335,7 @@ ${sermonText}`;
   function showToast(msg, type = 'info') {
     if (!toast) return;
     toast.textContent = msg;
-    toast.className = `toast ${type}`;
+    toast.className = 'toast ' + type;
     toast.style.display = 'block';
     setTimeout(() => {
       toast.style.display = 'none';
@@ -6119,7 +6351,6 @@ ${sermonText}`;
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#039;');
   }
-
 
   // ==========================================
   // MÓDULO: Parágrafo para Slide
