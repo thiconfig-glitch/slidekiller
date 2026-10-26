@@ -237,7 +237,7 @@
       </div>
 
       <!-- Botão Global: Tarefas em Andamento (Celular / PC) -->
-      <button class="btn btn-tasks-toggle" id="btn-open-tasks-panel" title="Tarefas em Andamento (Sincronizadas na Nuvem)">
+      <button class="btn btn-tasks-toggle" id="btn-open-tasks-panel" onclick="window.toggleTasksDrawer && window.toggleTasksDrawer(true)" title="Tarefas em Andamento (Sincronização Celular / PC)">
         <span>📌</span> <span class="btn-tasks-text">Tarefas</span>
         <span class="tasks-counter-badge" id="tasks-counter-badge">0/3</span>
       </button>
@@ -1020,7 +1020,7 @@ texto exemplo ii eii
         <!-- Botão Salvar Tarefa Atual -->
         <div style="padding: 14px 20px; border-bottom: 1px solid var(--border); background: rgba(0,0,0,0.2);">
           <button class="btn btn-primary" id="btn-save-current-task" style="width: 100%; justify-content: center; font-size: 13px;">
-            <span>💾</span> Salvar Trabalho Atual na Nuvem
+            <span>💾</span> Salvar Trabalho Atual
           </button>
         </div>
 
@@ -1028,14 +1028,14 @@ texto exemplo ii eii
         <div class="tasks-list" id="tasks-list-container">
           <div class="empty-tasks-msg">
             Nenhuma tarefa salva no momento.<br>
-            Clique em <strong>Salvar Trabalho Atual</strong> para guardar seu progresso na nuvem.
+            Clique em <strong>Salvar Trabalho Atual</strong> para guardar seu progresso.
           </div>
         </div>
 
         <!-- Rodapé Informativo -->
         <div class="tasks-drawer-footer">
-          <span style="font-size: 11px; color: var(--text-muted); line-height: 1.4; display: block;">
-            ⚡ <strong>Liberdade Total:</strong> Comece a montar no celular e baixe o PowerPoint no computador, ou vice-versa! Limite máximo de 3 tarefas para manter tudo ágil e leve.
+          <span style="font-size: 11px; color: var(--text-muted); line-height: 1.4; display: block;" id="tasks-sync-status-msg">
+            ⚡ <strong>Sincronização Ativa:</strong> Salve no celular e abra no PC na mesma rede Wi-Fi, ou continue editando neste navegador. Limite máximo de 3 tarefas simultâneas.
           </span>
         </div>
       </div>

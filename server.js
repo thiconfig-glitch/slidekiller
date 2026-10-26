@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 const multer = require('multer');
 const { buildSermonPptx } = require('./sermon_slide_engine');
 const { extractTextFromPdf, parseSermonTextOffline, parseTeamsDirectionText } = require('./local_sermon_parser');
@@ -50,6 +51,74 @@ app.get('/api/health', (req, res) => {
     modules: ['slidekiller', 'pdf-to-pptx', 'images-to-pptx', 'video-editor'],
     timestamp: new Date().toISOString()
   });
+});
+
+// ==========================================
+// API DE TAREFAS SINCRONIZADAS (CELULAR ⇄ PC)
+// ==========================================
+const tasksFilePath = path.join(downloadsDir, 'active_tasks.json');
+
+function getStoredTasks() {
+  try {
+    if (fs.existsSync(tasksFilePath)) {
+      const data = fs.readFileSync(tasksFilePath, 'utf8');
+      const parsed = JSON.parse(data);
+      return Array.isArray(parsed) ? parsed : [];
+    }
+  } catch (err) {
+    console.warn('⚠️ Erro ao ler tarefas salvas:', err.message);
+  }
+  return [];
+}
+
+function saveStoredTasks(tasks) {
+  try {
+    fs.writeFileSync(tasksFilePath, JSON.stringify(tasks.slice(0, 3), null, 2), 'utf8');
+    return true;
+  } catch (err) {
+    console.error('❌ Erro ao persistir tarefas:', err.message);
+    return false;
+  }
+}
+
+app.get('/api/tasks', (req, res) => {
+  res.json({
+    status: 'success',
+    tasks: getStoredTasks()
+  });
+});
+
+app.post('/api/tasks', (req, res) => {
+  try {
+    const newTask = req.body;
+    if (!newTask || !newTask.id) {
+      return res.status(400).json({ error: 'Dados da tarefa inválidos ou id ausente.' });
+    }
+    let tasks = getStoredTasks();
+    const existingIndex = tasks.findIndex(t => t.id === newTask.id);
+    if (existingIndex >= 0) {
+      tasks[existingIndex] = { ...tasks[existingIndex], ...newTask, updatedAt: new Date().toISOString() };
+    } else {
+      tasks.unshift(newTask);
+    }
+    tasks = tasks.slice(0, 3);
+    saveStoredTasks(tasks);
+    res.json({ status: 'success', tasks });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/tasks/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    let tasks = getStoredTasks();
+    tasks = tasks.filter(t => t.id !== id);
+    saveStoredTasks(tasks);
+    res.json({ status: 'success', tasks });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 /**
@@ -212,12 +281,32 @@ app.post('/api/slides/upload-bg', upload.single('bgImage'), (req, res) => {
   }
 });
 
+function getLocalNetworkIp() {
+  try {
+    const nets = os.networkInterfaces();
+    for (const name of Object.keys(nets)) {
+      for (const net of nets[name]) {
+        if (net.family === 'IPv4' && !net.internal) {
+          return net.address;
+        }
+      }
+    }
+  } catch (e) {}
+  return null;
+}
+
 app.listen(PORT, () => {
+  const localIp = getLocalNetworkIp();
   console.log('================================================================');
   console.log(`🏛️  CENTRAL MULTIMÍDIA CHURCH ONLINE NA PORTA ${PORT}`);
-  console.log(`🌐 Acesse no navegador: http://localhost:${PORT}`);
+  console.log(`🌐 No Computador: http://localhost:${PORT}`);
+  if (localIp) {
+    console.log(`📱 No Celular (mesmo Wi-Fi): http://${localIp}:${PORT}`);
+  }
   console.log('   • ⚡ Módulo 1: Slide Killer (PPTX 16:9 Full HD)');
   console.log('   • 📄 Módulo 2: PDF ➔ PPTX Direto (1 Pág = 1 Slide 100% Fiel)');
-  console.log('   • 🎬 Módulo 3: Editor de Vídeo (OpenCut Studio OSS)');
+  console.log('   • 🖼️ Módulo 3: Imagens / ZIP ➔ PPTX');
+  console.log('   • 🎨 Módulo 4: DeckCraft Studio');
+  console.log('   • 📌 Tarefas Sincronizadas (Celular ⇄ PC ativado)');
   console.log('================================================================');
 });

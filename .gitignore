@@ -1,6 +1,7 @@
 node_modules/
 .env
 downloads/*.pptx
+downloads/*.json
 downloads/custom_bg_*.png
 downloads/custom_bg_*.jpg
 .DS_Store
