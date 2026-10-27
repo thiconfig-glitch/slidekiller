@@ -803,7 +803,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return runs.length > 0 ? runs : [{ text, highlight: false }];
   }
 
-  // Extração Multimodal de Versículos via IA Gemini Vision com Fallback resiliente
+  // Extração Multimodal de Versículos via IA Gemini Vision com Fallback resiliente e Identificação Automática
   async function extractVersesFromImagesWithGemini(imageItems, bibleVersionChoice = 'exact') {
     if (!imageItems || imageItems.length === 0) {
       showToast('Nenhuma imagem fornecida.', 'error');
@@ -825,29 +825,36 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     try {
-      let versionInstruction = 'Mantenha fielmente e com exatidão o texto bíblico visível nas fotos do slide/telão.';
+      let versionInstruction = 'Mantenha fielmente o texto bíblico com exatidão.';
       if (bibleVersionChoice === 'ACF') {
-        versionInstruction = 'Identifique a referência bíblica da imagem e utilize a tradução fiel Almeida Corrigida Fiel (ACF).';
+        versionInstruction = 'Identifique a referência bíblica da imagem e utilize a tradução Almeida Corrigida Fiel (ACF).';
       } else if (bibleVersionChoice === 'ARA') {
-        versionInstruction = 'Identifique a referência bíblica da imagem e utilize a tradução fiel Almeida Revista e Atualizada (ARA).';
+        versionInstruction = 'Identifique a referência bíblica da imagem e utilize a tradução Almeida Revista e Atualizada (ARA).';
       } else if (bibleVersionChoice === 'NVI') {
-        versionInstruction = 'Identifique a referência bíblica da imagem e utilize a tradução fiel Nova Versão Internacional (NVI).';
+        versionInstruction = 'Identifique a referência bíblica da imagem e utilize a tradução Nova Versão Internacional (NVI).';
       }
 
-      const prompt = `Você é um assistente teológico especialista em produção de slides de cultos e sermões da igreja.
-Analise com máxima atenção a(s) foto(s) anexada(s) (fotos de telas de projeção da igreja, slides de culto, telões ou fotos de versículos).
-Extraia TODOS os versículos, referências bíblicas e mensagens presentes nas imagens.
-Para cada versículo ou texto bíblico encontrado:
-1. "type": "versículo" (ou "tópico" ou "impacto")
-2. "reference": Referência bíblica canônica exata (ex: 'Lucas 13:22-29', 'João 3:16', 'Mateus 6:19')
-3. "text": Texto bíblico correspondente. ${versionInstruction}
-4. "highlights": Array com termos ou palavras-chave de maior ênfase para destaque visual na projeção da igreja (ex: ["SENHOR", "SALVAM"]).
+      const prompt = `Você é um teólogo e assistente especialista em produção de slides de cultos e sermões da igreja.
+Analise com MÁXIMA ATENÇÃO a(s) foto(s) anexada(s) (fotos de telão da igreja, slides de culto ou fotos de versículos).
+Sua missão é extrair TODOS os versículos e passagens bíblicas com suas REFERÊNCIAS EXATAS.
+
+### REGRA DE OURO OBRIGATÓRIA - REFERÊNCIA BÍBLICA:
+1. Em slides de versículos ("type": "verse"), O CAMPO "reference" NUNCA PODE FICAR VAZIO!
+2. Se a referência bíblica (Livro Capítulo:Versículo) estiver visível na foto (cabeçalho, rodapé, ou entre parênteses como '(Lc 13.22)'):
+   - Extraia para "reference" no padrão por extenso (ex: "Lucas 13:22", "1 Coríntios 13:4-7", "Salmos 23:1").
+   - REMOVA a referência do campo "text" (para não duplicar na projeção).
+3. SE A REFERÊNCIA BÍBLICA NÃO ESTIVER ESCRITA NA FOTO (a igreja projetou apenas o texto do versículo sem citar o livro):
+   - VOCÊ DEVE OBRIGATORIAMENTE IDENTIFICAR O VERSÍCULO PELO SEU CONTEÚDO E PREENCHER O LIVRO, CAPÍTULO E VERSÍCULO EXATOS no campo "reference"!
+   - Exemplo: se na foto está apenas o texto "Porque Deus tanto amou o mundo que deu o seu Filho Unigênito...", você DEVE preencher "reference": "João 3:16".
+   - NUNCA retorne "reference": "" ou "reference": "Bíblia" ou nulo! Identifique sempre o livro e versículo canônico!
+4. "text": Texto sagrado do versículo limpo (sem a referência embutida). ${versionInstruction}
+5. "highlights": Array com 2 a 4 termos ou palavras-chave de maior ênfase para destaque visual dourado na projeção (ex: ["SENHOR", "SALVAM"]).
 
 Retorne ESTRITAMENTE em formato JSON puro, sem crases ou markdown adicional:
 {
   "slides": [
     {
-      "type": "versículo",
+      "type": "verse",
       "reference": "Lucas 13:22-29",
       "text": "E disse-lhe um: Senhor, são poucos os que se salvam? E ele lhe respondeu:",
       "highlights": ["Senhor", "poucos os que se salvam"]
@@ -872,12 +879,12 @@ Retorne ESTRITAMENTE em formato JSON puro, sem crases ou markdown adicional:
       if (aiOcrProgressStatus) aiOcrProgressStatus.textContent = 'IA Gemini Vision interpretando fotos e versículos...';
 
       const models = [
-        'gemini-flash-lite-latest',
-        'gemini-flash-latest',
-        'gemini-3.1-flash-lite',
+        'gemini-3.5-flash',
         'gemini-3.5-flash-lite',
-        'gemini-3.6-flash',
-        'gemini-3.7-flash'
+        'gemini-3-flash-preview',
+        'gemini-flash-latest',
+        'gemini-flash-lite-latest',
+        'gemini-3.8-flash'
       ];
       let responseJson = null;
       let lastError = null;
@@ -925,15 +932,82 @@ Retorne ESTRITAMENTE em formato JSON puro, sem crases ou markdown adicional:
         throw new Error(lastError || 'Nenhum versículo foi identificado com clareza nas fotos fornecidas.');
       }
 
-      if (aiOcrProgressBar) aiOcrProgressBar.style.width = '90%';
-      if (aiOcrProgressPercent) aiOcrProgressPercent.textContent = '90%';
-      if (aiOcrProgressStatus) aiOcrProgressStatus.textContent = 'Montando slides no editor...';
+      if (aiOcrProgressBar) aiOcrProgressBar.style.width = '80%';
+      if (aiOcrProgressPercent) aiOcrProgressPercent.textContent = '80%';
+      if (aiOcrProgressStatus) aiOcrProgressStatus.textContent = 'Validando e garantindo referências bíblicas...';
 
-      currentSlides = responseJson.slides.map(item => ({
-        type: item.type || 'versículo',
-        reference: item.reference || '',
-        runs: buildRunsFromHighlights(item.text, item.highlights || [])
-      }));
+      // Pipeline de normalização e recuperação de referências bíblicas
+      const processedSlides = [];
+      let lastKnownRef = '';
+
+      for (let item of responseJson.slides) {
+        let rawText = (item.text || '').trim();
+        let ref = (item.reference || '').trim();
+
+        // 1. Se a IA colocou a referência dentro do texto (ex: "João 3:16 - Porque Deus amou..." ou "... (Mt 6:19)")
+        const embeddedRef = isBibleRef(rawText);
+        if (embeddedRef) {
+          const normEmb = normalizeBibleRefName(embeddedRef);
+          if (!ref || ref.toLowerCase() === 'versículo' || ref.toLowerCase() === 'bíblia') {
+            ref = normEmb;
+          }
+          // Limpa a referência do texto do slide para não duplicar
+          rawText = rawText.replace(new RegExp(`\\(?\\s*${embeddedRef.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\)?`, 'gi'), '');
+          rawText = rawText.replace(/^[-–—:]\s*|\s*[-–—:]$/g, '').trim();
+        }
+
+        // 2. Se a referência ainda estiver vazia ou genérica, identifica o versículo pelo texto com IA rápida
+        if ((!ref || ref.toLowerCase() === 'versículo' || ref.toLowerCase() === 'bíblia') && rawText.length > 15) {
+          try {
+            if (aiOcrProgressStatus) aiOcrProgressStatus.textContent = 'Identificando livro e capítulo do versículo...';
+            const idModel = 'gemini-3.5-flash';
+            const idPrompt = `Identifique com exatidão o Livro, Capítulo e Versículo canônico deste versículo bíblico em português: "${rawText.substring(0, 180)}". Responda ESTRITAMENTE em JSON puro: {"reference": "NomeDoLivro Cap:Vers"}`;
+            const idRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${idModel}:generateContent?key=${apiKey}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: idPrompt }] }],
+                generationConfig: { temperature: 0.1, responseMimeType: 'application/json' }
+              })
+            });
+            if (idRes.ok) {
+              const idData = await idRes.json();
+              const idRaw = idData.candidates?.[0]?.content?.parts?.[0]?.text;
+              if (idRaw) {
+                const parsed = JSON.parse(idRaw.replace(/```json/gi, '').replace(/```/g, '').trim());
+                if (parsed.reference) {
+                  ref = normalizeBibleRefName(parsed.reference);
+                }
+              }
+            }
+          } catch (idErr) {
+            console.warn('Fallback de identificação automática:', idErr);
+          }
+        }
+
+        // 3. Se ainda assim estiver vazio, herda da última referência conhecida se for continuação de passagem
+        if (!ref && lastKnownRef) {
+          ref = lastKnownRef;
+        }
+
+        if (ref) {
+          lastKnownRef = ref;
+        }
+
+        // 4. Quebra inteligente de versículos longos (> 220 caracteres) para caber na projeção
+        const cleanRef = normalizeBibleRefName(ref);
+        const chunks = splitTextByPunctuation(rawText, 220);
+
+        chunks.forEach(chunk => {
+          processedSlides.push({
+            type: 'verse',
+            reference: cleanRef,
+            runs: buildRunsFromHighlights(chunk, item.highlights || [])
+          });
+        });
+      }
+
+      currentSlides = processedSlides;
 
       if (aiOcrProgressBar) aiOcrProgressBar.style.width = '100%';
       if (aiOcrProgressPercent) aiOcrProgressPercent.textContent = '100%';
@@ -948,13 +1022,11 @@ Retorne ESTRITAMENTE em formato JSON puro, sem crases ou markdown adicional:
     } finally {
       if (btnGenerate) {
         btnGenerate.disabled = false;
-        btnGenerate.innerHTML = '<span class="btn-icon">⚡</span> Extrair Versículos e Gerar Slides com IA';
+        btnGenerate.innerHTML = '<span>⚡</span> Gerar Slides Instantaneamente';
       }
-      if (aiOcrProgressContainer) {
-        setTimeout(() => {
-          aiOcrProgressContainer.style.display = 'none';
-        }, 1200);
-      }
+      setTimeout(() => {
+        if (aiOcrProgressContainer) aiOcrProgressContainer.style.display = 'none';
+      }, 3000);
     }
   }
 
@@ -2298,7 +2370,7 @@ ${sermonText}`;
 
       const type = item.type || 'verse';
 
-      if (type === 'verse') {
+      if (type === 'verse' || type === 'versículo') {
         const textLength = (item.runs || []).reduce((acc, r) => acc + (r.text || '').length, 0);
         let fontSize = 48;
         if (textLength < 70) fontSize = 56;
