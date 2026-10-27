@@ -65,7 +65,7 @@ async function buildSermonPptx(slidesData, bgImagePath, outputFilePath) {
 
     const type = item.type || 'verse';
 
-    if (type === 'verse') {
+    if (type === 'verse' || type === 'versículo') {
       // Verse formatting
       const textLength = item.runs.reduce((acc, r) => acc + (r.text || '').length, 0);
       let fontSize = 54;
