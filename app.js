@@ -5694,13 +5694,14 @@ ${sermonText}`;
 
   // ==========================================
   // GERENCIADOR DE TAREFAS EM ANDAMENTO (MÁX 3)
-  // Sincronização Híbrida: Servidor Local (Wi-Fi) + IndexedDB + Cache
+  // Sincronização Híbrida: Servidor Local (Wi-Fi) + IndexedDB + Link WhatsApp
   // ==========================================
   const MAX_ACTIVE_TASKS = 3;
   const btnOpenTasksPanel = document.getElementById('btn-open-tasks-panel');
   const tasksCounterBadge = document.getElementById('tasks-counter-badge');
   const drawerTasksCounterBadge = document.getElementById('drawer-tasks-counter-badge');
   const btnSaveCurrentTask = document.getElementById('btn-save-current-task');
+  const btnShareCurrentTask = document.getElementById('btn-share-current-task');
   const tasksListContainer = document.getElementById('tasks-list-container');
   const tasksDrawerOverlay = document.getElementById('tasks-drawer-overlay');
   const tasksSyncStatusMsg = document.getElementById('tasks-sync-status-msg');
@@ -5781,6 +5782,54 @@ ${sermonText}`;
     });
   }
 
+  // Funções de Compressão para Compartilhamento via Link de URL
+  function uint8ToBase64Url(bytes) {
+    let binary = '';
+    const len = bytes.byteLength;
+    for (let i = 0; i < len; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  function base64UrlToUint8(str) {
+    str = str.replace(/-/g, '+').replace(/_/g, '/');
+    while (str.length % 4) str += '=';
+    const binary = atob(str);
+    const len = binary.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes;
+  }
+
+  async function compressTaskData(taskObj) {
+    const jsonStr = JSON.stringify(taskObj);
+    if (typeof CompressionStream !== 'undefined') {
+      const stream = new Blob([new TextEncoder().encode(jsonStr)]).stream().pipeThrough(new CompressionStream('deflate'));
+      const buf = await new Response(stream).arrayBuffer();
+      return uint8ToBase64Url(new Uint8Array(buf));
+    } else {
+      return encodeURIComponent(jsonStr);
+    }
+  }
+
+  async function decompressTaskData(encoded) {
+    if (typeof DecompressionStream !== 'undefined') {
+      try {
+        const bytes = base64UrlToUint8(encoded);
+        const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate'));
+        const text = await new Response(stream).text();
+        return JSON.parse(text);
+      } catch(e) {
+        return JSON.parse(decodeURIComponent(encoded));
+      }
+    } else {
+      return JSON.parse(decodeURIComponent(encoded));
+    }
+  }
+
   function getDeviceType() {
     const isMobile = window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     return isMobile ? '📱 Celular' : '💻 PC';
@@ -5857,9 +5906,9 @@ ${sermonText}`;
   function updateSyncStatusUI() {
     if (!tasksSyncStatusMsg) return;
     if (isServerOnline) {
-      tasksSyncStatusMsg.innerHTML = '🟢 <strong>Sincronização em Rede Ativa:</strong> Salve no celular e continue no PC pelo mesmo Wi-Fi. (Limite: até 3 tarefas)';
+      tasksSyncStatusMsg.innerHTML = '🟢 <strong>Sincronização em Rede Wi-Fi Ativa:</strong> Salve no celular e continue no PC. (Limite: até 3 tarefas)';
     } else {
-      tasksSyncStatusMsg.innerHTML = '💾 <strong>Armazenamento Seguro Ativo:</strong> Tarefas salvas com persistência garantida neste dispositivo. (Limite: até 3 tarefas)';
+      tasksSyncStatusMsg.innerHTML = '⚡ <strong>Liberdade Total:</strong> Abra no PC pelo mesmo Wi-Fi ou envie o link por WhatsApp. (Limite: até 3 tarefas)';
     }
   }
 
@@ -5946,12 +5995,77 @@ ${sermonText}`;
     }, 6000);
   }
 
+  // Verifica se a URL contém um link de tarefa compartilhado (#tarefa=...)
+  async function checkUrlSharedTask() {
+    const hash = window.location.hash;
+    if (!hash || (!hash.includes('tarefa=') && !hash.includes('task='))) return;
+
+    try {
+      const match = hash.match(/(?:tarefa|task)=([^&]+)/);
+      if (!match || !match[1]) return;
+
+      const encodedData = match[1];
+      showToast('Importando tarefa do link...', 'info');
+
+      const taskData = await decompressTaskData(encodedData);
+      if (!taskData || !taskData.title) {
+        throw new Error('Dados inválidos no link.');
+      }
+
+      const importedTask = {
+        id: 'task_' + Date.now(),
+        title: taskData.title,
+        module: taskData.module || 'slidekiller',
+        moduleName: taskData.moduleName || 'Slide Killer',
+        moduleIcon: taskData.moduleIcon || '📌',
+        slideCount: taskData.slideCount || (taskData.data && taskData.data.slides ? taskData.data.slides.length : 1),
+        device: '🔗 Link Compartilhado',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        data: taskData.data
+      };
+
+      // Limpa a hash da URL para não reimportar em caso de recarregar a página
+      if (window.history && window.history.replaceState) {
+        window.history.replaceState(null, '', window.location.pathname + window.location.search);
+      }
+
+      await idbSaveTask(importedTask);
+      if (isServerOnline) {
+        try {
+          await fetch('/api/tasks', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(importedTask)
+          });
+        } catch(e) {}
+      }
+
+      const existIdx = cachedTasks.findIndex(t => t.id === importedTask.id);
+      if (existIdx >= 0) cachedTasks[existIdx] = importedTask;
+      else cachedTasks.unshift(importedTask);
+      if (cachedTasks.length > MAX_ACTIVE_TASKS) cachedTasks = cachedTasks.slice(0, MAX_ACTIVE_TASKS);
+
+      persistLocalCache(cachedTasks);
+      renderTasksList();
+
+      // Carrega imediatamente na tela
+      await loadTask(importedTask.id);
+
+      showToast('🎉 "' + importedTask.title + '" carregada com sucesso do link!', 'success');
+
+    } catch(err) {
+      console.error('Erro ao importar tarefa compartilhada:', err);
+      showToast('Erro ao abrir link: ' + err.message, 'error');
+    }
+  }
+
   function initTasksSync() {
     loadAllTasks().then(() => {
       startPeriodicSync();
+      checkUrlSharedTask();
     });
 
-    // Atualiza ao focar na aba
     window.addEventListener('focus', () => {
       loadAllTasks();
     });
@@ -5969,7 +6083,7 @@ ${sermonText}`;
       tasksListContainer.innerHTML = [
         '<div class="empty-tasks-msg">',
         '  Nenhuma tarefa salva no momento.<br>',
-        '  Clique em <strong>Salvar Trabalho Atual</strong> para guardar seu progresso.',
+        '  Clique em <strong>Salvar Trabalho Atual</strong> ou gere um link para WhatsApp.',
         '</div>'
       ].join('\n');
       return;
@@ -5994,8 +6108,11 @@ ${sermonText}`;
         '  <span style="font-size:11px; color:var(--text-muted);">' + escapeHtml(task.device || 'Dispositivo') + ' • ' + formatTimeAgo(task.updatedAt) + '</span>',
         '</div>',
         '<div class="task-card-actions">',
-        '  <button type="button" class="btn btn-secondary btn-sm" style="width:100%; justify-content:center; font-size:12px; font-weight:600;" onclick="window.obnotionLoadTask(\'' + task.id + '\')">',
-        '    <span>📂</span> Continuar Editando Aqui',
+        '  <button type="button" class="btn btn-secondary btn-sm" style="flex:1; justify-content:center; font-size:12px; font-weight:600;" onclick="window.obnotionLoadTask(\'' + task.id + '\')">',
+        '    <span>📂</span> Abrir',
+        '  </button>',
+        '  <button type="button" class="btn btn-whatsapp btn-sm" style="flex:1; justify-content:center; font-size:12px; font-weight:600;" onclick="window.obnotionShareTaskLink(\'' + task.id + '\')" title="Copiar link para enviar via WhatsApp para o computador">',
+        '    <span>🔗</span> WhatsApp',
         '  </button>',
         '</div>'
       ].join('\n');
@@ -6003,8 +6120,8 @@ ${sermonText}`;
     });
   }
 
-  // Salva o trabalho em andamento (com limite de 3 tarefas)
-  async function handleSaveCurrentTask() {
+  // Extrai o conteúdo atual do trabalho em andamento
+  function extractCurrentWork() {
     let taskData = null;
     let defaultTitle = '';
     let slideCount = 0;
@@ -6013,25 +6130,13 @@ ${sermonText}`;
 
     if (currentActiveModule === 'images-to-pptx') {
       if (!imageSlides || imageSlides.length === 0) {
-        showToast('Nenhuma imagem adicionada para salvar.', 'error');
-        return;
+        return { error: 'Nenhuma imagem adicionada para salvar ou compartilhar.' };
       }
       modName = 'Imagens / ZIP';
       modIcon = '🖼️';
       slideCount = imageSlides.length;
       defaultTitle = 'Lote de Imagens (' + slideCount + ' slides)';
-
-      showToast('Otimizando slides para salvar...', 'info');
-      const optimizedSlides = [];
-      for (const s of imageSlides) {
-        const compUrl = await compressDataUrlForCloud(s.dataUrl, 800, 0.70);
-        optimizedSlides.push({
-          id: s.id,
-          name: s.name,
-          dataUrl: compUrl
-        });
-      }
-      taskData = { slides: optimizedSlides };
+      taskData = { slides: imageSlides };
 
     } else if (currentActiveModule === 'slidekiller') {
       const textVal = sermonTextInput ? sermonTextInput.value.trim() : '';
@@ -6041,8 +6146,7 @@ ${sermonText}`;
       const hasPdf = currentFile != null;
 
       if (!hasSlides && !textVal && !paragrafoVal && !hasPdf) {
-        showToast('Nenhum sermão, texto ou slide adicionado para salvar.', 'error');
-        return;
+        return { error: 'Nenhum sermão, texto ou slide adicionado para salvar ou compartilhar.' };
       }
       modName = 'Slide Killer';
       modIcon = '⚡';
@@ -6068,34 +6172,200 @@ ${sermonText}`;
 
     } else if (currentActiveModule === 'pdf-to-pptx') {
       if (!directSlides || directSlides.length === 0) {
-        showToast('Nenhum slide do PDF ou foto para salvar.', 'error');
-        return;
+        return { error: 'Nenhum slide do PDF ou foto para salvar ou compartilhar.' };
       }
       modName = 'PDF ➔ PPTX';
       modIcon = '📄';
       slideCount = directSlides.length;
       defaultTitle = (currentDirectFile ? currentDirectFile.name.replace(/\.[^/.]+$/, '') : 'PDF Direto') + ' (' + slideCount + ' slides)';
-      
-      showToast('Otimizando slides para salvar...', 'info');
-      const optimizedSlides = [];
-      for (const s of directSlides) {
-        const compUrl = await compressDataUrlForCloud(s.imgData, 800, 0.70);
-        optimizedSlides.push({
-          id: s.id,
-          title: s.title,
-          type: s.type,
-          imgData: compUrl,
-          ratio: s.ratio
-        });
-      }
-      taskData = { slides: optimizedSlides };
+      taskData = { slides: directSlides };
     } else if (currentActiveModule === 'deckcraft') {
-      showToast('O DeckCraft salva diretamente ao baixar o arquivo .pptx.', 'info');
-      alert('🎨 DeckCraft Studio:\n\nPara salvar alterações feitas no DeckCraft Studio, utilize o botão "Baixar PowerPoint (.pptx)" ou exporte a apresentação diretamente pelo painel do editor.');
-      return;
+      return { error: 'deckcraft_notice' };
     } else {
-      showToast('Nenhum conteúdo elegível para salvar neste módulo.', 'error');
+      return { error: 'Nenhum conteúdo elegível neste módulo.' };
+    }
+
+    return {
+      title: defaultTitle,
+      module: currentActiveModule,
+      moduleName: modName,
+      moduleIcon: modIcon,
+      slideCount: slideCount,
+      data: taskData
+    };
+  }
+
+  // Utilitário para compartilhar ou copiar link
+  async function deliverShareLink(shareUrl, title) {
+    if (navigator.share && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+      try {
+        await navigator.share({
+          title: 'Slidekiller: ' + title,
+          text: 'Abra os slides no computador ou celular pelo link:',
+          url: shareUrl
+        });
+        showToast('✅ Compartilhado com sucesso!', 'success');
+        return;
+      } catch(e) {
+        if (e.name === 'AbortError') return;
+      }
+    }
+
+    let copied = false;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        copied = true;
+      } catch(e) {}
+    }
+
+    if (!copied) {
+      const ta = document.createElement('textarea');
+      ta.value = shareUrl;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      copied = true;
+    }
+
+    showToast('🔗 Link copiado! Cole no WhatsApp e abra no PC.', 'success');
+    alert('🔗 LINK COPIADO COM SUCESSO!\n\nEnvie este link no seu WhatsApp (para você mesmo ou seu grupo de mídia) e abra no computador pelo WhatsApp Web:\n\n' + shareUrl.substring(0, 100) + '...');
+  }
+
+  // Compartilha uma tarefa salva da lista
+  async function shareTaskLink(taskId) {
+    let task = cachedTasks.find(t => t.id === taskId);
+    if (!task || !task.data) {
+      const idbTasks = await idbGetTasks();
+      if (idbTasks) {
+        const found = idbTasks.find(t => t.id === taskId);
+        if (found) task = found;
+      }
+    }
+    if (!task) {
+      showToast('Tarefa não encontrada.', 'error');
       return;
+    }
+
+    showToast('Gerando link compacto...', 'info');
+
+    try {
+      const taskPayload = {
+        title: task.title,
+        module: task.module,
+        moduleName: task.moduleName,
+        moduleIcon: task.moduleIcon,
+        slideCount: task.slideCount,
+        data: task.data
+      };
+
+      const compressedHash = await compressTaskData(taskPayload);
+      const baseUrl = window.location.href.split('#')[0].split('?')[0];
+      const shareUrl = baseUrl + '#tarefa=' + compressedHash;
+
+      if (shareUrl.length > 14000) {
+        alert('⚠️ Esta tarefa possui muitas fotos ou slides pesados para caber inteiramente em um link de texto (' + Math.round(shareUrl.length / 1024) + ' KB).\n\nDica: Para apresentações com muitas fotos, use a mesma rede Wi-Fi ou baixe o PowerPoint (.pptx).');
+        return;
+      }
+
+      await deliverShareLink(shareUrl, task.title);
+    } catch(err) {
+      console.error('Erro ao gerar link:', err);
+      showToast('Erro ao gerar link: ' + err.message, 'error');
+    }
+  }
+
+  // Compartilha o trabalho que está na tela agora
+  async function handleShareCurrentTask() {
+    const work = extractCurrentWork();
+    if (work.error) {
+      if (work.error === 'deckcraft_notice') {
+        alert('🎨 DeckCraft Studio:\n\nPara salvar ou transferir alterações do DeckCraft Studio, utilize o botão "Baixar PowerPoint (.pptx)".');
+      } else {
+        showToast(work.error, 'error');
+      }
+      return;
+    }
+
+    showToast('Gerando link para WhatsApp / PC...', 'info');
+
+    try {
+      // Se for imagens ou PDF, otimiza
+      let taskData = work.data;
+      if (work.module === 'images-to-pptx' && taskData.slides) {
+        const optimized = [];
+        for (const s of taskData.slides) {
+          const comp = await compressDataUrlForCloud(s.dataUrl, 800, 0.70);
+          optimized.push({ id: s.id, name: s.name, dataUrl: comp });
+        }
+        taskData = { slides: optimized };
+      } else if (work.module === 'pdf-to-pptx' && taskData.slides) {
+        const optimized = [];
+        for (const s of taskData.slides) {
+          const comp = await compressDataUrlForCloud(s.imgData, 800, 0.70);
+          optimized.push({ id: s.id, title: s.title, type: s.type, imgData: comp, ratio: s.ratio });
+        }
+        taskData = { slides: optimized };
+      }
+
+      const payload = {
+        title: work.title,
+        module: work.module,
+        moduleName: work.moduleName,
+        moduleIcon: work.moduleIcon,
+        slideCount: work.slideCount,
+        data: taskData
+      };
+
+      const compressedHash = await compressTaskData(payload);
+      const baseUrl = window.location.href.split('#')[0].split('?')[0];
+      const shareUrl = baseUrl + '#tarefa=' + compressedHash;
+
+      if (shareUrl.length > 14000) {
+        alert('⚠️ O conteúdo atual possui fotos pesadas para caber em um link de texto (' + Math.round(shareUrl.length / 1024) + ' KB).\n\nDica: Salve como tarefa ou baixe o PowerPoint (.pptx).');
+        return;
+      }
+
+      await deliverShareLink(shareUrl, work.title);
+    } catch(err) {
+      console.error('Erro ao gerar link:', err);
+      showToast('Erro ao gerar link: ' + err.message, 'error');
+    }
+  }
+
+  // Salva o trabalho em andamento (com limite de 3 tarefas)
+  async function handleSaveCurrentTask() {
+    const work = extractCurrentWork();
+    if (work.error) {
+      if (work.error === 'deckcraft_notice') {
+        alert('🎨 DeckCraft Studio:\n\nPara salvar alterações feitas no DeckCraft Studio, utilize o botão "Baixar PowerPoint (.pptx)" ou exporte a apresentação diretamente pelo painel do editor.');
+      } else {
+        showToast(work.error, 'error');
+      }
+      return;
+    }
+
+    // 1. Otimiza slides se houver imagens
+    let taskData = work.data;
+    if (work.module === 'images-to-pptx' && taskData.slides) {
+      showToast('Otimizando slides para salvar...', 'info');
+      const optimized = [];
+      for (const s of taskData.slides) {
+        const comp = await compressDataUrlForCloud(s.dataUrl, 800, 0.70);
+        optimized.push({ id: s.id, name: s.name, dataUrl: comp });
+      }
+      taskData = { slides: optimized };
+    } else if (work.module === 'pdf-to-pptx' && taskData.slides) {
+      showToast('Otimizando slides para salvar...', 'info');
+      const optimized = [];
+      for (const s of taskData.slides) {
+        const comp = await compressDataUrlForCloud(s.imgData, 800, 0.70);
+        optimized.push({ id: s.id, title: s.title, type: s.type, imgData: comp, ratio: s.ratio });
+      }
+      taskData = { slides: optimized };
     }
 
     // 2. Validação do limite de 3 tarefas com opção de substituir a mais antiga
@@ -6119,17 +6389,17 @@ ${sermonText}`;
     }
 
     // 3. Nome da tarefa (com valor padrão inteligente)
-    const taskTitle = prompt('Nome para identificar esta tarefa no Celular ou PC:', defaultTitle);
+    const taskTitle = prompt('Nome para identificar esta tarefa no Celular ou PC:', work.title);
     if (taskTitle === null) return;
 
     const taskId = 'task_' + Date.now();
     const newTask = {
       id: taskId,
-      title: taskTitle.trim() || defaultTitle,
-      module: currentActiveModule,
-      moduleName: modName,
-      moduleIcon: modIcon,
-      slideCount: slideCount,
+      title: taskTitle.trim() || work.title,
+      module: work.module,
+      moduleName: work.moduleName,
+      moduleIcon: work.moduleIcon,
+      slideCount: work.slideCount,
       device: getDeviceType(),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -6319,6 +6589,7 @@ ${sermonText}`;
 
   window.obnotionLoadTask = loadTask;
   window.obnotionDeleteTask = deleteTask;
+  window.obnotionShareTaskLink = shareTaskLink;
 
   if (btnOpenTasksPanel) {
     btnOpenTasksPanel.addEventListener('click', () => window.toggleTasksDrawer(true));
@@ -6326,6 +6597,10 @@ ${sermonText}`;
 
   if (btnSaveCurrentTask) {
     btnSaveCurrentTask.addEventListener('click', handleSaveCurrentTask);
+  }
+
+  if (btnShareCurrentTask) {
+    btnShareCurrentTask.addEventListener('click', handleShareCurrentTask);
   }
 
   // Inicia sincronização
