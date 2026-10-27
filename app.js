@@ -2394,31 +2394,30 @@ ${sermonText}`;
           }
         }));
 
+        // Adiciona a referência bíblica diretamente abaixo do versículo (idêntico à prévia do site)
+        if (item.reference) {
+          runs.push({
+            text: '\n\n' + item.reference.toUpperCase(),
+            options: {
+              fontFace: pptxFontFace,
+              fontSize: Math.round(fontSize * 0.72),
+              color: 'E8B859',
+              bold: true,
+              shadow: { type: 'outer', angle: 90, blur: 5, offset: 2, opacity: 0.7, color: '000000' }
+            }
+          });
+        }
+
         slide.addText(runs, {
           x: startX,
           y: startY,
           w: textWidth,
-          h: 4.2,
+          h: 5.2,
           valign: 'top',
           align: isLeftAlign ? 'left' : 'center',
           margin: 0,
           wrap: true
         });
-
-        if (item.reference) {
-          slide.addText(item.reference.toUpperCase(), {
-            x: startX,
-            y: 5.6,
-            w: textWidth,
-            h: 0.8,
-            fontFace: pptxFontFace,
-            fontSize: 38,
-            color: 'E8B859',
-            bold: true,
-            align: isLeftAlign ? 'left' : 'center',
-            shadow: { type: 'outer', angle: 90, blur: 5, offset: 2, opacity: 0.7, color: '000000' }
-          });
-        }
 
       } else if (type === 'question_short') {
         const runs = (item.runs || []).map(r => ({

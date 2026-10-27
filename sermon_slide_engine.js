@@ -83,31 +83,31 @@ async function buildSermonPptx(slidesData, bgImagePath, outputFilePath) {
         }
       }));
 
-      // Text box for verse
+            // Adiciona a referência bíblica diretamente abaixo do versículo (idêntico à prévia do site)
+      if (item.reference) {
+        runs.push({
+          text: '\n\n' + item.reference.toUpperCase(),
+          options: {
+            fontFace: 'Bahnschrift SemiBold Condensed',
+            fontSize: Math.round(fontSize * 0.72),
+            color: 'E8B859',
+            bold: true,
+            shadow: { type: 'outer', angle: 90, blur: 3, offset: 2, opacity: 0.35, color: '000000' }
+          }
+        });
+      }
+
+      // Text box for verse + reference
       slide.addText(runs, {
         x: 0.8,
         y: 1.4,
         w: 11.7,
-        h: 3.8,
-        valign: 'middle',
+        h: 5.2,
+        valign: 'top',
         align: 'left',
-        paraSpaceAfter: 10
+        margin: 0,
+        wrap: true
       });
-
-      // Reference line (Bebas Neue, gold highlight color)
-      if (item.reference) {
-        slide.addText(item.reference, {
-          x: 0.8,
-          y: 5.4,
-          w: 11.7,
-          h: 0.8,
-          fontFace: 'Bebas Neue',
-          fontSize: 42,
-          color: 'E8B859',
-          align: 'left',
-          shadow: { type: 'outer', angle: 90, blur: 3, offset: 2, opacity: 0.35, color: '000000' }
-        });
-      }
 
     } else if (type === 'question_short') {
       // Ultra-large dramatic short question (e.g. "E Jairo?")
