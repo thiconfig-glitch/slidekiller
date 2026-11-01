@@ -10,6 +10,8 @@
   const errorQueue = [];
   let isSending = false;
 
+  const isStaticHost = window.location.hostname.includes('github.io') || window.location.protocol === 'file:';
+
   // Gerar ID de sessão único
   const sessionId = 'sess_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now();
 
@@ -19,6 +21,7 @@
   }
 
   function sendErrors() {
+    if (isStaticHost) return; // GitHub Pages / estático não possui backend Node
     if (isSending || errorQueue.length === 0) return;
     isSending = true;
 
