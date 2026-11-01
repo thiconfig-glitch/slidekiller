@@ -25,6 +25,15 @@ async function buildSermonPptx(slidesData, bgImagePath, outputFilePath) {
   pptx.layout = 'LAYOUT_16x9';
 
   for (const item of slidesData) {
+    if (!item) continue;
+
+    // Normalizar e blindar runs para evitar TypeError caso venha formato simplificado
+    if (!item.runs || !Array.isArray(item.runs)) {
+      item.runs = [{ text: item.text || '', highlight: false }];
+    } else {
+      item.runs = item.runs.map(r => (typeof r === 'string' ? { text: r, highlight: false } : { text: r?.text || '', highlight: !!r?.highlight }));
+    }
+
     const slide = pptx.addSlide();
 
     // 1. Background image (16:9 full slide cover, suportando fundo específico por slide)

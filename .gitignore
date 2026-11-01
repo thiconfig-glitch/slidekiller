@@ -1,8 +1,21 @@
 node_modules/
 .env
-downloads/*.pptx
-downloads/*.json
-downloads/custom_bg_*.png
-downloads/custom_bg_*.jpg
+.env.*
+
+# Downloads gerados e arquivos dinâmicos (não versionar)
+downloads/*
+!downloads/.gitkeep
+
+# Logs do sistema e telemetria
+*.log
+downloads/*.log
+downloads/*.md
+
+# Documentos pastorais, sermões e PDFs privados
+exemplos_pastor/
+*.pdf
+scripts/transcript.*
+
+# Arquivos do sistema
 .DS_Store
 Thumbs.db

@@ -4,6 +4,7 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
+const crypto = require('crypto');
 const multer = require('multer');
 const { buildSermonPptx } = require('./sermon_slide_engine');
 const { extractTextFromPdf, parseSermonTextOffline, parseTeamsDirectionText } = require('./local_sermon_parser');
@@ -26,6 +27,57 @@ const downloadsDir = path.join(__dirname, 'downloads');
 if (!fs.existsSync(downloadsDir)) {
   fs.mkdirSync(downloadsDir, { recursive: true });
 }
+
+// Limpeza automática periódica de arquivos temporários (> 24h)
+function cleanupOldDownloads() {
+  try {
+    if (!fs.existsSync(downloadsDir)) return;
+    const now = Date.now();
+    const maxAgeMs = 24 * 60 * 60 * 1000;
+    const files = fs.readdirSync(downloadsDir);
+    for (const f of files) {
+      if (f === '.gitkeep' || f === 'active_tasks.json') continue;
+      const full = path.join(downloadsDir, f);
+      try {
+        const stat = fs.statSync(full);
+        if (stat.isFile() && (now - stat.mtimeMs > maxAgeMs)) {
+          fs.unlinkSync(full);
+        }
+      } catch (e) {}
+    }
+  } catch (err) {
+    console.warn('⚠️ Falha na limpeza de downloads:', err.message);
+  }
+}
+setInterval(cleanupOldDownloads, 60 * 60 * 1000);
+cleanupOldDownloads();
+
+// ==========================================
+// RASTREAMENTO GLOBAL DE FALHAS E TELEMETRIA
+// ==========================================
+const errorLogPath = path.join(downloadsDir, 'system_errors.log');
+
+function logSystemError(type, err, extra = {}) {
+  const timestamp = new Date().toISOString();
+  const message = err && err.message ? err.message : String(err || 'Erro desconhecido');
+  const stack = err && err.stack ? err.stack : 'Sem stack trace';
+  const entry = `[${timestamp}] [${type.toUpperCase()}] ${message}\nContext: ${JSON.stringify(extra)}\nStack: ${stack}\n${'='.repeat(70)}\n`;
+  
+  console.error(`🚨 [TELEMETRIA] ${type}:`, message);
+  try {
+    fs.appendFileSync(errorLogPath, entry, 'utf8');
+  } catch (logErr) {
+    console.error('Falha ao gravar system_errors.log:', logErr.message);
+  }
+}
+
+process.on('uncaughtException', (err) => {
+  logSystemError('uncaughtException', err);
+});
+
+process.on('unhandledRejection', (reason) => {
+  logSystemError('unhandledRejection', reason);
+});
 
 // Servir arquivos estáticos (Frontend e Downloads)
 app.use(express.static(path.join(__dirname, 'public'), {
@@ -174,7 +226,8 @@ app.post('/api/slides/upload-pdf', upload.fields([
       slides = parseSermonTextOffline(sermonText);
     }
 
-    const fileName = `SLIDES_SERMAO_${Date.now()}.pptx`;
+    const fileToken = crypto.randomBytes(6).toString('hex');
+    const fileName = `SLIDES_SERMAO_${Date.now()}_${fileToken}.pptx`;
     const filePath = path.join(downloadsDir, fileName);
 
     await buildSermonPptx(slides, bgPath, filePath);
@@ -205,16 +258,19 @@ app.post('/api/slides/rebuild', async (req, res) => {
     }
 
     let bgPath = path.join(__dirname, 'public/assets/church_sermon_bg.png');
-    if (selectedBg) {
+    if (selectedBg && typeof selectedBg === 'string') {
+      const sanitizedName = path.basename(selectedBg);
       if (selectedBg.startsWith('/downloads/')) {
-        const potentialPath = path.join(downloadsDir, path.basename(selectedBg));
+        const potentialPath = path.join(downloadsDir, sanitizedName);
         if (fs.existsSync(potentialPath)) bgPath = potentialPath;
-      } else if (fs.existsSync(path.join(__dirname, 'public', selectedBg))) {
-        bgPath = path.join(__dirname, 'public', selectedBg);
+      } else {
+        const potentialPath = path.join(__dirname, 'public/assets', sanitizedName);
+        if (fs.existsSync(potentialPath)) bgPath = potentialPath;
       }
     }
 
-    const fileName = `SLIDES_EDITADOS_${Date.now()}.pptx`;
+    const fileToken = crypto.randomBytes(6).toString('hex');
+    const fileName = `SLIDES_EDITADOS_${Date.now()}_${fileToken}.pptx`;
     const filePath = path.join(downloadsDir, fileName);
 
     await buildSermonPptx(slides, bgPath, filePath);
@@ -279,6 +335,68 @@ app.post('/api/slides/upload-bg', upload.single('bgImage'), (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+// ==========================================
+// ROTAS DE TELEMETRIA E RASTREAMENTO DE ERROS
+// ==========================================
+app.post('/api/telemetry/error', (req, res) => {
+  try {
+    const { errors, sessionId, timestamp } = req.body;
+    if (Array.isArray(errors)) {
+      errors.forEach(errItem => {
+        logSystemError(`frontend_${errItem.type || 'error'}`, new Error(errItem.message || 'Erro de interface'), {
+          sessionId,
+          clientTime: timestamp,
+          source: errItem.source,
+          lineno: errItem.lineno,
+          colno: errItem.colno,
+          url: errItem.url,
+          userAgent: errItem.userAgent,
+          stack: errItem.stack,
+          context: errItem.context
+        });
+      });
+    } else if (req.body && req.body.message) {
+      logSystemError('frontend_single_error', new Error(req.body.message), req.body);
+    }
+    res.json({ status: 'ok', received: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Falha ao processar telemetria' });
+  }
+});
+
+app.get('/api/telemetry/logs', (req, res) => {
+  try {
+    if (!fs.existsSync(errorLogPath)) {
+      return res.json({ logs: 'Nenhum erro registrado até o momento.', entries: [] });
+    }
+    const content = fs.readFileSync(errorLogPath, 'utf8');
+    const lines = content.split('\n').filter(Boolean);
+    const lastLines = lines.slice(-100).join('\n');
+    res.json({
+      status: 'success',
+      totalBytes: fs.statSync(errorLogPath).size,
+      recentLogs: lastLines
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Middleware Central de Erros do Express
+app.use((err, req, res, next) => {
+  logSystemError('express_unhandled', err, {
+    method: req.method,
+    url: req.originalUrl,
+    ip: req.ip
+  });
+  if (res.headersSent) return next(err);
+  res.status(err.status || 500).json({
+    status: 'error',
+    error: err.message || 'Erro interno no servidor.',
+    timestamp: new Date().toISOString()
+  });
 });
 
 function getLocalNetworkIp() {

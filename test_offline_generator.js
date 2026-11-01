@@ -54,4 +54,6 @@ const outPath = path.join(__dirname, 'downloads/sermao_offline_teste.pptx');
 
 buildSermonPptx(slides, bgPath, outPath).then(() => {
   console.log(`✅ PPTX gerado offline em ${Date.now() - start}ms total!`);
+}).catch(err => {
+  console.error('❌ Falha ao gerar PPTX:', err.message);
 });

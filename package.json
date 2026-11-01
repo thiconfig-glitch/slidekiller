@@ -7,6 +7,7 @@
     "start": "node server.js",
     "dev": "node --watch server.js",
     "cli": "node gerar_slides_direto.js",
+    "hunt": "node scripts/bug_hunter.js",
     "test": "node test_sermon_engine.js"
   },
   "keywords": [

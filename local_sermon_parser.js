@@ -26,8 +26,13 @@ const BOOK_NAMES = [
 const BIBLE_BOOKS_REGEX = new RegExp(`(?:${BOOK_NAMES})\\s+\\d+\\s*[:.,]\\s*\\d+(?:\\s*[-–—a]\\s*\\d+)?(?:,\\s*\\d+)*`, 'i');
 
 async function extractTextFromPdf(pdfBuffer) {
-  const data = await pdf(pdfBuffer);
-  return data.text;
+  try {
+    const data = await pdf(pdfBuffer);
+    return data && data.text ? data.text : '';
+  } catch (err) {
+    console.error('❌ Erro ao extrair texto do PDF:', err.message);
+    throw new Error(`Falha ao ler o PDF: ${err.message}. Verifique se o arquivo não está corrompido ou protegido por senha.`);
+  }
 }
 
 function isBibleRef(line) {

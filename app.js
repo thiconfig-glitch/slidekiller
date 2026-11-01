@@ -6135,6 +6135,8 @@ ${sermonText}`;
     loadAllTasks().then(() => {
       startPeriodicSync();
       checkUrlSharedTask();
+    }).catch(err => {
+      console.warn('Sync inicial de tarefas em modo offline:', err.message);
     });
 
     window.addEventListener('focus', () => {
