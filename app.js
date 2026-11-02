@@ -3166,6 +3166,11 @@ ${sermonText}`;
   let directPptxFileName = 'Apresentacao.pptx';
   let directSlides = [];
   let draggedDirectSlideIndex = null;
+  let selectedDirectSlideIds = new Set();
+  const btnSelectAllDirect = document.getElementById('btn-select-all-direct');
+  const labelSelectAllDirect = document.getElementById('label-select-all-direct');
+  const btnDeleteSelectedDirect = document.getElementById('btn-delete-selected-direct');
+  const labelDeleteSelectedDirect = document.getElementById('label-delete-selected-direct');
 
   // Alternador de Submodo: Direto (PDF ➔ PPTX) vs Inverso (PPTX ➔ Imagens/ZIP/PDF)
   function switchConverterSubmode(mode) {
@@ -4284,6 +4289,184 @@ ${sermonText}`;
     }
   }
 
+  // Função utilitária para leitura de arquivo como DataURL
+  function readFileAsDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // Função central para extrair slides de lote misto (Imagens avulsas, PDF multipáginas ou arquivo ZIP)
+  async function extractSlidesFromMixedFiles(files, targetModule = 'images') {
+    const validImageExtensions = ['.png', '.jpg', '.jpeg', '.webp', '.bmp', '.svg', '.gif'];
+    const newSlides = [];
+
+    for (const file of files) {
+      const fileNameLower = file.name.toLowerCase();
+
+      // Caso 1: Arquivo PDF multipáginas completo
+      if (fileNameLower.endsWith('.pdf') || file.type === 'application/pdf') {
+        try {
+          if (typeof pdfjsLib === 'undefined') {
+            showToast('Biblioteca PDF.js não carregada.', 'error');
+            continue;
+          }
+          showToast(`Lendo páginas do PDF "${file.name}"...`, 'info');
+          const arrayBuffer = await file.arrayBuffer();
+          const pdf = await loadPdfDocumentSafely(arrayBuffer);
+          const totalPages = pdf.numPages;
+
+          for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+            const page = await pdf.getPage(pageNum);
+            const unscaledViewport = page.getViewport({ scale: 1.0 });
+            const targetWidth = 1920;
+            const scale = Math.max(targetWidth / (unscaledViewport.width || 800), 1.5);
+            const viewport = page.getViewport({ scale });
+
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.floor(viewport.width);
+            canvas.height = Math.floor(viewport.height);
+            const ctx = canvas.getContext('2d', { alpha: false });
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            await page.render({ canvasContext: ctx, viewport }).promise;
+
+            const imgData = canvas.toDataURL('image/jpeg', 0.90);
+            const pageRatio = viewport.width / viewport.height;
+            const pageTitle = `${file.name.replace(/\.[^/.]+$/, '')} - Pág ${pageNum}`;
+
+            if (targetModule === 'direct') {
+              newSlides.push({
+                id: 'pdf_' + Date.now() + '_' + pageNum + '_' + Math.random().toString(36).substr(2, 5),
+                title: pageTitle,
+                type: 'pdf',
+                source: file.name,
+                pageNum: pageNum,
+                imgData: imgData,
+                ratio: pageRatio,
+                width: canvas.width,
+                height: canvas.height
+              });
+            } else {
+              newSlides.push({
+                id: 'pdf_' + Date.now() + '_' + pageNum + '_' + Math.random().toString(36).substr(2, 5),
+                name: pageTitle,
+                dataUrl: imgData
+              });
+            }
+          }
+        } catch (err) {
+          console.error('Erro ao extrair páginas do PDF:', err);
+          showToast(`Erro ao abrir PDF ${file.name}: ${err.message}`, 'error');
+        }
+      }
+      // Caso 2: Arquivo ZIP com imagens internas
+      else if (fileNameLower.endsWith('.zip') || file.type === 'application/zip' || file.type === 'application/x-zip-compressed') {
+        try {
+          if (typeof JSZip === 'undefined') {
+            showToast('Biblioteca JSZip não carregada.', 'error');
+            continue;
+          }
+          showToast(`Descompactando imagens de "${file.name}"...`, 'info');
+          const zip = await JSZip.loadAsync(file);
+          const entries = [];
+
+          zip.forEach((relativePath, zipEntry) => {
+            if (!zipEntry.dir && !relativePath.includes('__MACOSX') && !relativePath.startsWith('.')) {
+              const ext = '.' + relativePath.split('.').pop().toLowerCase();
+              if (validImageExtensions.includes(ext)) {
+                entries.push(zipEntry);
+              }
+            }
+          });
+
+          // Ordenação natural de nomes (ex: 1.jpg, 2.jpg, 10.jpg)
+          entries.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+
+          for (const entry of entries) {
+            const ext = entry.name.split('.').pop().toLowerCase();
+            const mime = ext === 'png' ? 'image/png' : (ext === 'webp' ? 'image/webp' : 'image/jpeg');
+            const base64Data = await entry.async('base64');
+            const dataUrl = `data:${mime};base64,${base64Data}`;
+            const entryName = entry.name.split('/').pop();
+
+            if (targetModule === 'direct') {
+              newSlides.push({
+                id: 'img_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+                title: entryName,
+                type: 'image',
+                source: file.name,
+                imgData: dataUrl,
+                ratio: 16 / 9
+              });
+            } else {
+              newSlides.push({
+                id: 'img_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+                name: entryName,
+                dataUrl: dataUrl
+              });
+            }
+          }
+        } catch (err) {
+          console.error('Erro ao descompactar ZIP:', err);
+          showToast(`Erro ao abrir ZIP ${file.name}: ${err.message}`, 'error');
+        }
+      }
+      // Caso 3: Imagens avulsas comuns (.png, .jpg, etc.)
+      else if (validImageExtensions.some(ext => fileNameLower.endsWith(ext)) || file.type.startsWith('image/')) {
+        try {
+          const dataUrl = await readFileAsDataUrl(file);
+          if (targetModule === 'direct') {
+            await new Promise((resolve) => {
+              const img = new Image();
+              img.onload = () => {
+                const w = img.naturalWidth || 1920;
+                const h = img.naturalHeight || 1080;
+                newSlides.push({
+                  id: 'img_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+                  title: file.name,
+                  type: 'image',
+                  source: 'Imagem Adicionada',
+                  imgData: dataUrl,
+                  ratio: w / h,
+                  width: w,
+                  height: h
+                });
+                resolve();
+              };
+              img.onerror = () => {
+                newSlides.push({
+                  id: 'img_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+                  title: file.name,
+                  type: 'image',
+                  source: 'Imagem Adicionada',
+                  imgData: dataUrl,
+                  ratio: 16 / 9
+                });
+                resolve();
+              };
+              img.src = dataUrl;
+            });
+          } else {
+            newSlides.push({
+              id: 'img_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+              name: file.name,
+              dataUrl: dataUrl
+            });
+          }
+        } catch (err) {
+          console.error('Erro ao carregar imagem:', err);
+        }
+      }
+    }
+
+    return newSlides;
+  }
+
   // Renderiza a grade de cards do organizador de slides do PDF / PPTX
   function renderDirectOrganizer() {
     if (!sectionDirectInput || !sectionDirectResults) return;
@@ -4308,11 +4491,32 @@ ${sermonText}`;
     if (!directSlidesGrid) return;
     directSlidesGrid.innerHTML = '';
 
+    // Atualiza botões da barra superior de seleção em lote
+    if (btnDeleteSelectedDirect && labelDeleteSelectedDirect) {
+      if (selectedDirectSlideIds.size > 0) {
+        btnDeleteSelectedDirect.style.display = 'inline-flex';
+        labelDeleteSelectedDirect.textContent = `Apagar Selecionados (${selectedDirectSlideIds.size})`;
+      } else {
+        btnDeleteSelectedDirect.style.display = 'none';
+      }
+    }
+    if (labelSelectAllDirect) {
+      labelSelectAllDirect.textContent = (directSlides.length > 0 && selectedDirectSlideIds.size === directSlides.length)
+        ? 'Desmarcar Todos'
+        : 'Selecionar Todos';
+    }
+
     directSlides.forEach((slide, index) => {
+      if (!slide.id) {
+        slide.id = 'slide_' + index + '_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+      }
+
+      const isSelected = selectedDirectSlideIds.has(slide.id);
       const card = document.createElement('div');
-      card.className = 'image-slide-card';
+      card.className = 'image-slide-card' + (isSelected ? ' card-selected' : '');
       card.draggable = true;
       card.dataset.index = index;
+      card.dataset.id = slide.id;
 
       const isPdf = slide.type === 'pdf';
       const isPptx = slide.type === 'pptx';
@@ -4324,6 +4528,9 @@ ${sermonText}`;
 
       card.innerHTML = `
         <div class="image-slide-preview">
+          <label class="slide-select-label" title="Selecionar para apagar em lote" onclick="event.stopPropagation()">
+            <input type="checkbox" class="slide-select-checkbox" data-id="${slide.id}" ${isSelected ? 'checked' : ''}>
+          </label>
           <span class="image-order-badge">#${index + 1}</span>
           ${typeBadgeHtml}
           <img src="${slide.imgData}" alt="Slide ${index + 1}" loading="lazy">
@@ -4340,11 +4547,29 @@ ${sermonText}`;
               </button>
             </div>
             <div class="card-right-actions">
+              <input type="file" class="card-replace-input" accept="image/*" style="display: none;">
+              <input type="file" class="card-insert-after-input" accept="image/*,.pdf,.zip,application/pdf,application/zip,application/x-zip-compressed" multiple style="display: none;">
               <div class="card-more-wrapper">
-                <button type="button" class="btn-card-more" data-action="more" title="Mais opções (Extrair PNG)">
+                <button type="button" class="btn-card-more" data-action="more" title="Mais opções">
                   ⋮
                 </button>
                 <div class="card-dropdown-menu">
+                  <button type="button" class="card-dropdown-item" data-action="toggle-select">
+                    <span>${isSelected ? '◻️' : '☑️'}</span> ${isSelected ? 'Desmarcar seleção' : 'Selecionar slide'}
+                  </button>
+                  ${selectedDirectSlideIds.size > 0 ? `
+                    <button type="button" class="card-dropdown-item" data-action="delete-selected" style="color: #f87171;">
+                      <span>🗑️</span> Apagar selecionados (${selectedDirectSlideIds.size})
+                    </button>
+                  ` : ''}
+                  <div class="card-dropdown-divider"></div>
+                  <button type="button" class="card-dropdown-item" data-action="replace-slide">
+                    <span>🔄</span> Substituir
+                  </button>
+                  <button type="button" class="card-dropdown-item" data-action="insert-after">
+                    <span>➕</span> Adicionar depois (Fotos/PDF/ZIP)
+                  </button>
+                  <div class="card-dropdown-divider"></div>
                   <button type="button" class="card-dropdown-item" data-action="download-png-screen">
                     <span>🖼️</span> Baixar como PNG (Telão)
                   </button>
@@ -4369,6 +4594,51 @@ ${sermonText}`;
       const cardDropdown = card.querySelector('.card-dropdown-menu');
       const btnDlScreen = card.querySelector('[data-action="download-png-screen"]');
       const btnDlOrig = card.querySelector('[data-action="download-png-orig"]');
+      const btnReplace = card.querySelector('[data-action="replace-slide"]');
+      const btnInsertAfter = card.querySelector('[data-action="insert-after"]');
+      const btnToggleSelect = card.querySelector('[data-action="toggle-select"]');
+      const btnDeleteSelected = card.querySelector('[data-action="delete-selected"]');
+      const inputReplace = card.querySelector('.card-replace-input');
+      const inputInsertAfter = card.querySelector('.card-insert-after-input');
+      const selectCheckbox = card.querySelector('.slide-select-checkbox');
+
+      // Checkbox de seleção em lote
+      if (selectCheckbox) {
+        selectCheckbox.addEventListener('change', (e) => {
+          e.stopPropagation();
+          if (e.target.checked) {
+            selectedDirectSlideIds.add(slide.id);
+          } else {
+            selectedDirectSlideIds.delete(slide.id);
+          }
+          renderDirectOrganizer();
+        });
+      }
+
+      if (btnToggleSelect) {
+        btnToggleSelect.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (cardDropdown) cardDropdown.classList.remove('show');
+          if (btnMore) btnMore.classList.remove('active');
+          card.classList.remove('menu-open');
+          if (selectedDirectSlideIds.has(slide.id)) {
+            selectedDirectSlideIds.delete(slide.id);
+          } else {
+            selectedDirectSlideIds.add(slide.id);
+          }
+          renderDirectOrganizer();
+        });
+      }
+
+      if (btnDeleteSelected) {
+        btnDeleteSelected.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (cardDropdown) cardDropdown.classList.remove('show');
+          if (btnMore) btnMore.classList.remove('active');
+          card.classList.remove('menu-open');
+          deleteSelectedDirectSlides();
+        });
+      }
 
       if (btnPrev && index > 0) {
         btnPrev.addEventListener('click', (e) => {
@@ -4403,6 +4673,98 @@ ${sermonText}`;
             cardDropdown.classList.add('show');
             btnMore.classList.add('active');
             card.classList.add('menu-open');
+          }
+        });
+      }
+
+      // Substituir slide no PDF
+      if (btnReplace && inputReplace) {
+        btnReplace.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (cardDropdown) cardDropdown.classList.remove('show');
+          if (btnMore) btnMore.classList.remove('active');
+          card.classList.remove('menu-open');
+          inputReplace.value = '';
+          inputReplace.click();
+        });
+
+        inputReplace.addEventListener('change', async (e) => {
+          const file = e.target.files && e.target.files[0];
+          if (!file) return;
+          if (!file.type.startsWith('image/')) {
+            showToast('Por favor, selecione uma imagem válida (.jpg, .png, .webp).', 'error');
+            return;
+          }
+          try {
+            const dataUrl = await readFileAsDataUrl(file);
+            const img = new Image();
+            img.onload = () => {
+              const w = img.naturalWidth || 1920;
+              const h = img.naturalHeight || 1080;
+              directSlides[index] = {
+                ...directSlides[index],
+                title: file.name,
+                type: 'image',
+                source: 'Imagem Substituída',
+                imgData: dataUrl,
+                ratio: w / h,
+                width: w,
+                height: h
+              };
+              renderDirectOrganizer();
+              showToast(`Slide #${index + 1} substituído com sucesso!`, 'success');
+            };
+            img.onerror = () => {
+              directSlides[index] = {
+                ...directSlides[index],
+                title: file.name,
+                type: 'image',
+                source: 'Imagem Substituída',
+                imgData: dataUrl
+              };
+              renderDirectOrganizer();
+              showToast(`Slide #${index + 1} substituído com sucesso!`, 'success');
+            };
+            img.src = dataUrl;
+          } catch (err) {
+            console.error('Erro ao substituir slide no PDF:', err);
+            showToast('Erro ao processar imagem: ' + err.message, 'error');
+          }
+        });
+      }
+
+      // Adicionar slide(s) depois no PDF (suporta Fotos, PDF completo e ZIP)
+      if (btnInsertAfter && inputInsertAfter) {
+        btnInsertAfter.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (cardDropdown) cardDropdown.classList.remove('show');
+          if (btnMore) btnMore.classList.remove('active');
+          card.classList.remove('menu-open');
+          inputInsertAfter.value = '';
+          inputInsertAfter.click();
+        });
+
+        inputInsertAfter.addEventListener('change', async (e) => {
+          const files = Array.from(e.target.files || []);
+          if (files.length === 0) return;
+          try {
+            showToast(`Processando ${files.length} arquivo(s)...`, 'info');
+            const newSlides = await extractSlidesFromMixedFiles(files, 'direct');
+            if (newSlides.length > 0) {
+              directSlides.splice(index + 1, 0, ...newSlides);
+              renderDirectOrganizer();
+              showToast(
+                newSlides.length === 1
+                  ? `Slide adicionado após o #${index + 1}!`
+                  : `${newSlides.length} slides adicionados após o #${index + 1}!`,
+                'success'
+              );
+            } else {
+              showToast('Nenhum slide pôde ser extraído dos arquivos selecionados.', 'error');
+            }
+          } catch (err) {
+            console.error('Erro ao adicionar slides depois no PDF:', err);
+            showToast('Erro ao processar arquivos: ' + err.message, 'error');
           }
         });
       }
@@ -4479,6 +4841,39 @@ ${sermonText}`;
     renderDirectOrganizer();
   }
 
+  // Deletar slides selecionados em lote no organizador do PDF
+  function deleteSelectedDirectSlides() {
+    const count = selectedDirectSlideIds.size;
+    if (count === 0) {
+      showToast('Nenhum slide selecionado.', 'info');
+      return;
+    }
+    if (confirm(`Deseja realmente apagar os ${count} slide(s) selecionado(s)?`)) {
+      directSlides = directSlides.filter(s => !selectedDirectSlideIds.has(s.id));
+      selectedDirectSlideIds.clear();
+      renderDirectOrganizer();
+      showToast(`${count} slide(s) apagado(s) com sucesso!`, 'success');
+    }
+  }
+
+  if (btnSelectAllDirect) {
+    btnSelectAllDirect.addEventListener('click', () => {
+      if (directSlides.length === 0) return;
+      if (selectedDirectSlideIds.size === directSlides.length) {
+        selectedDirectSlideIds.clear();
+      } else {
+        directSlides.forEach(s => selectedDirectSlideIds.add(s.id));
+      }
+      renderDirectOrganizer();
+    });
+  }
+
+  if (btnDeleteSelectedDirect) {
+    btnDeleteSelectedDirect.addEventListener('click', () => {
+      deleteSelectedDirectSlides();
+    });
+  }
+
   // Deletar um slide específico
   function deleteDirectSlide(index) {
     if (index < 0 || index >= directSlides.length) return;
@@ -4503,6 +4898,7 @@ ${sermonText}`;
       if (directSlides.length === 0) return;
       if (confirm('Deseja remover todos os slides do organizador?')) {
         directSlides = [];
+        selectedDirectSlideIds.clear();
         renderDirectOrganizer();
         showToast('Todos os slides foram removidos.', 'info');
       }
@@ -4938,6 +5334,11 @@ ${sermonText}`;
   // ==========================================
   let imageSlides = [];
   let imagesGeneratedPptx = null;
+  let selectedImageSlideIds = new Set();
+  const btnSelectAllImages = document.getElementById('btn-select-all-images');
+  const labelSelectAllImages = document.getElementById('label-select-all-images');
+  const btnDeleteSelectedImages = document.getElementById('btn-delete-selected-images');
+  const labelDeleteSelectedImages = document.getElementById('label-delete-selected-images');
   let imagesPptxFileName = 'Apresentacao_Imagens.pptx';
   let draggedSlideIndex = null;
 
@@ -5168,14 +5569,38 @@ ${sermonText}`;
     if (!imagesReorderGrid) return;
     imagesReorderGrid.innerHTML = '';
 
+    // Atualiza botões da barra superior de seleção em lote
+    if (btnDeleteSelectedImages && labelDeleteSelectedImages) {
+      if (selectedImageSlideIds.size > 0) {
+        btnDeleteSelectedImages.style.display = 'inline-flex';
+        labelDeleteSelectedImages.textContent = `Apagar Selecionados (${selectedImageSlideIds.size})`;
+      } else {
+        btnDeleteSelectedImages.style.display = 'none';
+      }
+    }
+    if (labelSelectAllImages) {
+      labelSelectAllImages.textContent = (imageSlides.length > 0 && selectedImageSlideIds.size === imageSlides.length)
+        ? 'Desmarcar Todos'
+        : 'Selecionar Todos';
+    }
+
     imageSlides.forEach((slide, index) => {
+      if (!slide.id) {
+        slide.id = 'img_' + index + '_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+      }
+
+      const isSelected = selectedImageSlideIds.has(slide.id);
       const card = document.createElement('div');
-      card.className = 'image-slide-card';
+      card.className = 'image-slide-card' + (isSelected ? ' card-selected' : '');
       card.draggable = true;
       card.dataset.index = index;
+      card.dataset.id = slide.id;
 
       card.innerHTML = `
         <div class="image-slide-preview">
+          <label class="slide-select-label" title="Selecionar para apagar em lote" onclick="event.stopPropagation()">
+            <input type="checkbox" class="slide-select-checkbox" data-id="${slide.id}" ${isSelected ? 'checked' : ''}>
+          </label>
           <span class="image-order-badge">#${index + 1}</span>
           <img src="${slide.dataUrl}" alt="Slide ${index + 1}" loading="lazy">
         </div>
@@ -5191,11 +5616,29 @@ ${sermonText}`;
               </button>
             </div>
             <div class="card-right-actions">
+              <input type="file" class="card-replace-input" accept="image/*" style="display: none;">
+              <input type="file" class="card-insert-after-input" accept="image/*,.pdf,.zip,application/pdf,application/zip,application/x-zip-compressed" multiple style="display: none;">
               <div class="card-more-wrapper">
-                <button type="button" class="btn-card-more" data-action="more" title="Mais opções (Extrair PNG)">
+                <button type="button" class="btn-card-more" data-action="more" title="Mais opções">
                   ⋮
                 </button>
                 <div class="card-dropdown-menu">
+                  <button type="button" class="card-dropdown-item" data-action="toggle-select">
+                    <span>${isSelected ? '◻️' : '☑️'}</span> ${isSelected ? 'Desmarcar seleção' : 'Selecionar slide'}
+                  </button>
+                  ${selectedImageSlideIds.size > 0 ? `
+                    <button type="button" class="card-dropdown-item" data-action="delete-selected" style="color: #f87171;">
+                      <span>🗑️</span> Apagar selecionados (${selectedImageSlideIds.size})
+                    </button>
+                  ` : ''}
+                  <div class="card-dropdown-divider"></div>
+                  <button type="button" class="card-dropdown-item" data-action="replace-slide">
+                    <span>🔄</span> Substituir
+                  </button>
+                  <button type="button" class="card-dropdown-item" data-action="insert-after">
+                    <span>➕</span> Adicionar depois (Fotos/PDF/ZIP)
+                  </button>
+                  <div class="card-dropdown-divider"></div>
                   <button type="button" class="card-dropdown-item" data-action="download-png-screen">
                     <span>🖼️</span> Baixar como PNG (Telão)
                   </button>
@@ -5220,6 +5663,51 @@ ${sermonText}`;
       const cardDropdown = card.querySelector('.card-dropdown-menu');
       const btnDlScreen = card.querySelector('[data-action="download-png-screen"]');
       const btnDlOrig = card.querySelector('[data-action="download-png-orig"]');
+      const btnReplace = card.querySelector('[data-action="replace-slide"]');
+      const btnInsertAfter = card.querySelector('[data-action="insert-after"]');
+      const btnToggleSelect = card.querySelector('[data-action="toggle-select"]');
+      const btnDeleteSelected = card.querySelector('[data-action="delete-selected"]');
+      const inputReplace = card.querySelector('.card-replace-input');
+      const inputInsertAfter = card.querySelector('.card-insert-after-input');
+      const selectCheckbox = card.querySelector('.slide-select-checkbox');
+
+      // Checkbox de seleção em lote
+      if (selectCheckbox) {
+        selectCheckbox.addEventListener('change', (e) => {
+          e.stopPropagation();
+          if (e.target.checked) {
+            selectedImageSlideIds.add(slide.id);
+          } else {
+            selectedImageSlideIds.delete(slide.id);
+          }
+          renderImagesOrganizer();
+        });
+      }
+
+      if (btnToggleSelect) {
+        btnToggleSelect.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (cardDropdown) cardDropdown.classList.remove('show');
+          if (btnMore) btnMore.classList.remove('active');
+          card.classList.remove('menu-open');
+          if (selectedImageSlideIds.has(slide.id)) {
+            selectedImageSlideIds.delete(slide.id);
+          } else {
+            selectedImageSlideIds.add(slide.id);
+          }
+          renderImagesOrganizer();
+        });
+      }
+
+      if (btnDeleteSelected) {
+        btnDeleteSelected.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (cardDropdown) cardDropdown.classList.remove('show');
+          if (btnMore) btnMore.classList.remove('active');
+          card.classList.remove('menu-open');
+          deleteSelectedImageSlides();
+        });
+      }
 
       if (btnPrev && index > 0) {
         btnPrev.addEventListener('click', (e) => {
@@ -5254,6 +5742,76 @@ ${sermonText}`;
             cardDropdown.classList.add('show');
             btnMore.classList.add('active');
             card.classList.add('menu-open');
+          }
+        });
+      }
+
+      // Substituir slide de imagem
+      if (btnReplace && inputReplace) {
+        btnReplace.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (cardDropdown) cardDropdown.classList.remove('show');
+          if (btnMore) btnMore.classList.remove('active');
+          card.classList.remove('menu-open');
+          inputReplace.value = '';
+          inputReplace.click();
+        });
+
+        inputReplace.addEventListener('change', async (e) => {
+          const file = e.target.files && e.target.files[0];
+          if (!file) return;
+          if (!file.type.startsWith('image/')) {
+            showToast('Por favor, selecione uma imagem válida (.jpg, .png, .webp).', 'error');
+            return;
+          }
+          try {
+            const dataUrl = await readFileAsDataUrl(file);
+            imageSlides[index] = {
+              ...imageSlides[index],
+              name: file.name,
+              dataUrl: dataUrl
+            };
+            renderImagesOrganizer();
+            showToast(`Slide #${index + 1} substituído com sucesso!`, 'success');
+          } catch (err) {
+            console.error('Erro ao substituir imagem:', err);
+            showToast('Erro ao processar imagem: ' + err.message, 'error');
+          }
+        });
+      }
+
+      // Adicionar slide(s) depois no lote de imagens (suporta Fotos, PDF completo e ZIP)
+      if (btnInsertAfter && inputInsertAfter) {
+        btnInsertAfter.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (cardDropdown) cardDropdown.classList.remove('show');
+          if (btnMore) btnMore.classList.remove('active');
+          card.classList.remove('menu-open');
+          inputInsertAfter.value = '';
+          inputInsertAfter.click();
+        });
+
+        inputInsertAfter.addEventListener('change', async (e) => {
+          const files = Array.from(e.target.files || []);
+          if (files.length === 0) return;
+          try {
+            showToast(`Processando ${files.length} arquivo(s)...`, 'info');
+            const newSlides = await extractSlidesFromMixedFiles(files, 'images');
+            if (newSlides.length > 0) {
+              imageSlides.splice(index + 1, 0, ...newSlides);
+              renderImagesOrganizer();
+              showToast(
+                newSlides.length === 1
+                  ? `Slide adicionado após o #${index + 1}!`
+                  : `${newSlides.length} slides adicionados após o #${index + 1}!`,
+                'success'
+              );
+            } else {
+              showToast('Nenhum slide pôde ser extraído dos arquivos selecionados.', 'error');
+            }
+          } catch (err) {
+            console.error('Erro ao adicionar imagens depois:', err);
+            showToast('Erro ao processar imagens: ' + err.message, 'error');
           }
         });
       }
@@ -5330,6 +5888,39 @@ ${sermonText}`;
     renderImagesOrganizer();
   }
 
+  // Deletar imagens selecionadas em lote no organizador
+  function deleteSelectedImageSlides() {
+    const count = selectedImageSlideIds.size;
+    if (count === 0) {
+      showToast('Nenhuma imagem selecionada.', 'info');
+      return;
+    }
+    if (confirm(`Deseja realmente apagar as ${count} imagem(ns) selecionada(s)?`)) {
+      imageSlides = imageSlides.filter(s => !selectedImageSlideIds.has(s.id));
+      selectedImageSlideIds.clear();
+      renderImagesOrganizer();
+      showToast(`${count} imagem(ns) apagada(s) com sucesso!`, 'success');
+    }
+  }
+
+  if (btnSelectAllImages) {
+    btnSelectAllImages.addEventListener('click', () => {
+      if (imageSlides.length === 0) return;
+      if (selectedImageSlideIds.size === imageSlides.length) {
+        selectedImageSlideIds.clear();
+      } else {
+        imageSlides.forEach(s => selectedImageSlideIds.add(s.id));
+      }
+      renderImagesOrganizer();
+    });
+  }
+
+  if (btnDeleteSelectedImages) {
+    btnDeleteSelectedImages.addEventListener('click', () => {
+      deleteSelectedImageSlides();
+    });
+  }
+
   // Deletar um slide específico
   function deleteImageSlide(index) {
     if (index < 0 || index >= imageSlides.length) return;
@@ -5364,6 +5955,7 @@ ${sermonText}`;
       if (imageSlides.length === 0) return;
       if (confirm('Deseja remover todas as imagens do organizador?')) {
         imageSlides = [];
+        selectedImageSlideIds.clear();
         renderImagesOrganizer();
         showToast('Todas as imagens foram removidas.', 'info');
       }

@@ -651,6 +651,12 @@ texto exemplo ii eii
             <button class="btn btn-secondary btn-sm" id="btn-add-another-pptx" onclick="document.getElementById('pptx-append-input').click()">
               <span>📊 ＋</span> Mais um PPTX
             </button>
+            <button class="btn btn-secondary btn-sm" id="btn-select-all-direct" title="Selecionar ou desmarcar todos os slides">
+              <span>☑️</span> <span id="label-select-all-direct">Selecionar Todos</span>
+            </button>
+            <button class="btn btn-danger btn-sm" id="btn-delete-selected-direct" style="display: none;" title="Apagar os slides selecionados em lote">
+              <span>🗑️</span> <span id="label-delete-selected-direct">Apagar Selecionados (0)</span>
+            </button>
             <button class="btn btn-secondary btn-sm" id="btn-reverse-direct" title="Inverter a ordem atual dos slides">
               <span>🔀</span> Inverter
             </button>
@@ -788,6 +794,12 @@ texto exemplo ii eii
             </button>
             <button class="btn btn-secondary btn-sm" id="btn-add-more-zip" onclick="document.getElementById('zip-files-input').click()">
               <span>📦</span> Mais um ZIP
+            </button>
+            <button class="btn btn-secondary btn-sm" id="btn-select-all-images" title="Selecionar ou desmarcar todos os slides">
+              <span>☑️</span> <span id="label-select-all-images">Selecionar Todos</span>
+            </button>
+            <button class="btn btn-danger btn-sm" id="btn-delete-selected-images" style="display: none;" title="Apagar as imagens selecionadas em lote">
+              <span>🗑️</span> <span id="label-delete-selected-images">Apagar Selecionados (0)</span>
             </button>
             <button class="btn btn-secondary btn-sm" id="btn-sort-images-az" title="Ordenar slides por nome do arquivo">
               <span>🔤</span> A-Z
