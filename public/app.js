@@ -3589,9 +3589,9 @@ ${sermonText}`;
         badgeDot.style.backgroundColor = 'var(--primary)';
         badgeDot.style.boxShadow = '0 0 8px var(--primary)';
       }
-      if (badgeText) badgeText.textContent = 'MÓDULO CONVERSOR DIRETO • 1 PÁGINA = 1 SLIDE';
-      if (titleText) titleText.textContent = 'Conversão Direta de PDF para PowerPoint';
-      if (descText) descText.textContent = 'Anexe qualquer PDF e receba uma apresentação .pptx onde cada página do PDF se torna exatamente um slide em alta resolução Full HD, sem extração ou alteração de texto. Pronto para telões e softwares de projeção.';
+      if (badgeText) badgeText.textContent = 'MÓDULO CONVERSOR & ORGANIZADOR • PPTX, ZIP & NOVO PDF';
+      if (titleText) titleText.textContent = 'Conversão de PDF para PowerPoint, ZIP de Imagens ou Novo PDF';
+      if (descText) descText.textContent = 'Converta seu PDF diretamente em slides de PowerPoint (.pptx), transforme o PDF em arquivo ZIP compactado com todas as páginas extraídas em imagens Full HD (.png) ou gere um novo PDF reorganizado. Use o organizador visual para ordenar, substituir e excluir lâminas com facilidade.';
     }
   }
   window.switchConverterSubmode = switchConverterSubmode;

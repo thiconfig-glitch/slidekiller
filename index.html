@@ -60,9 +60,9 @@
           badgeDot.style.backgroundColor = 'var(--primary)';
           badgeDot.style.boxShadow = '0 0 8px var(--primary)';
         }
-        if (badgeText) badgeText.textContent = 'MÓDULO CONVERSOR & ORGANIZADOR • PPTX, IMAGENS & NOVO PDF';
-        if (titleText) titleText.textContent = 'Conversor de PDF para PowerPoint, Imagens ou Novo PDF';
-        if (descText) descText.textContent = 'Converta seu PDF diretamente em slides de PowerPoint (.pptx), extraia todas as páginas em imagens Full HD (.png / .zip) ou gere um novo PDF reorganizado. Use o organizador visual para ordenar, substituir e excluir lâminas com facilidade.';
+        if (badgeText) badgeText.textContent = 'MÓDULO CONVERSOR & ORGANIZADOR • PPTX, ZIP & NOVO PDF';
+        if (titleText) titleText.textContent = 'Conversor de PDF para PowerPoint, ZIP de Imagens ou Novo PDF';
+        if (descText) descText.textContent = 'Converta seu PDF diretamente em slides de PowerPoint (.pptx), transforme o PDF em arquivo ZIP compactado com todas as páginas extraídas em imagens Full HD (.png) ou gere um novo PDF reorganizado. Use o organizador visual para ordenar, substituir e excluir lâminas com facilidade.';
       }
     };
   </script>
@@ -297,7 +297,7 @@
 
       <button class="nav-module-btn" data-module="pdf-to-pptx">
         <span class="module-icon">🔄</span>
-        <span class="module-label">PDF ➔ PPTX, Imagens &amp; PDF</span>
+        <span class="module-label">PDF ➔ PPTX, ZIP &amp; PDF</span>
         <span class="module-pill pill-gold">Com Organizador</span>
       </button>
 
@@ -353,7 +353,7 @@
           <p>Extração automática de versículos, destaque de palavras-chave, quebra de múltiplos versículos e tipografia padronizada em 16:9 Full HD.</p>
           
           <div class="direct-shortcut-banner" id="banner-goto-direct">
-            <span>💡 <strong>Precisa de conversão 1:1 &amp; Organizador?</strong> Converta cada página do PDF em slide de PowerPoint, extraia imagens PNG ou gere um novo PDF com organizador visual.</span>
+            <span>💡 <strong>Precisa de conversão 1:1 &amp; Organizador?</strong> Converta cada página do PDF em PowerPoint, transforme o PDF em arquivo ZIP com todas as imagens PNG ou gere um novo PDF com organizador visual.</span>
             <button type="button" class="btn btn-sm btn-outline-gold" id="btn-switch-to-direct">Ir para Conversor &amp; Organizador ➔</button>
           </div>
 
@@ -605,16 +605,16 @@ texto exemplo ii eii
         <div class="card hero-card" id="card-converter-hub">
           <div class="module-header-badge" id="converter-header-badge">
             <span class="badge-dot" id="converter-badge-dot" style="background-color: var(--primary); box-shadow: 0 0 8px var(--primary);"></span>
-            <span id="converter-badge-text">MÓDULO CONVERSOR &amp; ORGANIZADOR • PPTX, IMAGENS &amp; NOVO PDF</span>
+            <span id="converter-badge-text">MÓDULO CONVERSOR &amp; ORGANIZADOR • PPTX, ZIP &amp; NOVO PDF</span>
           </div>
 
-          <h2 id="converter-title-text">Conversão de PDF para PowerPoint, Imagens ou Novo PDF</h2>
-          <p id="converter-desc-text">Converta seu PDF diretamente em slides de PowerPoint (.pptx), extraia todas as páginas em imagens Full HD (.png / .zip) ou gere um novo PDF reorganizado. Use o organizador visual para ordenar, substituir e excluir lâminas com facilidade.</p>
+          <h2 id="converter-title-text">Conversão de PDF para PowerPoint, ZIP de Imagens ou Novo PDF</h2>
+          <p id="converter-desc-text">Converta seu PDF diretamente em slides de PowerPoint (.pptx), transforme o PDF em arquivo ZIP compactado com todas as páginas extraídas em imagens Full HD (.png) ou gere um novo PDF reorganizado. Use o organizador visual para ordenar, substituir e excluir lâminas com facilidade.</p>
 
           <!-- Abas de Modo (Direto vs Inverso) -->
           <div class="converter-mode-tabs" id="converter-mode-tabs">
             <button type="button" class="submode-pill-btn active" id="btn-submode-pdf-to-pptx" data-submode="pdf-to-pptx" onclick="window.switchConverterSubmode('pdf-to-pptx')">
-              <span>📄</span> PDF ➔ PowerPoint, Imagens &amp; PDF (Com Organizador)
+              <span>📄</span> PDF ➔ PowerPoint, ZIP &amp; PDF (Com Organizador)
             </button>
             <button type="button" class="submode-pill-btn" id="btn-submode-pptx-reverse" data-submode="pptx-reverse" onclick="window.switchConverterSubmode('pptx-reverse')">
               <span>🔄</span> PPTX ➔ Imagens, ZIP &amp; PDF (Inverso)
@@ -655,7 +655,7 @@ texto exemplo ii eii
                 <span class="btn-icon">⚡</span> Converter e Baixar PowerPoint (.pptx) Direto
               </button>
               <button class="btn btn-secondary" id="btn-convert-direct" style="padding: 12px 22px;">
-                <span class="btn-icon">📋</span> Abrir no Organizador (PPTX, Imagens ou PDF)
+                <span class="btn-icon">📋</span> Abrir no Organizador (PPTX, ZIP ou PDF)
               </button>
             </div>
           </div>
@@ -714,7 +714,7 @@ texto exemplo ii eii
 
         <div class="results-header" style="flex-wrap: wrap; gap: 16px;">
           <div class="results-info">
-            <h2 id="direct-results-title">Organizador de Slides (PPTX, Imagens &amp; PDF)</h2>
+            <h2 id="direct-results-title">Organizador de Slides (PPTX, ZIP &amp; PDF)</h2>
             <span class="badge" id="direct-slide-count-badge" style="background: rgba(232, 184, 89, 0.2); color: var(--primary); border-color: rgba(232, 184, 89, 0.4);">0 slides</span>
             <span style="font-size: 12px; color: var(--text-muted); margin-left: 8px;">💡 Arraste os cards para reorganizar a ordem dos slides</span>
           </div>
@@ -1112,9 +1112,9 @@ texto exemplo ii eii
       <span class="mobile-nav-icon">⚡</span>
       <span class="mobile-nav-label">Slide Killer</span>
     </button>
-    <button type="button" class="mobile-nav-btn" data-target-module="pdf-to-pptx" title="Conversor &amp; Organizador (PDF para PPTX, Imagens e Novo PDF)">
+    <button type="button" class="mobile-nav-btn" data-target-module="pdf-to-pptx" title="Conversor &amp; Organizador (PDF para PPTX, ZIP de Imagens e Novo PDF)">
       <span class="mobile-nav-icon">🔄</span>
-      <span class="mobile-nav-label">PDF ➔ PPTX/Img</span>
+      <span class="mobile-nav-label">PDF ➔ PPTX/ZIP</span>
     </button>
     <button type="button" class="mobile-nav-btn" data-target-module="images-to-pptx" title="Organizador de Imagens e ZIP">
       <span class="mobile-nav-icon">🖼️</span>
