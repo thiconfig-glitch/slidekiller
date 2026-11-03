@@ -60,6 +60,12 @@ document.addEventListener('DOMContentLoaded', () => {
   function switchModule(targetModule) {
     if (!targetModule || !moduleViews[targetModule]) return;
     currentActiveModule = targetModule;
+    if (targetModule === 'slidekiller') {
+      setTimeout(() => {
+        const activeTabBtn = mainTabs ? mainTabs.querySelector('.tab-btn.active') : null;
+        if (activeTabBtn) moveTabGelPill(activeTabBtn, true);
+      }, 50);
+    }
 
     // Atualiza botões da navegação
     navModuleBtns.forEach(b => {
@@ -740,7 +746,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!tabGelPill || !mainTabs || !targetBtn) return;
     const containerRect = mainTabs.getBoundingClientRect();
     const btnRect = targetBtn.getBoundingClientRect();
-    const left  = btnRect.left - containerRect.left;
+    const left  = btnRect.left - containerRect.left + mainTabs.scrollLeft;
     const width = btnRect.width;
     if (instant) {
       tabGelPill.style.transition = 'none';
@@ -752,6 +758,11 @@ document.addEventListener('DOMContentLoaded', () => {
       tabGelPill.style.width = width + 'px';
     }
   }
+
+  window.addEventListener('resize', () => {
+    const activeTabBtn = mainTabs ? mainTabs.querySelector('.tab-btn.active') : null;
+    if (activeTabBtn) moveTabGelPill(activeTabBtn, true);
+  });
 
   // Hover: pré-visualização translúcida nas abas
   tabBtns.forEach(btn => {

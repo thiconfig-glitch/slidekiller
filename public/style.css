@@ -358,14 +358,14 @@ body {
 }
 
 .hero-card {
-  max-width: 720px;
+  max-width: 1040px;
   width: 100%;
   margin-left: auto !important;
   margin-right: auto !important;
 }
 
 #card-converter-hub {
-  max-width: 720px;
+  max-width: 1040px;
   width: 100%;
   margin-left: auto !important;
   margin-right: auto !important;
@@ -751,17 +751,19 @@ textarea:focus {
 /* Opções Extras */
 .options-bar {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 16px 22px;
   margin-top: 20px;
-  padding-top: 16px;
+  padding-top: 18px;
   border-top: 1px solid var(--border);
 }
 
 .option-item {
   display: flex;
   flex-direction: column;
-  align-items: stretch;
+  align-items: flex-start;
   gap: 6px;
   font-size: 13px;
   color: var(--text-muted);
@@ -773,48 +775,82 @@ textarea:focus {
   color: #e2e8f0;
   letter-spacing: 0.3px;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .option-item#option-use-ai-check {
   flex-direction: row;
   align-items: center;
-  align-self: center;
+  align-self: flex-end;
+  padding-bottom: 9px;
+  margin-left: auto;
 }
 
 .form-select {
   background: #1e293b;
   border: 1px solid var(--border);
   color: #fff;
-  padding: 7px 12px;
+  padding: 8px 12px;
   border-radius: 6px;
   font-size: 13px;
+  height: 38px;
+  box-sizing: border-box;
   max-width: 100%;
   min-width: 0;
   text-overflow: ellipsis;
 }
 
+.option-font-selector {
+  flex: 1 1 270px;
+  max-width: 380px;
+}
+
 .option-font-selector select {
-  max-width: 360px;
+  width: 100%;
+  max-width: 100%;
   text-overflow: ellipsis;
 }
 
-.form-select:focus {
-  outline: none;
-  border-color: var(--border-focus);
+.option-align-selector {
+  flex: 0 0 auto;
+}
+
+.option-align-selector select {
+  min-width: 165px;
+}
+
+.option-item#option-bible-version {
+  flex: 0 0 auto;
+}
+
+.option-item#option-bible-version select {
+  min-width: 220px;
 }
 
 /* Seletor de Plano de Fundo e Anexo Customizado */
 .option-bg-selector {
-  flex-wrap: wrap;
+  flex: 1 1 310px;
 }
 
 .bg-selector-wrapper {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+}
+
+.bg-selector-wrapper select {
+  flex: 1;
+  min-width: 160px;
+}
+
+.bg-selector-wrapper #btn-attach-custom-bg {
+  flex-shrink: 0;
+  white-space: nowrap;
+  height: 38px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
 }
 
 .custom-bg-badge {
