@@ -2667,35 +2667,44 @@ textarea:focus {
     border-radius: 8px !important;
   }
 
-  /* Barra de opções do Módulo 1 (Slide Killer) no celular - Sem vazamento */
+  /* Barra de opções do Módulo 1 (Slide Killer) no celular - Sem vazamento e sem espaçamento fantasma */
   .options-bar {
     display: flex !important;
     flex-direction: column !important;
     align-items: stretch !important;
-    gap: 14px !important;
+    gap: 12px !important;
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
-    margin-top: 16px !important;
+    margin-top: 14px !important;
     padding-top: 14px !important;
     border-top: 1px solid var(--border) !important;
   }
 
-  .options-bar .option-item {
+  .options-bar .option-item,
+  .options-bar .option-bg-selector,
+  .options-bar .option-font-selector,
+  .options-bar .option-align-selector,
+  .options-bar #option-bible-version,
+  .options-bar #option-use-ai-check {
+    flex: 0 0 auto !important;
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
     display: flex !important;
     flex-direction: column !important;
     align-items: stretch !important;
-    gap: 6px !important;
+    gap: 5px !important;
     min-width: 0 !important;
+    min-height: 0 !important;
+    height: auto !important;
   }
 
   .options-bar .option-item#option-use-ai-check {
     flex-direction: row !important;
     align-items: center !important;
     padding-top: 4px !important;
+    gap: 10px !important;
   }
 
   .options-bar .option-item label {
