@@ -209,6 +209,10 @@ body {
   gap: 10px;
 }
 
+body.is-native-app .btn-download-apk-desktop {
+  display: none !important;
+}
+
 .btn-download-apk-desktop {
   display: inline-flex;
   align-items: center;

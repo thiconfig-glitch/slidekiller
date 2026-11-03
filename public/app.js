@@ -40,6 +40,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   initAppSplashAndPrivacy();
 
+  // Se estiver rodando dentro do aplicativo Android nativo (Capacitor), oculta o botão de download de APK (inclusive em Tablets deitados)
+  if (window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform()) {
+    const btnApk = document.getElementById('btn-download-apk-desktop');
+    if (btnApk) btnApk.style.setProperty('display', 'none', 'important');
+    document.body.classList.add('is-native-app');
+  }
+
   // ==========================================
   // NAVEGAÇÃO DE MÓDULOS (CENTRAL MULTIMÍDIA)
   // ==========================================
