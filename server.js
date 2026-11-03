@@ -94,6 +94,16 @@ app.use(express.static(path.join(__dirname, 'public'), {
 }));
 app.use('/downloads', express.static(downloadsDir));
 
+// Rota de download direto do APK Android
+app.get('/slidekiller.apk', (req, res) => {
+  const apkPath = path.join(__dirname, 'slidekiller.apk');
+  if (fs.existsSync(apkPath)) {
+    res.download(apkPath, 'slidekiller.apk');
+  } else {
+    res.status(404).send('APK não encontrado.');
+  }
+});
+
 // Rota de Saúde / Status
 app.get('/api/health', (req, res) => {
   res.json({
