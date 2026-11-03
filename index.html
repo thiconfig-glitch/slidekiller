@@ -369,7 +369,7 @@
           <!-- Aba 1: Upload PDF -->
           <div class="tab-content active" id="tab-pdf">
             <input type="file" id="pdf-file-input" accept=".pdf" style="display: none;">
-            <div class="dropzone" id="dropzone" onclick="if (!event.target.closest('.btn-clear') && !event.target.closest('.selected-file-info')) { var fi = document.getElementById('pdf-file-input'); if (fi) { fi.value = ''; fi.click(); } }">
+            <div class="dropzone" id="dropzone">
               <div class="dropzone-icon">📄</div>
               <div class="dropzone-text">
                 <strong>Arraste o arquivo PDF aqui</strong>
@@ -425,7 +425,7 @@
           <!-- Aba 3: Fotos de Slides / Versículos com IA Gemini Vision -->
           <div class="tab-content" id="tab-images-ocr">
             <input type="file" id="verse-images-input" accept="image/*" multiple style="display: none;">
-            <div class="dropzone" id="dropzone-ocr" onclick="if (!event.target.closest('.btn-clear') && !event.target.closest('#verse-images-container')) { var fi = document.getElementById('verse-images-input'); if (fi) { fi.value = ''; fi.click(); } }">
+            <div class="dropzone" id="dropzone-ocr">
               <div class="dropzone-icon">📷</div>
               <div class="dropzone-text">
                 <strong>Arraste fotos de telões, slides ou páginas da Bíblia aqui</strong>
@@ -624,7 +624,7 @@ texto exemplo ii eii
           <!-- SUBMODO 1: PDF ➔ PPTX DIRETO -->
           <div id="submode-panel-pdf" class="submode-panel" style="display: block;">
             <input type="file" id="pdf-direct-input" accept=".pdf" style="display: none;">
-            <div class="dropzone" id="dropzone-direct" onclick="if (!event.target.closest('.btn-clear') && !event.target.closest('.selected-file-info')) { var fi = document.getElementById('pdf-direct-input'); if (fi) { fi.value = ''; fi.click(); } }">
+            <div class="dropzone" id="dropzone-direct">
               <div class="dropzone-icon">📄</div>
               <div class="dropzone-text">
                 <strong>Arraste o arquivo PDF aqui</strong>
@@ -663,7 +663,7 @@ texto exemplo ii eii
           <!-- SUBMODO 2: PPTX ➔ IMAGENS / ZIP / PDF INVERSO -->
           <div id="submode-panel-pptx" class="submode-panel" style="display: none;">
             <input type="file" id="pptx-reverse-input" accept=".pptx" style="display: none;">
-            <div class="dropzone" id="dropzone-pptx-reverse" onclick="if (!event.target.closest('.btn-clear') && !event.target.closest('.selected-file-info')) { var fi = document.getElementById('pptx-reverse-input'); if (fi) { fi.value = ''; fi.click(); } }">
+            <div class="dropzone" id="dropzone-pptx-reverse">
               <div class="dropzone-icon">📊</div>
               <div class="dropzone-text">
                 <strong>Arraste a apresentação .pptx aqui</strong>
@@ -802,7 +802,6 @@ texto exemplo ii eii
               <div class="progress-bar-fill" id="direct-export-progress-bar" style="width: 0%;"></div>
             </div>
           </div>
-        </div>
 
         <!-- Grid de Cards dos Slides (Reordenáveis via Drag & Drop) -->
         <div class="images-reorder-grid" id="direct-slides-grid"></div>
@@ -825,7 +824,7 @@ texto exemplo ii eii
           <input type="file" id="images-files-input" accept="image/*,.zip,.pptx" multiple style="display: none;">
           <input type="file" id="zip-files-input" accept=".zip" style="display: none;">
           <input type="file" id="images-pptx-input" accept=".pptx" style="display: none;">
-          <div class="dropzone" id="dropzone-images" onclick="if (!event.target.closest('.btn-clear') && !event.target.closest('.selected-file-info')) { var fi = document.getElementById('images-files-input'); if (fi) { fi.value = ''; fi.click(); } }">
+          <div class="dropzone" id="dropzone-images">
             <div class="dropzone-icon">🖼️</div>
             <div class="dropzone-text">
               <strong>Arraste suas imagens, arquivo ZIP ou apresentação .PPTX aqui</strong>
@@ -939,7 +938,6 @@ texto exemplo ii eii
               <div class="progress-bar-fill" id="images-progress-bar" style="width: 0%;"></div>
             </div>
           </div>
-        </div>
 
         <!-- Grid de Cards de Imagens Reordenáveis (Drag and Drop + Botões) -->
         <div class="images-reorder-grid" id="images-reorder-grid"></div>

@@ -5014,6 +5014,8 @@ ${sermonText}`;
       sectionDirectInput.style.display = 'flex';
       sectionDirectResults.style.display = 'none';
       if (btnDownloadDirectTop) btnDownloadDirectTop.style.display = 'none';
+      if (directSlidesGrid) directSlidesGrid.innerHTML = '';
+      if (typeof updateSelectionFloatingBar === 'function') updateSelectionFloatingBar();
       return;
     }
 
@@ -6133,6 +6135,8 @@ ${sermonText}`;
       sectionImagesInput.style.display = 'flex';
       sectionImagesOrganizer.style.display = 'none';
       if (btnDownloadImagesTop) btnDownloadImagesTop.style.display = 'none';
+      if (imagesReorderGrid) imagesReorderGrid.innerHTML = '';
+      if (typeof updateSelectionFloatingBar === 'function') updateSelectionFloatingBar();
       return;
     }
 
@@ -6557,14 +6561,24 @@ ${sermonText}`;
     });
   }
 
+  function resetImagesOrganizer() {
+    imageSlides = [];
+    if (selectedImageSlideIds) selectedImageSlideIds.clear();
+    if (imagesFilesInput) imagesFilesInput.value = '';
+    if (zipFilesInput) zipFilesInput.value = '';
+    if (imagesPptxInput) imagesPptxInput.value = '';
+    if (imagesProgressContainer) imagesProgressContainer.style.display = 'none';
+    if (typeof updateSelectionFloatingBar === 'function') updateSelectionFloatingBar();
+    renderImagesOrganizer();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
   // Limpar todas as imagens
   if (btnClearAllImages) {
     btnClearAllImages.addEventListener('click', () => {
       if (imageSlides.length === 0) return;
       if (confirm('Deseja remover todas as imagens do organizador?')) {
-        imageSlides = [];
-        selectedImageSlideIds.clear();
-        renderImagesOrganizer();
+        resetImagesOrganizer();
         showToast('Todas as imagens foram removidas.', 'info');
       }
     });
@@ -6576,8 +6590,8 @@ ${sermonText}`;
       if (imageSlides.length > 0 && !confirm('Iniciar um novo lote? As imagens atuais serão limpas.')) {
         return;
       }
-      imageSlides = [];
-      renderImagesOrganizer();
+      resetImagesOrganizer();
+      showToast('Novo lote iniciado. Selecione as imagens ou apresentação.', 'info');
     });
   }
 
