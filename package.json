@@ -8,7 +8,10 @@
     "dev": "node --watch server.js",
     "cli": "node gerar_slides_direto.js",
     "hunt": "node scripts/bug_hunter.js",
-    "test": "node test_sermon_engine.js"
+    "test": "node test_sermon_engine.js",
+    "cap:sync": "npx cap sync android && node -e \"require('fs').rmSync('android/app/src/main/assets/public/deckcraft', {recursive: true, force: true})\"",
+    "cap:open": "npx cap open android",
+    "cap:build": "cd android && .\\gradlew.bat assembleDebug"
   },
   "keywords": [
     "slides",
@@ -21,6 +24,11 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@capacitor/android": "^8.6.0",
+    "@capacitor/cli": "^8.6.0",
+    "@capacitor/core": "^8.6.0",
+    "@capacitor/filesystem": "^8.1.5",
+    "@capacitor/share": "^8.0.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",

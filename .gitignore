@@ -19,3 +19,5 @@ scripts/transcript.*
 # Arquivos do sistema
 .DS_Store
 Thumbs.db
+scratch/
+

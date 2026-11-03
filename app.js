@@ -7,13 +7,11 @@ document.addEventListener('DOMContentLoaded', () => {
     'slidekiller': document.getElementById('view-slidekiller'),
     'pdf-to-pptx': document.getElementById('view-pdf-to-pptx'),
     'images-to-pptx': document.getElementById('view-images-to-pptx'),
-    'deckcraft': document.getElementById('view-deckcraft')
   };
   const moduleActions = {
     'slidekiller': document.getElementById('actions-slidekiller'),
     'pdf-to-pptx': document.getElementById('actions-pdf-to-pptx'),
     'images-to-pptx': document.getElementById('actions-images-to-pptx'),
-    'deckcraft': document.getElementById('actions-deckcraft')
   };
 
   let currentActiveModule = 'slidekiller';
@@ -27,6 +25,13 @@ document.addEventListener('DOMContentLoaded', () => {
       b.classList.toggle('active', b.dataset.module === targetModule);
     });
 
+    if (typeof updateSelectionFloatingBar === "function") updateSelectionFloatingBar();
+    // Atualiza botões da navegação mobile inferior
+    const mobileNavBtns = document.querySelectorAll('.mobile-nav-btn[data-target-module]');
+    mobileNavBtns.forEach(b => {
+      b.classList.toggle('active', b.dataset.targetModule === targetModule);
+    });
+
     // Alterna visualização dos módulos
     Object.keys(moduleViews).forEach(key => {
       if (moduleViews[key]) {
@@ -37,20 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    // Inicializa o iframe do DeckCraft Standalone sob demanda
-    if (targetModule === 'deckcraft') {
-      const standaloneIframe = document.getElementById('deckcraft-standalone-iframe');
-      const standaloneLoading = document.getElementById('deckcraft-standalone-loading');
-      if (standaloneIframe && (!standaloneIframe.src || standaloneIframe.src === 'about:blank' || !standaloneIframe.src.includes('deckcraft'))) {
-        if (standaloneLoading) standaloneLoading.style.display = 'flex';
-        standaloneIframe.src = 'deckcraft/?blank';
-        standaloneIframe.onload = () => {
-          if (standaloneLoading) {
-            setTimeout(() => { standaloneLoading.style.display = 'none'; }, 600);
-          }
-        };
-      }
-    }
+    
   }
 
   navModuleBtns.forEach(btn => {
@@ -61,7 +53,248 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // Ações da Barra de Navegação Inferior (Mobile App)
+  const mobileNavBtns = document.querySelectorAll('.mobile-nav-btn[data-target-module]');
+  mobileNavBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const target = btn.dataset.targetModule;
+      switchModule(target);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  });
+
   // ==========================================
+  // ACTION SHEET CONTROL (OPÇÕES NATIVAS DO SLIDE)
+  // ==========================================
+  let activeSheetOptions = null;
+
+  function openSlideActionSheet(options) {
+    activeSheetOptions = options;
+    const overlay = document.getElementById('slideActionSheet');
+    const imgEl = document.getElementById('sheet-slide-img');
+    const badgeEl = document.getElementById('sheet-slide-badge');
+    const titleEl = document.getElementById('sheet-slide-title');
+
+    if (!overlay) return;
+
+    const slide = options.slide;
+    const index = options.index;
+
+    if (imgEl) imgEl.src = slide.imgData || slide.dataUrl || '';
+    if (badgeEl) badgeEl.textContent = `Slide #${index + 1} de ${options.total}`;
+    if (titleEl) titleEl.textContent = slide.title || slide.name || `Slide ${index + 1}`;
+
+    overlay.style.display = 'flex';
+    requestAnimationFrame(() => {
+      overlay.classList.add('active');
+    });
+  }
+
+  function closeSlideActionSheet() {
+    const overlay = document.getElementById('slideActionSheet');
+    if (!overlay) return;
+    overlay.classList.remove('active');
+    setTimeout(() => {
+      overlay.style.display = 'none';
+      activeSheetOptions = null;
+    }, 280);
+  }
+
+  const slideActionSheetOverlay = document.getElementById('slideActionSheet');
+  const btnCloseSlideSheet = document.getElementById('btn-close-slide-sheet');
+  const sheetBtnReplace = document.getElementById('sheet-btn-replace');
+  const sheetBtnInsertAfter = document.getElementById('sheet-btn-insert-after');
+  const sheetBtnDlScreen = document.getElementById('sheet-btn-dl-screen');
+  const sheetBtnDlOrig = document.getElementById('sheet-btn-dl-orig');
+  const sheetBtnDelete = document.getElementById('sheet-btn-delete');
+
+  if (slideActionSheetOverlay) {
+    slideActionSheetOverlay.addEventListener('click', (e) => {
+      if (e.target === slideActionSheetOverlay) closeSlideActionSheet();
+    });
+  }
+
+  if (btnCloseSlideSheet) {
+    btnCloseSlideSheet.addEventListener('click', closeSlideActionSheet);
+  }
+
+  if (sheetBtnReplace) {
+    sheetBtnReplace.addEventListener('click', () => {
+      if (activeSheetOptions && activeSheetOptions.onReplace) {
+        const fn = activeSheetOptions.onReplace;
+        closeSlideActionSheet();
+        setTimeout(fn, 120);
+      }
+    });
+  }
+
+  if (sheetBtnInsertAfter) {
+    sheetBtnInsertAfter.addEventListener('click', () => {
+      if (activeSheetOptions && activeSheetOptions.onInsertAfter) {
+        const fn = activeSheetOptions.onInsertAfter;
+        closeSlideActionSheet();
+        setTimeout(fn, 120);
+      }
+    });
+  }
+
+  if (sheetBtnDlScreen) {
+    sheetBtnDlScreen.addEventListener('click', () => {
+      if (activeSheetOptions && activeSheetOptions.onDownloadScreen) {
+        const fn = activeSheetOptions.onDownloadScreen;
+        closeSlideActionSheet();
+        fn();
+      }
+    });
+  }
+
+  if (sheetBtnDlOrig) {
+    sheetBtnDlOrig.addEventListener('click', () => {
+      if (activeSheetOptions && activeSheetOptions.onDownloadOrig) {
+        const fn = activeSheetOptions.onDownloadOrig;
+        closeSlideActionSheet();
+        fn();
+      }
+    });
+  }
+
+  if (sheetBtnDelete) {
+    sheetBtnDelete.addEventListener('click', () => {
+      if (activeSheetOptions && activeSheetOptions.onDelete) {
+        const fn = activeSheetOptions.onDelete;
+        closeSlideActionSheet();
+        setTimeout(fn, 120);
+      }
+    });
+  }
+
+  // ==========================================
+
+  
+  // ==========================================
+  // AUTO-SCROLL E TOUCH DRAG & DROP (MOBILE REORDER)
+  // Permite manter pressionado para arrastar slides e auto-rolar no topo / rodapé
+  // ==========================================
+  let touchAutoScrollRaf = null;
+  let touchAutoScrollSpeed = 0;
+
+  function runAutoScrollStep() {
+    if (touchAutoScrollSpeed !== 0) {
+      window.scrollBy(0, touchAutoScrollSpeed);
+      touchAutoScrollRaf = requestAnimationFrame(runAutoScrollStep);
+    } else {
+      touchAutoScrollRaf = null;
+    }
+  }
+
+  function setTouchAutoScroll(speed) {
+    touchAutoScrollSpeed = speed;
+    if (speed !== 0 && !touchAutoScrollRaf) {
+      touchAutoScrollRaf = requestAnimationFrame(runAutoScrollStep);
+    } else if (speed === 0 && touchAutoScrollRaf) {
+      cancelAnimationFrame(touchAutoScrollRaf);
+      touchAutoScrollRaf = null;
+    }
+  }
+
+  function attachTouchDragAndDrop(card, index, onMove) {
+    card.dataset.index = String(index);
+
+    let touchTimer = null;
+    let isDragging = false;
+    let startX = 0;
+    let startY = 0;
+
+    card.addEventListener('touchstart', (e) => {
+      // Se tocar em botões de ação ou checkbox, não ativa o arraste
+      if (e.target.closest('button, input, label, a, .btn-card-more, .btn-card-delete, .btn-card-reorder')) {
+        return;
+      }
+
+      const touch = e.touches[0];
+      startX = touch.clientX;
+      startY = touch.clientY;
+
+      touchTimer = setTimeout(() => {
+        isDragging = true;
+        card.classList.add('touch-dragging');
+        if (navigator.vibrate) navigator.vibrate(40);
+      }, 220); // 220ms de toque contínuo (long-press) ativa o modo de arraste
+    }, { passive: true });
+
+    card.addEventListener('touchmove', (e) => {
+      const touch = e.touches[0];
+      const clientX = touch.clientX;
+      const clientY = touch.clientY;
+
+      if (!isDragging) {
+        // Se movimentou antes dos 220ms, usuário está apenas rolando a página normalmente
+        const moveDist = Math.hypot(clientX - startX, clientY - startY);
+        if (moveDist > 10) {
+          clearTimeout(touchTimer);
+        }
+        return;
+      }
+
+      // Impede o scroll nativo enquanto arrasta o card
+      if (e.cancelable) e.preventDefault();
+
+      // AUTO-SCROLL: Topo (próximo ao cabeçalho) e Rodapé (próximo à barra de navegação)
+      const topThreshold = 100;
+      const bottomThreshold = window.innerHeight - 90;
+
+      if (clientY < topThreshold) {
+        // Desliza suavemente para cima (quanto mais perto do topo, mais rápido)
+        const factor = Math.min(22, Math.max(5, Math.round((topThreshold - clientY) / 2.5)));
+        setTouchAutoScroll(-factor);
+      } else if (clientY > bottomThreshold) {
+        // Desliza suavemente para baixo (quanto mais perto do rodapé, mais rápido)
+        const factor = Math.min(22, Math.max(5, Math.round((clientY - bottomThreshold) / 2.5)));
+        setTouchAutoScroll(factor);
+      } else {
+        setTouchAutoScroll(0);
+      }
+
+      // Detecta sobre qual card o dedo está passando
+      const prevPointer = card.style.pointerEvents;
+      card.style.pointerEvents = 'none';
+      const elUnder = document.elementFromPoint(clientX, clientY);
+      card.style.pointerEvents = prevPointer;
+
+      const targetCard = elUnder ? elUnder.closest('.image-slide-card') : null;
+      document.querySelectorAll('.image-slide-card.drag-over').forEach(c => {
+        if (c !== targetCard) c.classList.remove('drag-over');
+      });
+
+      if (targetCard && targetCard !== card) {
+        targetCard.classList.add('drag-over');
+      }
+    }, { passive: false });
+
+    const handleTouchEnd = () => {
+      clearTimeout(touchTimer);
+      setTouchAutoScroll(0);
+
+      if (isDragging) {
+        isDragging = false;
+        card.classList.remove('touch-dragging');
+
+        const targetCard = document.querySelector('.image-slide-card.drag-over');
+        if (targetCard) {
+          targetCard.classList.remove('drag-over');
+          const targetIndex = parseInt(targetCard.dataset.index, 10);
+          if (!isNaN(targetIndex) && targetIndex !== index) {
+            if (navigator.vibrate) navigator.vibrate([25, 35, 25]);
+            onMove(index, targetIndex);
+          }
+        }
+      }
+    };
+
+    card.addEventListener('touchend', handleTouchEnd);
+    card.addEventListener('touchcancel', handleTouchEnd);
+  }
+
   // PROTEÇÃO GLOBAL DE ARRASTE NO PC
   // Impede que o navegador abra o PDF em tela cheia ao soltar no site e roteia para o módulo ativo
   // ==========================================
@@ -119,21 +352,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     } else if (currentActiveModule === 'images-to-pptx') {
       processIncomingFiles(Array.from(files));
-    } else if (currentActiveModule === 'deckcraft') {
-      if (ext === 'pptx') {
-        const iframe = document.getElementById('deckcraft-standalone-iframe');
-        if (iframe && iframe.contentWindow) {
-          firstFile.arrayBuffer().then(buf => {
-            iframe.contentWindow.postMessage({
-              type: 'LOAD_PPTX_BLOB',
-              blob: firstFile,
-              buffer: buf,
-              name: firstFile.name
-            }, '*');
-            showToast(`Apresentação "${firstFile.name}" carregada no DeckCraft!`, 'success');
-          }).catch(err => showToast('Erro ao ler PPTX: ' + err.message, 'error'));
-        }
-      }
     }
   }
 
@@ -216,8 +434,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const btnDownloadPdfSk = document.getElementById('btn-download-pdf-sk');
   const btnDownloadBothSk = document.getElementById('btn-download-both-sk');
-  const btnEditDeckcraft = document.getElementById('btn-edit-deckcraft');
-  
   const inputSection = document.getElementById('input-section');
   const resultsSection = document.getElementById('results-section');
   const slidesGrid = document.getElementById('slides-grid');
@@ -429,7 +645,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
           if (teamsOptionsContainer) teamsOptionsContainer.style.display = 'none';
           if (sermonTextInput) {
-            sermonTextInput.placeholder = 'Cole aqui o texto ou anotações do pastor com as referências bíblicas (ex: Mateus 6:19-21)...';
+            sermonTextInput.placeholder = 'Cole aqui o texto ou anotações do sermão com as referências bíblicas (ex: Mateus 6:19-21)...';
           }
         }
       });
@@ -1676,52 +1892,75 @@ ${sermonText}`;
       .replace(/\u00A0/g, ' ')
       .replace(/\r\n/g, '\n');
 
-    // 1. Divide em linhas eliminando linhas decorativas
-    const allLines = normalized
-      .split('\n')
-      .map(l => l.trim())
+    // 1. Divide em parágrafos preservando quebras duplas para não agrupar versículos distintos
+    const rawParagraphs = normalized
+      .split(/\n\s*\n+/)
+      .map(p => p.trim())
       .filter(Boolean)
-      .filter(l => !/^[⸻\-_\s]{3,}$/.test(l));
+      .filter(p => !/^[⸻\-_\s]{3,}$/.test(p));
 
     // 2. Agrupa em blocos lógicos preservando seções, tópicos e passagens bíblicas completas
     const blocks = [];
-    let curBlock = [];
 
-    for (let i = 0; i < allLines.length; i++) {
-      const line = allLines[i];
-      const isHeading = isHeadingOrTopic(line);
-      const isPureRef = isPureBibleRefLine(line);
+    for (const para of rawParagraphs) {
+      const pLines = para
+        .split('\n')
+        .map(l => l.trim())
+        .filter(Boolean)
+        .filter(l => !/^[⸻\-_\s]{3,}$/.test(l));
 
-      if (isHeading) {
-        if (curBlock.length > 0) {
-          blocks.push(curBlock);
-          curBlock = [];
-        }
-        blocks.push([line]);
-        continue;
-      }
+      if (pLines.length === 0) continue;
 
-      if (isPureRef) {
-        // Se curBlock já tinha texto e a primeira linha não era apenas outra referência bíblica
-        if (curBlock.length > 0 && !isPureBibleRefLine(curBlock[0])) {
-          curBlock.push(line);
-          blocks.push(curBlock);
-          curBlock = [];
-        } else {
-          // Referência no topo de um novo versículo
+      let curBlock = [];
+
+      for (let i = 0; i < pLines.length; i++) {
+        const line = pLines[i];
+        const isHeading = isHeadingOrTopic(line);
+        const isPureRef = isPureBibleRefLine(line);
+        const trailingRef = isBibleRef(line);
+        const isSelfContainedVerse = trailingRef && !isPureRef && (line.endsWith(trailingRef) || line.indexOf(trailingRef) >= line.length - trailingRef.length - 4);
+
+        if (isHeading) {
           if (curBlock.length > 0) {
             blocks.push(curBlock);
             curBlock = [];
           }
-          curBlock.push(line);
+          blocks.push([line]);
+          continue;
         }
-        continue;
+
+        if (isPureRef) {
+          // Se curBlock já tinha texto e a primeira linha não era apenas outra referência bíblica
+          if (curBlock.length > 0 && !isPureBibleRefLine(curBlock[0])) {
+            curBlock.push(line);
+            blocks.push(curBlock);
+            curBlock = [];
+          } else {
+            // Referência no topo de um novo versículo
+            if (curBlock.length > 0) {
+              blocks.push(curBlock);
+              curBlock = [];
+            }
+            curBlock.push(line);
+          }
+          continue;
+        }
+
+        if (isSelfContainedVerse) {
+          if (curBlock.length > 0) {
+            blocks.push(curBlock);
+            curBlock = [];
+          }
+          blocks.push([line]);
+          continue;
+        }
+
+        curBlock.push(line);
       }
 
-      curBlock.push(line);
-    }
-    if (curBlock.length > 0) {
-      blocks.push(curBlock);
+      if (curBlock.length > 0) {
+        blocks.push(curBlock);
+      }
     }
 
     const slides = [];
@@ -2372,16 +2611,15 @@ ${sermonText}`;
 
       if (type === 'verse' || type === 'versículo') {
         const textLength = (item.runs || []).reduce((acc, r) => acc + (r.text || '').length, 0);
-        let fontSize = 48;
-        if (textLength < 70) fontSize = 56;
-        else if (textLength > 160) fontSize = 40;
-        else if (textLength > 120) fontSize = 44;
+        // Proporções oficiais da igreja: versículos grandes, legíveis e cinematográficos em 16:9 Full HD
+        let fontSize = 54;
+        if (textLength <= 80) fontSize = 68;
+        else if (textLength <= 140) fontSize = 60;
+        else if (textLength <= 200) fontSize = 54;
+        else fontSize = 48;
 
-        // Na foto da igreja, o texto fica à esquerda ocupando cerca de 65% da tela,
-        // deixando o respiro à direita para a Bíblia/fundo brilhar!
-        const textWidth = isLeftAlign ? 8.6 : 11.6;
-        const startX = isLeftAlign ? 0.9 : 0.85;
-        const startY = 1.4;
+        const startX = 0.9;
+        const textWidth = 11.533; // Ocupa a largura total com margens simétricas de 0.9" de cada lado
 
         const runs = (item.runs || []).map(r => ({
           text: r.text,
@@ -2390,63 +2628,88 @@ ${sermonText}`;
             fontSize: fontSize,
             color: r.highlight ? 'E8B859' : 'FFFFFF',
             bold: true,
-            shadow: { type: 'outer', angle: 90, blur: 5, offset: 3, opacity: 0.7, color: '000000' }
+            shadow: { type: 'outer', angle: 90, blur: 5, offset: 3, opacity: 0.75, color: '000000' }
           }
         }));
 
-        // Adiciona a referência bíblica diretamente abaixo do versículo (idêntico à prévia do site)
-        if (item.reference) {
-          runs.push({
-            text: '\n\n' + item.reference.toUpperCase(),
-            options: {
-              fontFace: pptxFontFace,
-              fontSize: Math.round(fontSize * 0.72),
-              color: 'E8B859',
-              bold: true,
-              shadow: { type: 'outer', angle: 90, blur: 5, offset: 2, opacity: 0.7, color: '000000' }
-            }
-          });
-        }
-
+        // Caixa 1: Texto do Versículo (independente, ampla e centralizada verticalmente na área superior/média)
         slide.addText(runs, {
           x: startX,
-          y: startY,
+          y: 1.1,
           w: textWidth,
-          h: 5.2,
-          valign: 'top',
+          h: 4.6,
+          valign: 'middle',
           align: isLeftAlign ? 'left' : 'center',
           margin: 0,
           wrap: true
         });
+
+        // Caixa 2: Referência Bíblica SEPARADA em sua própria caixa de texto independente no rodapé
+        if (item.reference) {
+          slide.addText(item.reference.toUpperCase(), {
+            x: startX,
+            y: 5.85,
+            w: textWidth,
+            h: 0.8,
+            valign: 'middle',
+            align: isLeftAlign ? 'left' : 'center',
+            fontFace: pptxFontFace,
+            fontSize: 34,
+            color: 'E8B859',
+            bold: true,
+            margin: 0,
+            wrap: false,
+            shadow: { type: 'outer', angle: 90, blur: 4, offset: 2, opacity: 0.75, color: '000000' }
+          });
+        }
 
       } else if (type === 'question_short') {
         const runs = (item.runs || []).map(r => ({
           text: r.text,
           options: {
             fontFace: pptxFontFace,
-            fontSize: 110,
+            fontSize: 100,
             color: r.highlight ? 'E8B859' : 'FFFFFF',
             bold: true,
-            shadow: { type: 'outer', angle: 90, blur: 5, offset: 3, opacity: 0.7, color: '000000' }
+            shadow: { type: 'outer', angle: 90, blur: 5, offset: 3, opacity: 0.75, color: '000000' }
           }
         }));
 
         slide.addText(runs, {
-          x: 0.8,
-          y: 1.8,
-          w: 11.7,
-          h: 4.0,
+          x: 0.9,
+          y: 1.6,
+          w: 11.533,
+          h: 4.2,
           valign: 'middle',
           align: 'center',
           margin: 0,
           wrap: true
         });
 
+        if (item.reference) {
+          slide.addText(item.reference.toUpperCase(), {
+            x: 0.9,
+            y: 5.85,
+            w: 11.533,
+            h: 0.8,
+            valign: 'middle',
+            align: 'center',
+            fontFace: pptxFontFace,
+            fontSize: 34,
+            color: 'E8B859',
+            bold: true,
+            margin: 0,
+            wrap: false,
+            shadow: { type: 'outer', angle: 90, blur: 4, offset: 2, opacity: 0.75, color: '000000' }
+          });
+        }
+
       } else if (type === 'reflection') {
         const textLength = (item.runs || []).reduce((acc, r) => acc + (r.text || '').length, 0);
-        let fontSize = 44;
-        if (textLength < 70) fontSize = 52;
-        else if (textLength > 160) fontSize = 38;
+        let fontSize = 48;
+        if (textLength <= 80) fontSize = 58;
+        else if (textLength <= 150) fontSize = 50;
+        else fontSize = 44;
 
         const runs = (item.runs || []).map(r => ({
           text: r.text,
@@ -2455,14 +2718,61 @@ ${sermonText}`;
             fontSize: fontSize,
             color: r.highlight ? 'E8B859' : 'FFFFFF',
             bold: true,
-            shadow: { type: 'outer', angle: 90, blur: 5, offset: 3, opacity: 0.7, color: '000000' }
+            shadow: { type: 'outer', angle: 90, blur: 5, offset: 3, opacity: 0.75, color: '000000' }
+          }
+        }));
+
+        slide.addText(runs, {
+          x: 0.9,
+          y: 1.1,
+          w: 11.533,
+          h: 4.6,
+          valign: 'middle',
+          align: isLeftAlign ? 'left' : 'center',
+          margin: 0,
+          wrap: true
+        });
+
+        if (item.reference) {
+          slide.addText(item.reference.toUpperCase(), {
+            x: 0.9,
+            y: 5.85,
+            w: 11.533,
+            h: 0.8,
+            valign: 'middle',
+            align: isLeftAlign ? 'left' : 'center',
+            fontFace: pptxFontFace,
+            fontSize: 34,
+            color: 'E8B859',
+            bold: true,
+            margin: 0,
+            wrap: false,
+            shadow: { type: 'outer', angle: 90, blur: 4, offset: 2, opacity: 0.75, color: '000000' }
+          });
+        }
+
+      } else {
+        // topic / títulos de seção
+        const textLength = (item.runs || []).reduce((acc, r) => acc + (r.text || '').length, 0);
+        let fontSize = 66;
+        if (textLength < 40) fontSize = 78;
+        else if (textLength > 90) fontSize = 54;
+
+        const runs = (item.runs || []).map(r => ({
+          text: r.text,
+          options: {
+            fontFace: pptxFontFace,
+            fontSize: fontSize,
+            color: r.highlight ? 'E8B859' : 'FFFFFF',
+            bold: true,
+            shadow: { type: 'outer', angle: 90, blur: 5, offset: 3, opacity: 0.75, color: '000000' }
           }
         }));
 
         slide.addText(runs, {
           x: 0.9,
           y: 1.6,
-          w: 11.5,
+          w: 11.533,
           h: 4.2,
           valign: 'middle',
           align: isLeftAlign ? 'left' : 'center',
@@ -2470,34 +2780,23 @@ ${sermonText}`;
           wrap: true
         });
 
-      } else {
-        // topic / títulos de seção
-        const textLength = (item.runs || []).reduce((acc, r) => acc + (r.text || '').length, 0);
-        let fontSize = 66;
-        if (textLength < 40) fontSize = 78;
-        else if (textLength > 90) fontSize = 52;
-
-        const runs = (item.runs || []).map(r => ({
-          text: r.text,
-          options: {
+        if (item.reference) {
+          slide.addText(item.reference.toUpperCase(), {
+            x: 0.9,
+            y: 5.85,
+            w: 11.533,
+            h: 0.8,
+            valign: 'middle',
+            align: isLeftAlign ? 'left' : 'center',
             fontFace: pptxFontFace,
-            fontSize: fontSize,
-            color: r.highlight ? 'E8B859' : 'FFFFFF',
+            fontSize: 34,
+            color: 'E8B859',
             bold: true,
-            shadow: { type: 'outer', angle: 90, blur: 5, offset: 3, opacity: 0.7, color: '000000' }
-          }
-        }));
-
-        slide.addText(runs, {
-          x: 0.8,
-          y: 1.8,
-          w: 11.7,
-          h: 3.8,
-          valign: 'middle',
-          align: isLeftAlign ? 'left' : 'center',
-          margin: 0,
-          wrap: true
-        });
+            margin: 0,
+            wrap: false,
+            shadow: { type: 'outer', angle: 90, blur: 4, offset: 2, opacity: 0.75, color: '000000' }
+          });
+        }
       }
     }
 
@@ -2511,7 +2810,7 @@ ${sermonText}`;
       const zip = await JSZip.loadAsync(blob);
       let modified = false;
 
-      // 1. Atualizar ppt/theme/theme1.xml para que o DeckCraft e o PowerPoint usem a fonte como tema Major e Minor
+      // 1. Atualizar ppt/theme/theme1.xml para que o PowerPoint usem a fonte como tema Major e Minor
       if (zip.file('ppt/theme/theme1.xml')) {
         let themeXml = await zip.file('ppt/theme/theme1.xml').async('text');
         themeXml = themeXml.replace(/<a:latin typeface="[^"]*"/g, `<a:latin typeface="${fontFaceName}"`);
@@ -2524,7 +2823,7 @@ ${sermonText}`;
         try {
           let fontBuf = null;
           try {
-            const fontResp = await fetch('deckcraft/bahnschrift.ttf');
+            const fontResp = await fetch('assets/bahnschrift.ttf');
             if (fontResp && fontResp.ok) fontBuf = await fontResp.arrayBuffer();
           } catch(e) {}
           if (!fontBuf) {
@@ -2575,7 +2874,7 @@ ${sermonText}`;
             modified = true;
           }
         } catch(fontErr) {
-          console.warn('[DeckCraft] Aviso ao carregar arquivo de fonte para embutimento:', fontErr);
+          console.warn('[SlideKiller] Aviso ao carregar arquivo de fonte para embutimento:', fontErr);
         }
       }
 
@@ -2587,9 +2886,122 @@ ${sermonText}`;
         });
       }
     } catch (e) {
-      console.warn('[DeckCraft] Aviso ao enriquecer tema do PPTX:', e);
+      console.warn('[SlideKiller] Aviso ao enriquecer tema do PPTX:', e);
     }
     return blob;
+  }
+
+  // Converter Blob para Base64 puro
+  function blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = reject;
+      reader.onload = () => {
+        const res = reader.result;
+        const base64 = typeof res === 'string' ? res.split(',')[1] : '';
+        resolve(base64);
+      };
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  // Salvar ou Compartilhar Arquivo de forma 100% Nativa (Capacitor Android + Fallback Web)
+  async function saveOrShareFileNative(blob, fileName, mode = 'share') {
+    const isCapacitor = window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform();
+
+    if (isCapacitor) {
+      try {
+        const Plugins = window.Capacitor.Plugins || {};
+        const Filesystem = Plugins.Filesystem;
+        const Share = Plugins.Share;
+
+        showToast('Preparando arquivo para ' + (mode === 'share' ? 'compartilhar' : 'salvar') + '...', 'info');
+        const base64Data = await blobToBase64(blob);
+
+        let fileUri = null;
+
+        if (Filesystem) {
+          // 1. Sempre escreve na pasta CACHE do aplicativo (acessível pelo FileProvider sem pedir permissão de sistema)
+          const cacheRes = await Filesystem.writeFile({
+            path: fileName,
+            data: base64Data,
+            directory: 'CACHE'
+          });
+          fileUri = cacheRes.uri;
+
+          // 2. Se for modo download, tenta gravar também na pasta de Documentos
+          if (mode === 'download') {
+            try {
+              await Filesystem.writeFile({
+                path: fileName,
+                data: base64Data,
+                directory: 'DOCUMENTS',
+                recursive: true
+              });
+            } catch(docErr) {
+              console.warn('[Capacitor] Fallback Documents:', docErr);
+            }
+          }
+        }
+
+        // 3. Aciona a folha nativa do Android (WhatsApp, Drive, Telegram, Office, etc)
+        if (Share && fileUri) {
+          await Share.share({
+            title: fileName,
+            text: 'Apresentação de slides gerada pela Central Multimídia Church',
+            url: fileUri,
+            files: [fileUri],
+            dialogTitle: (mode === 'share') ? 'Compartilhar Apresentação' : 'Salvar ou Enviar Apresentação'
+          });
+          showToast('🎉 Pronto!', 'success');
+          return true;
+        } else if (fileUri) {
+          showToast('🎉 Arquivo salvo no dispositivo!', 'success');
+          return true;
+        }
+      } catch (capErr) {
+        console.error('[Capacitor] Erro no compartilhamento/download nativo:', capErr);
+        showToast('Erro nativo: ' + capErr.message, 'error');
+      }
+    }
+
+    // Fallback Web Browser padrão (Desktop / Web)
+    if (mode === 'share' && navigator.share && navigator.canShare) {
+      try {
+        const file = new File([blob], fileName, {
+          type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+        });
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: 'Slides do Culto',
+            text: 'Apresentação de slides gerada pela Central Multimídia Church'
+          });
+          showToast('🎉 Compartilhado com sucesso!', 'success');
+          return true;
+        }
+      } catch(e) {
+        if (e.name === 'AbortError') return true;
+      }
+    }
+
+    // Fallback padrão: link <a download> do navegador
+    try {
+      const downloadUrl = URL.createObjectURL(blob);
+      const downloadLink = document.createElement('a');
+      downloadLink.href = downloadUrl;
+      downloadLink.download = fileName;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+      setTimeout(() => URL.revokeObjectURL(downloadUrl), 10000);
+      showToast('🎉 Download iniciado!', 'success');
+      return true;
+    } catch(err) {
+      console.error('Erro no fallback de download:', err);
+      showToast('Erro ao baixar arquivo: ' + err.message, 'error');
+      return false;
+    }
   }
 
   // Download PPTX no cliente com PptxGenJS (100% fiel ao estilo da igreja)
@@ -2608,16 +3020,7 @@ ${sermonText}`;
       const fontName = (CHURCH_FONTS[currentSelectedFont] || CHURCH_FONTS['bahnschrift_semibold_condensed']).pptxFontFace;
       const enrichedBlob = await enrichPptxWithChurchTheme(rawBlob, fontName);
 
-      const downloadUrl = URL.createObjectURL(enrichedBlob);
-      const downloadLink = document.createElement('a');
-      downloadLink.href = downloadUrl;
-      downloadLink.download = fileName;
-      document.body.appendChild(downloadLink);
-      downloadLink.click();
-      document.body.removeChild(downloadLink);
-      setTimeout(() => URL.revokeObjectURL(downloadUrl), 10000);
-
-      showToast('🎉 Apresentação PPTX baixada com sucesso!', 'success');
+      await saveOrShareFileNative(enrichedBlob, fileName, 'download');
     } catch (err) {
       console.error('Erro ao exportar PPTX:', err);
       showToast('Erro ao exportar PPTX: ' + err.message, 'error');
@@ -2625,301 +3028,7 @@ ${sermonText}`;
   }
 
   // Gerar dados binários (Blob e ArrayBuffer) da apresentação atual
-  let activeDeckcraftPptxData = null;
-
-  async function getSlideKillerPptxData() {
-    if (!currentSlides || currentSlides.length === 0) return null;
-    const pptx = await buildSlideKillerPptxInstance();
-    const fileName = 'SLIDES_CULTO_' + Date.now() + '.pptx';
-    const rawBlob = await pptx.write({ outputType: 'blob' });
-    const fontName = (CHURCH_FONTS[currentSelectedFont] || CHURCH_FONTS['bahnschrift_semibold_condensed']).pptxFontFace;
-    const blob = await enrichPptxWithChurchTheme(rawBlob, fontName);
-    const arrayBuffer = await blob.arrayBuffer();
-    return { blob, arrayBuffer, fileName };
-  }
-
-  // Abrir DeckCraft Studio para edição estilo PowerPoint
-  async function openDeckcraftModal() {
-    if (!currentSlides || currentSlides.length === 0) {
-      showToast('Nenhum slide disponível para editar no DeckCraft.', 'error');
-      return;
-    }
-
-    const modal = document.getElementById('modalDeckcraft');
-    const iframe = document.getElementById('deckcraft-iframe');
-    const filenameBadge = document.getElementById('deckcraft-filename-badge');
-    const stepFilenameBadge = document.getElementById('deckcraft-modal-step-filename');
-    const loadingOverlay = document.getElementById('deckcraft-loading-overlay');
-    if (!modal || !iframe) return;
-
-    modal.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
-
-    // Se o iframe ainda não estiver carregado, define a URL do DeckCraft
-    if (!iframe.src || iframe.src === 'about:blank' || !iframe.src.includes('deckcraft')) {
-      if (loadingOverlay) loadingOverlay.style.display = 'flex';
-      iframe.src = 'deckcraft/?blank';
-    }
-
-    showToast('Preparando e baixando PPTX para o DeckCraft Studio...', 'info');
-
-    try {
-      const data = await getSlideKillerPptxData();
-      if (data) {
-        activeDeckcraftPptxData = data;
-        if (filenameBadge) filenameBadge.textContent = data.fileName;
-        if (stepFilenameBadge) stepFilenameBadge.textContent = data.fileName;
-
-        // Auto-download imediato para a barra de downloads do navegador
-        // facilitando arrastar diretamente para a tela do DeckCraft
-        try {
-          const downloadUrl = URL.createObjectURL(data.blob);
-          const downloadLink = document.createElement('a');
-          downloadLink.href = downloadUrl;
-          downloadLink.download = data.fileName;
-          document.body.appendChild(downloadLink);
-          downloadLink.click();
-          document.body.removeChild(downloadLink);
-          setTimeout(() => URL.revokeObjectURL(downloadUrl), 10000);
-          showToast(`📥 "${data.fileName}" baixado! Arraste-o para o editor ou use File ➔ Open.`, 'success');
-        } catch (downloadErr) {
-          console.warn('[DeckCraft] Erro no download automático:', downloadErr);
-        }
-
-        const sendPptxToDeckcraft = () => {
-          try {
-            if (iframe.contentWindow) {
-              iframe.contentWindow.postMessage({
-                type: 'LOAD_PPTX_BLOB',
-                blob: data.blob,
-                buffer: data.arrayBuffer,
-                name: data.fileName
-              }, '*');
-            }
-          } catch(e) {
-            console.warn('[DeckCraft] Aviso ao comunicar via postMessage:', e);
-          }
-        };
-
-        sendPptxToDeckcraft();
-        setTimeout(sendPptxToDeckcraft, 1200);
-        setTimeout(sendPptxToDeckcraft, 2800);
-      }
-    } catch (err) {
-      console.warn('Erro ao preparar PPTX para DeckCraft:', err);
-    }
-  }
-
-  function closeDeckcraftModal() {
-    const modal = document.getElementById('modalDeckcraft');
-    if (modal) {
-      modal.style.display = 'none';
-      document.body.style.overflow = '';
-    }
-  }
-
-  // Inicializar controles do modal DeckCraft
-  function initDeckcraftModalControls() {
-    const btnCloseModal = document.getElementById('btn-close-deckcraft-modal');
-    if (btnCloseModal) btnCloseModal.addEventListener('click', closeDeckcraftModal);
-
-    const btnQuickDownload = document.getElementById('btn-deckcraft-quick-download');
-    if (btnQuickDownload) {
-      btnQuickDownload.addEventListener('click', async () => {
-        try {
-          if (!activeDeckcraftPptxData) {
-            activeDeckcraftPptxData = await getSlideKillerPptxData();
-          }
-          if (!activeDeckcraftPptxData) {
-            showToast('Nenhum slide disponível para download.', 'error');
-            return;
-          }
-          const url = URL.createObjectURL(activeDeckcraftPptxData.blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = activeDeckcraftPptxData.fileName;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          setTimeout(() => URL.revokeObjectURL(url), 5000);
-          showToast('📥 Download do PPTX iniciado! Você pode arrastá-lo para dentro do editor.', 'success');
-        } catch (err) {
-          showToast('Erro ao baixar PPTX: ' + err.message, 'error');
-        }
-      });
-    }
-
-    const btnReDownload = document.getElementById('btn-re-download-pptx');
-    if (btnReDownload) {
-      btnReDownload.addEventListener('click', async () => {
-        try {
-          if (!activeDeckcraftPptxData) {
-            activeDeckcraftPptxData = await getSlideKillerPptxData();
-          }
-          if (!activeDeckcraftPptxData) {
-            showToast('Nenhum slide disponível para download.', 'error');
-            return;
-          }
-          const url = URL.createObjectURL(activeDeckcraftPptxData.blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = activeDeckcraftPptxData.fileName;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          setTimeout(() => URL.revokeObjectURL(url), 10000);
-          showToast(`📥 Baixando novamente: ${activeDeckcraftPptxData.fileName}`, 'success');
-        } catch (err) {
-          showToast('Erro ao baixar PPTX: ' + err.message, 'error');
-        }
-      });
-    }
-
-    // Botão da tela frontal para abrir DeckCraft direto sem projeto
-    const btnOpenDeckcraftFront = document.getElementById('btn-open-deckcraft-front');
-    if (btnOpenDeckcraftFront) {
-      btnOpenDeckcraftFront.addEventListener('click', () => {
-        const deckcraftNavBtn = document.querySelector('.nav-module-btn[data-module="deckcraft"]');
-        switchModule('deckcraft');
-        if (deckcraftNavBtn) moveNavGelPill(deckcraftNavBtn);
-      });
-    }
-
-    // Botão de nova aba no cabeçalho do módulo DeckCraft
-    const btnDeckcraftHeaderNewtab = document.getElementById('btn-deckcraft-header-newtab');
-    if (btnDeckcraftHeaderNewtab) {
-      btnDeckcraftHeaderNewtab.addEventListener('click', () => {
-        window.open('deckcraft/?blank', '_blank');
-      });
-    }
-
-    // Botões da tela avulsa / standalone do DeckCraft
-    const btnDeckcraftStandaloneFullscreen = document.getElementById('btn-deckcraft-standalone-fullscreen');
-    const deckcraftStandaloneWrapper = document.getElementById('deckcraft-standalone-wrapper');
-    if (btnDeckcraftStandaloneFullscreen && deckcraftStandaloneWrapper) {
-      btnDeckcraftStandaloneFullscreen.addEventListener('click', () => {
-        if (!document.fullscreenElement) {
-          deckcraftStandaloneWrapper.requestFullscreen().catch(() => {
-            deckcraftStandaloneWrapper.classList.toggle('is-fullscreen');
-          });
-        } else {
-          document.exitFullscreen().catch(() => {});
-        }
-      });
-      document.addEventListener('fullscreenchange', () => {
-        if (document.fullscreenElement === deckcraftStandaloneWrapper) {
-          btnDeckcraftStandaloneFullscreen.innerHTML = '<span>⛶</span> Sair da Tela Cheia';
-          deckcraftStandaloneWrapper.classList.add('is-fullscreen');
-        } else if (!document.fullscreenElement) {
-          btnDeckcraftStandaloneFullscreen.innerHTML = '<span>⛶</span> Tela Cheia';
-          deckcraftStandaloneWrapper.classList.remove('is-fullscreen');
-        }
-      });
-    }
-
-    const btnDeckcraftStandaloneNewtab = document.getElementById('btn-deckcraft-standalone-newtab');
-    if (btnDeckcraftStandaloneNewtab) {
-      btnDeckcraftStandaloneNewtab.addEventListener('click', () => {
-        window.open('deckcraft/?blank', '_blank');
-      });
-    }
-
-    const btnOpenFile = document.getElementById('btn-deckcraft-open-file');
-    const fileInput = document.getElementById('deckcraft-file-input');
-    if (btnOpenFile && fileInput) {
-      btnOpenFile.addEventListener('click', () => fileInput.click());
-      fileInput.addEventListener('change', async (e) => {
-        const file = e.target.files && e.target.files[0];
-        if (!file) return;
-        try {
-          const arrayBuf = await file.arrayBuffer();
-          const iframe = document.getElementById('deckcraft-iframe');
-          if (iframe && iframe.contentWindow) {
-            iframe.contentWindow.postMessage({
-              type: 'LOAD_PPTX_BLOB',
-              blob: file,
-              buffer: arrayBuf,
-              name: file.name
-            }, '*');
-          }
-          if (filenameBadge) filenameBadge.textContent = file.name;
-          showToast(`Arquivo "${file.name}" enviado para o DeckCraft!`, 'success');
-        } catch (err) {
-          showToast('Erro ao carregar arquivo: ' + err.message, 'error');
-        }
-      });
-    }
-
-    const btnFullscreen = document.getElementById('btn-deckcraft-fullscreen');
-    const container = document.querySelector('.deckcraft-modal-container');
-    if (btnFullscreen && container) {
-      btnFullscreen.addEventListener('click', () => {
-        if (!document.fullscreenElement) {
-          container.requestFullscreen().catch(() => {
-            container.classList.toggle('is-fullscreen');
-          });
-        } else {
-          document.exitFullscreen().catch(() => {});
-        }
-      });
-      document.addEventListener('fullscreenchange', () => {
-        if (document.fullscreenElement) {
-          btnFullscreen.textContent = '⛶ Sair da Tela Cheia';
-          container.classList.add('is-fullscreen');
-        } else {
-          btnFullscreen.textContent = '⛶ Tela Cheia';
-          container.classList.remove('is-fullscreen');
-        }
-      });
-    }
-
-    const btnNewTab = document.getElementById('btn-deckcraft-new-tab');
-    if (btnNewTab) {
-      btnNewTab.addEventListener('click', () => {
-        window.open('deckcraft/?blank', '_blank');
-      });
-    }
-
-    const btnDismissHelper = document.getElementById('btn-dismiss-deckcraft-helper');
-    const helperBar = document.getElementById('deckcraft-helper-bar');
-    if (btnDismissHelper && helperBar) {
-      btnDismissHelper.addEventListener('click', () => {
-        helperBar.style.display = 'none';
-      });
-    }
-
-    // Ouvinte para ocultar loading quando o DeckCraft WebAssembly estiver pronto
-    window.addEventListener('message', (e) => {
-      if (e.data && e.data.type === 'DECKCRAFT_READY') {
-        const loadingOverlay = document.getElementById('deckcraft-loading-overlay');
-        if (loadingOverlay) loadingOverlay.style.display = 'none';
-        if (activeDeckcraftPptxData) {
-          const iframe = document.getElementById('deckcraft-iframe');
-          if (iframe && iframe.contentWindow) {
-            iframe.contentWindow.postMessage({
-              type: 'LOAD_PPTX_BLOB',
-              blob: activeDeckcraftPptxData.blob,
-              buffer: activeDeckcraftPptxData.arrayBuffer,
-              name: activeDeckcraftPptxData.fileName
-            }, '*');
-          }
-        }
-      }
-    });
-
-    const iframe = document.getElementById('deckcraft-iframe');
-    if (iframe) {
-      iframe.addEventListener('load', () => {
-        const loadingOverlay = document.getElementById('deckcraft-loading-overlay');
-        if (loadingOverlay) {
-          setTimeout(() => { loadingOverlay.style.display = 'none'; }, 800);
-        }
-      });
-    }
-  }
-  initDeckcraftModalControls();
-
-  // Download PDF no cliente com jsPDF
+  // Download PDF no cliente com jsPDF - Proporções e tipografia oficiais 16:9 Full HD
   async function exportSlideKillerPdf() {
     if (currentSlides.length === 0) {
       showToast('Nenhum slide para exportar.', 'error');
@@ -2934,6 +3043,12 @@ ${sermonText}`;
     showToast('Gerando documento em PDF (.pdf)...', 'info');
 
     try {
+      if (document.fonts && document.fonts.ready) {
+        try {
+          await document.fonts.ready;
+        } catch(e) {}
+      }
+
       const { jsPDF } = window.jspdf;
       const baseW = 1920;
       const baseH = 1080;
@@ -2960,12 +3075,72 @@ ${sermonText}`;
       canvas.height = baseH;
       const ctx = canvas.getContext('2d');
 
+      const fontConfig = CHURCH_FONTS[currentSelectedFont] || CHURCH_FONTS['bahnschrift_semibold_condensed'];
+      const isLeftAlign = currentSelectedAlign === 'left';
+      const fontCss = fontConfig.cssFamily;
+
+      const startX = 130;
+      const maxWidth = 1660; // Margens simétricas de 130px em ambos os lados (idêntico ao PPTX)
+      const topLimit = 150;
+      const availableHeight = 670; // Área útil entre topo e rodapé
+
+      // Função auxiliar interna para quebrar runs em linhas preservando destaques
+      const wrapRuns = (runs, c, maxW) => {
+        const tokens = [];
+        for (const r of runs) {
+          const parts = (r.text || '').split(/(\s+)/);
+          for (const p of parts) {
+            if (p.length === 0) continue;
+            tokens.push({
+              text: p,
+              highlight: !!r.highlight,
+              isSpace: /^\s+$/.test(p)
+            });
+          }
+        }
+
+        const lines = [];
+        let curLine = [];
+        let curLineWidth = 0;
+
+        for (const token of tokens) {
+          const w = c.measureText(token.text).width;
+          if (token.isSpace) {
+            if (curLine.length > 0) {
+              curLine.push({ ...token, width: w });
+              curLineWidth += w;
+            }
+          } else {
+            if (curLineWidth + w > maxW && curLine.length > 0) {
+              while (curLine.length > 0 && curLine[curLine.length - 1].isSpace) {
+                curLineWidth -= curLine.pop().width;
+              }
+              lines.push(curLine);
+              curLine = [{ ...token, width: w }];
+              curLineWidth = w;
+            } else {
+              curLine.push({ ...token, width: w });
+              curLineWidth += w;
+            }
+          }
+        }
+
+        if (curLine.length > 0) {
+          while (curLine.length > 0 && curLine[curLine.length - 1].isSpace) {
+            curLine.pop();
+          }
+          lines.push(curLine);
+        }
+
+        return lines;
+      };
+
       for (let i = 0; i < currentSlides.length; i++) {
         if (i > 0) doc.addPage([baseW, baseH], 'landscape');
 
         const item = currentSlides[i];
 
-        // Fundo (suporta fundo específico por slide ou padrão global)
+        // 1. Fundo (suporta fundo específico por slide ou padrão global)
         let slideBgDrawable = bgImg;
         if (item.bgImage) {
           const itemImg = new Image();
@@ -2983,52 +3158,92 @@ ${sermonText}`;
         if (slideBgDrawable && slideBgDrawable.complete && slideBgDrawable.naturalWidth > 0) {
           ctx.drawImage(slideBgDrawable, 0, 0, baseW, baseH);
         } else {
-          ctx.fillStyle = '#FFFFFF';
+          ctx.fillStyle = '#000000';
           ctx.fillRect(0, 0, baseW, baseH);
         }
 
-        const fontConfig = CHURCH_FONTS[currentSelectedFont] || CHURCH_FONTS['bahnschrift_semibold_condensed'];
-        const isLeftAlign = currentSelectedAlign === 'left';
+        const type = item.type || 'verse';
+        const textLength = (item.runs || []).reduce((acc, r) => acc + (r.text || '').length, 0);
+
+        // 2. Cálculo do tamanho de fonte cinematográfico Full HD (escala 2x para 1080p, idêntico aos pt do PowerPoint)
+        let fontSize = 108;
+        if (type === 'question_short') {
+          fontSize = 180;
+        } else if (type === 'reflection') {
+          if (textLength <= 80) fontSize = 116;
+          else if (textLength <= 150) fontSize = 100;
+          else fontSize = 88;
+        } else if (type === 'topic') {
+          if (textLength < 40) fontSize = 156;
+          else if (textLength > 90) fontSize = 108;
+          else fontSize = 132;
+        } else {
+          // Versículo bíblico
+          if (textLength <= 80) fontSize = 136;
+          else if (textLength <= 140) fontSize = 120;
+          else if (textLength <= 200) fontSize = 108;
+          else fontSize = 96;
+        }
+
+        ctx.font = `bold ${fontSize}px ${fontCss}`;
+        let lineHeight = fontSize * 1.22;
+        let lines = wrapRuns(item.runs || [], ctx, maxWidth);
+        let totalTextHeight = lines.length * lineHeight;
+
+        // Auto-fit inteligente: reduz gradualmente caso versículos muito longos passem do limite vertical
+        while (totalTextHeight > availableHeight && fontSize > 68) {
+          fontSize -= 4;
+          ctx.font = `bold ${fontSize}px ${fontCss}`;
+          lineHeight = fontSize * 1.22;
+          lines = wrapRuns(item.runs || [], ctx, maxWidth);
+          totalTextHeight = lines.length * lineHeight;
+        }
+
+        // 3. Centralização vertical harmoniosa (valign: middle)
+        const startY = topLimit + Math.max(0, (availableHeight - totalTextHeight) / 2);
+
+        // Configuração de sombras idêntica ao PowerPoint
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
+        ctx.shadowBlur = 8;
+        ctx.shadowOffsetX = 3;
+        ctx.shadowOffsetY = 3;
         ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
 
-        const fullText = (item.runs || []).map(r => r.text).join('');
-        let fontSize = 54;
-        if (fullText.length > 150) fontSize = 42;
-        else if (fullText.length < 70) fontSize = 64;
+        // 4. Desenha as linhas do versículo / texto principal
+        for (let lIdx = 0; lIdx < lines.length; lIdx++) {
+          const line = lines[lIdx];
+          const y = startY + lIdx * lineHeight;
+          const lineWidth = line.reduce((sum, seg) => sum + seg.width, 0);
+          let curX = isLeftAlign ? startX : Math.round((baseW - lineWidth) / 2);
 
-        ctx.font = `bold ${fontSize}px ${fontConfig.cssFamily}`;
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.75)';
-        ctx.shadowBlur = 6;
-        ctx.shadowOffsetX = 3;
-        ctx.shadowOffsetY = 3;
-
-        const startX = isLeftAlign ? 140 : 160;
-        let curX = startX;
-        let curY = 180;
-        const maxWidth = isLeftAlign ? 1220 : 1600;
-        const lineHeight = fontSize * 1.25;
-
-        for (const run of (item.runs || [])) {
-          ctx.fillStyle = run.highlight ? '#E8B859' : '#FFFFFF';
-          const words = run.text.split(/(\s+)/);
-
-          for (const w of words) {
-            const wWidth = ctx.measureText(w).width;
-            if (curX + wWidth > startX + maxWidth && !w.match(/^\s+$/)) {
-              curX = startX;
-              curY += lineHeight;
-            }
-            ctx.fillText(w, curX, curY);
-            curX += wWidth;
+          for (const seg of line) {
+            ctx.fillStyle = seg.highlight ? '#E8B859' : '#FFFFFF';
+            ctx.fillText(seg.text, curX, y);
+            curX += seg.width;
           }
         }
 
-        // Referência Bíblica
+        // 5. Caixa 2: Referência Bíblica SEPARADA no rodapé (y = 880px, fontSize: 68px)
         if (item.reference) {
-          ctx.font = `bold 42px ${fontConfig.cssFamily}`;
+          const refFontSize = 68; // Proporção idêntica aos 34pt do PowerPoint
+          ctx.font = `bold ${refFontSize}px ${fontCss}`;
           ctx.fillStyle = '#E8B859';
-          ctx.fillText(item.reference.toUpperCase(), startX, baseH - 180);
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+          ctx.shadowBlur = 6;
+          ctx.shadowOffsetX = 2;
+          ctx.shadowOffsetY = 2;
+
+          const refText = item.reference.toUpperCase();
+          const refY = 880;
+
+          if (isLeftAlign) {
+            ctx.textAlign = 'left';
+            ctx.fillText(refText, startX, refY);
+          } else {
+            ctx.textAlign = 'center';
+            ctx.fillText(refText, baseW / 2, refY);
+          }
         }
 
         const slideImgData = canvas.toDataURL('image/jpeg', 0.92);
@@ -3036,8 +3251,8 @@ ${sermonText}`;
       }
 
       const fileName = 'SLIDES_CULTO_' + Date.now() + '.pdf';
-      doc.save(fileName);
-      showToast('🎉 Documento PDF (.pdf) baixado com sucesso!', 'success');
+      const pdfBlob = doc.output('blob');
+      await saveOrShareFileNative(pdfBlob, fileName, 'download');
     } catch (err) {
       console.error('Erro ao exportar PDF:', err);
       showToast('Erro ao exportar PDF: ' + err.message, 'error');
@@ -3054,21 +3269,37 @@ ${sermonText}`;
     }, 800);
   }
 
-  // Download PPTX
+  // Download PPTX (Gera dinamicamente com tipografia widescreen e referência separada)
   function triggerDownload() {
-    if (currentDownloadUrl) {
-      window.open(currentDownloadUrl, '_blank');
-    } else {
-      exportSlideKillerPptx();
+    exportSlideKillerPptx();
+  }
+
+  async function shareSlideKillerPptx() {
+    if (!currentSlides || currentSlides.length === 0) {
+      showToast('Nenhum slide para compartilhar.', 'error');
+      return;
+    }
+    showToast('Preparando apresentação para compartilhar...', 'info');
+    try {
+      const data = await getSlideKillerPptxData();
+      if (!data) return;
+
+      await saveOrShareFileNative(data.blob, data.fileName, 'share');
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        console.error('Erro ao compartilhar PPTX:', err);
+        showToast('Erro ao compartilhar: ' + err.message, 'error');
+      }
     }
   }
+
+  const btnShareMain = document.getElementById('btn-share-main');
+  if (btnShareMain) btnShareMain.addEventListener('click', shareSlideKillerPptx);
 
   if (btnDownloadTop) btnDownloadTop.addEventListener('click', triggerDownload);
   if (btnDownloadMain) btnDownloadMain.addEventListener('click', triggerDownload);
   if (btnDownloadPdfSk) btnDownloadPdfSk.addEventListener('click', exportSlideKillerPdf);
   if (btnDownloadBothSk) btnDownloadBothSk.addEventListener('click', exportSlideKillerBoth);
-  if (btnEditDeckcraft) btnEditDeckcraft.addEventListener('click', openDeckcraftModal);
-
   // Novo Documento
   if (btnNewPresentation) {
     btnNewPresentation.addEventListener('click', () => {
@@ -4501,7 +4732,8 @@ ${sermonText}`;
       }
     }
     if (labelSelectAllDirect) {
-      labelSelectAllDirect.textContent = (directSlides.length > 0 && selectedDirectSlideIds.size === directSlides.length)
+      updateSelectionFloatingBar();
+    labelSelectAllDirect.textContent = (directSlides.length > 0 && selectedDirectSlideIds.size === directSlides.length)
         ? 'Desmarcar Todos'
         : 'Selecionar Todos';
     }
@@ -4661,19 +4893,42 @@ ${sermonText}`;
         });
       }
 
-      if (btnMore && cardDropdown) {
+      if (btnMore) {
         btnMore.addEventListener('click', (e) => {
           e.stopPropagation();
-          const isOpen = cardDropdown.classList.contains('show');
-          document.querySelectorAll('.card-dropdown-menu.show').forEach(m => m.classList.remove('show'));
-          document.querySelectorAll('.btn-card-more.active').forEach(b => b.classList.remove('active'));
-          document.querySelectorAll('.image-slide-card.menu-open').forEach(c => c.classList.remove('menu-open'));
-
-          if (!isOpen) {
-            cardDropdown.classList.add('show');
-            btnMore.classList.add('active');
-            card.classList.add('menu-open');
-          }
+          openSlideActionSheet({
+            slide,
+            index,
+            total: directSlides.length,
+            onReplace: () => {
+              if (inputReplace) {
+                inputReplace.value = '';
+                inputReplace.click();
+              }
+            },
+            onInsertAfter: () => {
+              if (inputInsertAfter) {
+                inputInsertAfter.value = '';
+                inputInsertAfter.click();
+              }
+            },
+            onDownloadScreen: () => {
+              const aspect = directAspectSelect ? directAspectSelect.value : '16x9';
+              const fit = directFitSelect ? directFitSelect.value : 'contain';
+              const bg = directBgSelect ? directBgSelect.value : '000000';
+              downloadSingleSlidePng(slide, index, 'screen', aspect, fit, bg);
+            },
+            onDownloadOrig: () => {
+              downloadSingleSlidePng(slide, index, 'orig');
+            },
+            onDelete: () => {
+              if (confirm(`Deseja excluir o slide #${index + 1}?`)) {
+                directSlides.splice(index, 1);
+                selectedDirectSlideIds.delete(slide.id);
+                renderDirectOrganizer();
+              }
+            }
+          });
         });
       }
 
@@ -4829,6 +5084,9 @@ ${sermonText}`;
         }
       });
 
+      // Touch Drag & Drop com Auto-Scroll no Celular
+      attachTouchDragAndDrop(card, index, moveDirectSlide);
+
       directSlidesGrid.appendChild(card);
     });
   }
@@ -4980,7 +5238,8 @@ ${sermonText}`;
       doc.addImage(rawImg, imgFormat, x, y, drawW, drawH, undefined, 'FAST');
     }
 
-    doc.save(fileName);
+    const pdfBlob = doc.output('blob');
+    await saveOrShareFileNative(pdfBlob, fileName, 'download');
   }
 
   // Renderiza um slide (de directSlides ou imageSlides) em imagem PNG de alta resolução
@@ -5064,15 +5323,8 @@ ${sermonText}`;
   }
 
   // Dispara o download de um Blob no navegador
-  function downloadBlobFile(blob, fileName) {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = fileName;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  async function downloadBlobFile(blob, fileName) {
+    await saveOrShareFileNative(blob, fileName, 'download');
   }
 
   // Download individual de um slide em PNG
@@ -5163,7 +5415,7 @@ ${sermonText}`;
         directMainBtnLabel.textContent = 'Gerar e Baixar Pacote ZIP (.zip)';
       } else {
         directMainBtnIcon.textContent = '⚡';
-        directMainBtnLabel.textContent = 'Gerar e Baixar PowerPoint (.pptx)';
+        directMainBtnLabel.textContent = 'Baixar PowerPoint (.pptx)';
       }
     }
     if (btnDownloadDirectTop) {
@@ -5250,7 +5502,8 @@ ${sermonText}`;
 
         directGeneratedPptx = pptx;
         directPptxFileName = pptxFileName;
-        await pptx.writeFile({ fileName: pptxFileName });
+        const blob = await pptx.write({ outputType: 'blob' });
+        await saveOrShareFileNative(blob, pptxFileName, 'download');
       }
 
       // 2. Exportar PDF se solicitado
@@ -5305,6 +5558,8 @@ ${sermonText}`;
         showToast(`🎉 Pacote ZIP baixado com sucesso (${total} imagens PNG)!`, 'success');
       } else {
         showToast(`🎉 Apresentação PPTX baixada com sucesso (${total} slides)!`, 'success');
+        if (btnShareImagesMain) btnShareImagesMain.style.display = 'inline-flex';
+        if (btnShareDirectMain) btnShareDirectMain.style.display = 'inline-flex';
       }
 
     } catch (err) {
@@ -5322,6 +5577,23 @@ ${sermonText}`;
       }
     }
   }
+
+  async function shareDirectPptx() {
+    if (!directGeneratedPptx) {
+      showToast('Gere a apresentação primeiro para compartilhar.', 'info');
+      return;
+    }
+    try {
+      showToast('Preparando apresentação para compartilhar...', 'info');
+      const blob = await directGeneratedPptx.write({ outputType: 'blob' });
+      await saveOrShareFileNative(blob, directPptxFileName || 'SLIDES_DIRETOS.pptx', 'share');
+    } catch(e) {
+      if (e.name !== 'AbortError') showToast('Erro ao compartilhar: ' + e.message, 'error');
+    }
+  }
+
+  const btnShareDirectMain = document.getElementById('btn-share-direct-main');
+  if (btnShareDirectMain) btnShareDirectMain.addEventListener('click', shareDirectPptx);
 
   if (btnDownloadDirectTop) btnDownloadDirectTop.addEventListener('click', () => generateDirectExport());
   if (btnDownloadDirectMain) btnDownloadDirectMain.addEventListener('click', () => generateDirectExport());
@@ -5579,7 +5851,8 @@ ${sermonText}`;
       }
     }
     if (labelSelectAllImages) {
-      labelSelectAllImages.textContent = (imageSlides.length > 0 && selectedImageSlideIds.size === imageSlides.length)
+      updateSelectionFloatingBar();
+    labelSelectAllImages.textContent = (imageSlides.length > 0 && selectedImageSlideIds.size === imageSlides.length)
         ? 'Desmarcar Todos'
         : 'Selecionar Todos';
     }
@@ -5730,19 +6003,42 @@ ${sermonText}`;
         });
       }
 
-      if (btnMore && cardDropdown) {
+      if (btnMore) {
         btnMore.addEventListener('click', (e) => {
           e.stopPropagation();
-          const isOpen = cardDropdown.classList.contains('show');
-          document.querySelectorAll('.card-dropdown-menu.show').forEach(m => m.classList.remove('show'));
-          document.querySelectorAll('.btn-card-more.active').forEach(b => b.classList.remove('active'));
-          document.querySelectorAll('.image-slide-card.menu-open').forEach(c => c.classList.remove('menu-open'));
-
-          if (!isOpen) {
-            cardDropdown.classList.add('show');
-            btnMore.classList.add('active');
-            card.classList.add('menu-open');
-          }
+          openSlideActionSheet({
+            slide,
+            index,
+            total: imageSlides.length,
+            onReplace: () => {
+              if (inputReplace) {
+                inputReplace.value = '';
+                inputReplace.click();
+              }
+            },
+            onInsertAfter: () => {
+              if (inputInsertAfter) {
+                inputInsertAfter.value = '';
+                inputInsertAfter.click();
+              }
+            },
+            onDownloadScreen: () => {
+              const aspect = imagesAspectSelect ? imagesAspectSelect.value : '16x9';
+              const fit = imagesFitSelect ? imagesFitSelect.value : 'contain';
+              const bg = imagesBgSelect ? imagesBgSelect.value : '000000';
+              downloadSingleSlidePng(slide, index, 'screen', aspect, fit, bg);
+            },
+            onDownloadOrig: () => {
+              downloadSingleSlidePng(slide, index, 'orig');
+            },
+            onDelete: () => {
+              if (confirm(`Deseja excluir o slide #${index + 1}?`)) {
+                imageSlides.splice(index, 1);
+                selectedImageSlideIds.delete(slide.id);
+                renderImagesOrganizer();
+              }
+            }
+          });
         });
       }
 
@@ -5876,6 +6172,9 @@ ${sermonText}`;
         }
       });
 
+      // Touch Drag & Drop com Auto-Scroll no Celular
+      attachTouchDragAndDrop(card, index, moveImageSlide);
+
       imagesReorderGrid.appendChild(card);
     });
   }
@@ -5987,7 +6286,7 @@ ${sermonText}`;
         imagesMainBtnLabel.textContent = 'Gerar e Baixar Pacote ZIP (.zip)';
       } else {
         imagesMainBtnIcon.textContent = '⚡';
-        imagesMainBtnLabel.textContent = 'Gerar e Baixar PowerPoint (.pptx)';
+        imagesMainBtnLabel.textContent = 'Baixar PowerPoint (.pptx)';
       }
     }
     if (btnDownloadImagesTop) {
@@ -6070,7 +6369,8 @@ ${sermonText}`;
 
         imagesGeneratedPptx = pptx;
         imagesPptxFileName = pptxFileName;
-        await pptx.writeFile({ fileName: pptxFileName });
+        const blob = await pptx.write({ outputType: 'blob' });
+        await saveOrShareFileNative(blob, pptxFileName, 'download');
       }
 
       // 2. Exportar PDF se solicitado
@@ -6142,6 +6442,23 @@ ${sermonText}`;
       }
     }
   }
+
+  async function shareImagesPptx() {
+    if (!imagesGeneratedPptx) {
+      showToast('Gere a apresentação primeiro para compartilhar.', 'info');
+      return;
+    }
+    try {
+      showToast('Preparando apresentação para compartilhar...', 'info');
+      const blob = await imagesGeneratedPptx.write({ outputType: 'blob' });
+      await saveOrShareFileNative(blob, imagesPptxFileName || 'SLIDES_IMAGENS.pptx', 'share');
+    } catch(e) {
+      if (e.name !== 'AbortError') showToast('Erro ao compartilhar: ' + e.message, 'error');
+    }
+  }
+
+  const btnShareImagesMain = document.getElementById('btn-share-images-main');
+  if (btnShareImagesMain) btnShareImagesMain.addEventListener('click', shareImagesPptx);
 
   if (btnGenerateImagesPptx) {
     btnGenerateImagesPptx.addEventListener('click', () => generateImagesExport());
@@ -6356,921 +6673,6 @@ ${sermonText}`;
   }
 
   // ==========================================
-  // GERENCIADOR DE TAREFAS EM ANDAMENTO (MÁX 3)
-  // Sincronização Híbrida: Servidor Local (Wi-Fi) + IndexedDB + Link WhatsApp
-  // ==========================================
-  const MAX_ACTIVE_TASKS = 3;
-  const btnOpenTasksPanel = document.getElementById('btn-open-tasks-panel');
-  const tasksCounterBadge = document.getElementById('tasks-counter-badge');
-  const drawerTasksCounterBadge = document.getElementById('drawer-tasks-counter-badge');
-  const btnSaveCurrentTask = document.getElementById('btn-save-current-task');
-  const btnShareCurrentTask = document.getElementById('btn-share-current-task');
-  const tasksListContainer = document.getElementById('tasks-list-container');
-  const tasksDrawerOverlay = document.getElementById('tasks-drawer-overlay');
-  const tasksSyncStatusMsg = document.getElementById('tasks-sync-status-msg');
-
-  let cachedTasks = [];
-  let isServerOnline = false;
-  let syncIntervalId = null;
-
-  // Banco de Dados IndexedDB (sem limite de 5MB do localStorage)
-  const IDB_NAME = 'SlideKillerTasksDB';
-  const IDB_STORE = 'active_tasks';
-  const IDB_VERSION = 1;
-
-  function openTasksDB() {
-    return new Promise((resolve) => {
-      if (!('indexedDB' in window)) return resolve(null);
-      try {
-        const req = indexedDB.open(IDB_NAME, IDB_VERSION);
-        req.onupgradeneeded = (e) => {
-          const db = e.target.result;
-          if (!db.objectStoreNames.contains(IDB_STORE)) {
-            db.createObjectStore(IDB_STORE, { keyPath: 'id' });
-          }
-        };
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => resolve(null);
-      } catch (e) {
-        resolve(null);
-      }
-    });
-  }
-
-  async function idbGetTasks() {
-    const db = await openTasksDB();
-    if (!db) return null;
-    return new Promise((resolve) => {
-      try {
-        const tx = db.transaction(IDB_STORE, 'readonly');
-        const store = tx.objectStore(IDB_STORE);
-        const req = store.getAll();
-        req.onsuccess = () => resolve(req.result || []);
-        req.onerror = () => resolve(null);
-      } catch (e) {
-        resolve(null);
-      }
-    });
-  }
-
-  async function idbSaveTask(task) {
-    const db = await openTasksDB();
-    if (!db) return false;
-    return new Promise((resolve) => {
-      try {
-        const tx = db.transaction(IDB_STORE, 'readwrite');
-        const store = tx.objectStore(IDB_STORE);
-        store.put(task);
-        tx.oncomplete = () => resolve(true);
-        tx.onerror = () => resolve(false);
-      } catch (e) {
-        resolve(false);
-      }
-    });
-  }
-
-  async function idbDeleteTask(taskId) {
-    const db = await openTasksDB();
-    if (!db) return false;
-    return new Promise((resolve) => {
-      try {
-        const tx = db.transaction(IDB_STORE, 'readwrite');
-        const store = tx.objectStore(IDB_STORE);
-        store.delete(taskId);
-        tx.oncomplete = () => resolve(true);
-        tx.onerror = () => resolve(false);
-      } catch (e) {
-        resolve(false);
-      }
-    });
-  }
-
-  // Funções de Compressão para Compartilhamento via Link de URL
-  function uint8ToBase64Url(bytes) {
-    let binary = '';
-    const len = bytes.byteLength;
-    for (let i = 0; i < len; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-  }
-
-  function base64UrlToUint8(str) {
-    str = str.replace(/-/g, '+').replace(/_/g, '/');
-    while (str.length % 4) str += '=';
-    const binary = atob(str);
-    const len = binary.length;
-    const bytes = new Uint8Array(len);
-    for (let i = 0; i < len; i++) {
-      bytes[i] = binary.charCodeAt(i);
-    }
-    return bytes;
-  }
-
-  async function compressTaskData(taskObj) {
-    const jsonStr = JSON.stringify(taskObj);
-    if (typeof CompressionStream !== 'undefined') {
-      const stream = new Blob([new TextEncoder().encode(jsonStr)]).stream().pipeThrough(new CompressionStream('deflate'));
-      const buf = await new Response(stream).arrayBuffer();
-      return uint8ToBase64Url(new Uint8Array(buf));
-    } else {
-      return encodeURIComponent(jsonStr);
-    }
-  }
-
-  async function decompressTaskData(encoded) {
-    if (typeof DecompressionStream !== 'undefined') {
-      try {
-        const bytes = base64UrlToUint8(encoded);
-        const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate'));
-        const text = await new Response(stream).text();
-        return JSON.parse(text);
-      } catch(e) {
-        return JSON.parse(decodeURIComponent(encoded));
-      }
-    } else {
-      return JSON.parse(decodeURIComponent(encoded));
-    }
-  }
-
-  function getDeviceType() {
-    const isMobile = window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    return isMobile ? '📱 Celular' : '💻 PC';
-  }
-
-  function formatTimeAgo(isoString) {
-    if (!isoString) return '';
-    try {
-      const diffSec = Math.floor((Date.now() - new Date(isoString).getTime()) / 1000);
-      if (diffSec < 60) return 'agora';
-      const diffMin = Math.floor(diffSec / 60);
-      if (diffMin < 60) return 'há ' + diffMin + 'm';
-      const diffHours = Math.floor(diffMin / 60);
-      if (diffHours < 24) return 'há ' + diffHours + 'h';
-      const diffDays = Math.floor(diffHours / 24);
-      return 'há ' + diffDays + 'd';
-    } catch(e) {
-      return '';
-    }
-  }
-
-  // Redimensionamento/compressão equilibrada de imagens para armazenar com agilidade
-  function compressDataUrlForCloud(dataUrl, maxDim = 800, quality = 0.70) {
-    return new Promise((resolve) => {
-      if (!dataUrl || !dataUrl.startsWith('data:image')) {
-        resolve(dataUrl);
-        return;
-      }
-      const img = new Image();
-      img.onload = () => {
-        let w = img.width;
-        let h = img.height;
-        if (w > maxDim || h > maxDim) {
-          if (w > h) {
-            h = Math.round((h * maxDim) / w);
-            w = maxDim;
-          } else {
-            w = Math.round((w * maxDim) / h);
-            h = maxDim;
-          }
-        }
-        const canvas = document.createElement('canvas');
-        canvas.width = w;
-        canvas.height = h;
-        const ctx = canvas.getContext('2d');
-        ctx.fillStyle = '#000000';
-        ctx.fillRect(0, 0, w, h);
-        ctx.drawImage(img, 0, 0, w, h);
-        resolve(canvas.toDataURL('image/jpeg', quality));
-      };
-      img.onerror = () => resolve(dataUrl);
-      img.src = dataUrl;
-    });
-  }
-
-  // Consulta o servidor backend (/api/tasks) para sincronização automática entre dispositivos
-  async function fetchServerTasks() {
-    try {
-      const res = await fetch('/api/tasks', { method: 'GET', cache: 'no-store' });
-      if (res.ok) {
-        const data = await res.json();
-        if (data && data.status === 'success' && Array.isArray(data.tasks)) {
-          isServerOnline = true;
-          return data.tasks;
-        }
-      }
-    } catch (e) {
-      // Servidor inacessível ou rodando como página estática
-    }
-    isServerOnline = false;
-    return null;
-  }
-
-  function updateSyncStatusUI() {
-    if (!tasksSyncStatusMsg) return;
-    if (isServerOnline) {
-      tasksSyncStatusMsg.innerHTML = '🟢 <strong>Sincronização em Rede Wi-Fi Ativa:</strong> Salve no celular e continue no PC. (Limite: até 3 tarefas)';
-    } else {
-      tasksSyncStatusMsg.innerHTML = '⚡ <strong>Liberdade Total:</strong> Abra no PC pelo mesmo Wi-Fi ou envie o link por WhatsApp. (Limite: até 3 tarefas)';
-    }
-  }
-
-  function persistLocalCache(tasks) {
-    try {
-      localStorage.setItem('obnotion_cached_tasks', JSON.stringify(tasks));
-    } catch(e) {
-      try {
-        const light = tasks.map(t => ({
-          id: t.id,
-          title: t.title,
-          module: t.module,
-          moduleName: t.moduleName,
-          moduleIcon: t.moduleIcon,
-          slideCount: t.slideCount,
-          device: t.device,
-          createdAt: t.createdAt,
-          updatedAt: t.updatedAt
-        }));
-        localStorage.setItem('obnotion_cached_tasks', JSON.stringify(light));
-      } catch(e2) {
-        console.warn('LocalStorage quota excedida, conteúdo completo preservado em IndexedDB');
-      }
-    }
-  }
-
-  function loadLocalTasks() {
-    try {
-      const raw = localStorage.getItem('obnotion_cached_tasks');
-      cachedTasks = raw ? JSON.parse(raw) : [];
-    } catch(e) {
-      cachedTasks = [];
-    }
-    renderTasksList();
-  }
-
-  // Carrega tarefas em cascata: Servidor -> IndexedDB -> LocalStorage
-  async function loadAllTasks() {
-    // 1. Tenta carregar do Servidor Local
-    const serverTasks = await fetchServerTasks();
-    if (serverTasks !== null) {
-      cachedTasks = serverTasks;
-      persistLocalCache(cachedTasks);
-      for (const t of cachedTasks) {
-        await idbSaveTask(t);
-      }
-      renderTasksList();
-      updateSyncStatusUI();
-      return;
-    }
-
-    // 2. Se o servidor não responder, busca do IndexedDB local
-    const idbTasks = await idbGetTasks();
-    if (idbTasks && idbTasks.length > 0) {
-      idbTasks.sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
-      cachedTasks = idbTasks.slice(0, MAX_ACTIVE_TASKS);
-      persistLocalCache(cachedTasks);
-      renderTasksList();
-      updateSyncStatusUI();
-      return;
-    }
-
-    // 3. Fallback para localStorage
-    loadLocalTasks();
-    updateSyncStatusUI();
-  }
-
-  function startPeriodicSync() {
-    if (syncIntervalId) clearInterval(syncIntervalId);
-    syncIntervalId = setInterval(async () => {
-      const srvTasks = await fetchServerTasks();
-      if (srvTasks !== null) {
-        const srvJson = JSON.stringify(srvTasks);
-        if (srvJson !== JSON.stringify(cachedTasks)) {
-          cachedTasks = srvTasks;
-          persistLocalCache(cachedTasks);
-          for (const t of cachedTasks) {
-            await idbSaveTask(t);
-          }
-          renderTasksList();
-          updateSyncStatusUI();
-        }
-      }
-    }, 6000);
-  }
-
-  // Verifica se a URL contém um link de tarefa compartilhado (#tarefa=...)
-  async function checkUrlSharedTask() {
-    const hash = window.location.hash;
-    if (!hash || (!hash.includes('tarefa=') && !hash.includes('task='))) return;
-
-    try {
-      const match = hash.match(/(?:tarefa|task)=([^&]+)/);
-      if (!match || !match[1]) return;
-
-      const encodedData = match[1];
-      showToast('Importando tarefa do link...', 'info');
-
-      const taskData = await decompressTaskData(encodedData);
-      if (!taskData || !taskData.title) {
-        throw new Error('Dados inválidos no link.');
-      }
-
-      const importedTask = {
-        id: 'task_' + Date.now(),
-        title: taskData.title,
-        module: taskData.module || 'slidekiller',
-        moduleName: taskData.moduleName || 'Slide Killer',
-        moduleIcon: taskData.moduleIcon || '📌',
-        slideCount: taskData.slideCount || (taskData.data && taskData.data.slides ? taskData.data.slides.length : 1),
-        device: '🔗 Link Compartilhado',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        data: taskData.data
-      };
-
-      // Limpa a hash da URL para não reimportar em caso de recarregar a página
-      if (window.history && window.history.replaceState) {
-        window.history.replaceState(null, '', window.location.pathname + window.location.search);
-      }
-
-      await idbSaveTask(importedTask);
-      if (isServerOnline) {
-        try {
-          await fetch('/api/tasks', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(importedTask)
-          });
-        } catch(e) {}
-      }
-
-      const existIdx = cachedTasks.findIndex(t => t.id === importedTask.id);
-      if (existIdx >= 0) cachedTasks[existIdx] = importedTask;
-      else cachedTasks.unshift(importedTask);
-      if (cachedTasks.length > MAX_ACTIVE_TASKS) cachedTasks = cachedTasks.slice(0, MAX_ACTIVE_TASKS);
-
-      persistLocalCache(cachedTasks);
-      renderTasksList();
-
-      // Carrega imediatamente na tela
-      await loadTask(importedTask.id);
-
-      showToast('🎉 "' + importedTask.title + '" carregada com sucesso do link!', 'success');
-
-    } catch(err) {
-      console.error('Erro ao importar tarefa compartilhada:', err);
-      showToast('Erro ao abrir link: ' + err.message, 'error');
-    }
-  }
-
-  function initTasksSync() {
-    loadAllTasks().then(() => {
-      startPeriodicSync();
-      checkUrlSharedTask();
-    }).catch(err => {
-      console.warn('Sync inicial de tarefas em modo offline:', err.message);
-    });
-
-    window.addEventListener('focus', () => {
-      loadAllTasks();
-    });
-  }
-
-  function renderTasksList() {
-    const count = cachedTasks.length;
-    const countText = count + '/' + MAX_ACTIVE_TASKS;
-    if (tasksCounterBadge) tasksCounterBadge.textContent = countText;
-    if (drawerTasksCounterBadge) drawerTasksCounterBadge.textContent = countText;
-
-    if (!tasksListContainer) return;
-
-    if (count === 0) {
-      tasksListContainer.innerHTML = [
-        '<div class="empty-tasks-msg">',
-        '  Nenhuma tarefa salva no momento.<br>',
-        '  Clique em <strong>Salvar Trabalho Atual</strong> ou gere um link para WhatsApp.',
-        '</div>'
-      ].join('\n');
-      return;
-    }
-
-    tasksListContainer.innerHTML = '';
-    cachedTasks.forEach(task => {
-      const card = document.createElement('div');
-      card.className = 'task-card';
-      card.innerHTML = [
-        '<div class="task-card-header">',
-        '  <div style="display:flex; align-items:center; gap:6px; min-width:0;">',
-        '    <span style="font-size:16px;">' + (task.moduleIcon || '📌') + '</span>',
-        '    <strong class="task-card-title">' + escapeHtml(task.title || 'Sem título') + '</strong>',
-        '  </div>',
-        '  <button type="button" class="btn-clear" title="Excluir tarefa" onclick="window.obnotionDeleteTask(\'' + task.id + '\', event)" style="color:var(--danger); font-size:14px; padding:2px 6px;">',
-        '    🗑️',
-        '  </button>',
-        '</div>',
-        '<div class="task-card-meta">',
-        '  <span class="task-module-pill">' + escapeHtml(task.moduleName || 'Slides') + ' • ' + (task.slideCount || 0) + ' ' + (task.slideCount === 1 ? 'slide' : 'slides') + '</span>',
-        '  <span style="font-size:11px; color:var(--text-muted);">' + escapeHtml(task.device || 'Dispositivo') + ' • ' + formatTimeAgo(task.updatedAt) + '</span>',
-        '</div>',
-        '<div class="task-card-actions">',
-        '  <button type="button" class="btn btn-secondary btn-sm" style="flex:1; justify-content:center; font-size:12px; font-weight:600;" onclick="window.obnotionLoadTask(\'' + task.id + '\')">',
-        '    <span>📂</span> Abrir',
-        '  </button>',
-        '  <button type="button" class="btn btn-whatsapp btn-sm" style="flex:1; justify-content:center; font-size:12px; font-weight:600;" onclick="window.obnotionShareTaskLink(\'' + task.id + '\')" title="Copiar link para enviar via WhatsApp para o computador">',
-        '    <span>🔗</span> WhatsApp',
-        '  </button>',
-        '</div>'
-      ].join('\n');
-      tasksListContainer.appendChild(card);
-    });
-  }
-
-  // Extrai o conteúdo atual do trabalho em andamento
-  function extractCurrentWork() {
-    let taskData = null;
-    let defaultTitle = '';
-    let slideCount = 0;
-    let modName = '';
-    let modIcon = '📌';
-
-    if (currentActiveModule === 'images-to-pptx') {
-      if (!imageSlides || imageSlides.length === 0) {
-        return { error: 'Nenhuma imagem adicionada para salvar ou compartilhar.' };
-      }
-      modName = 'Imagens / ZIP';
-      modIcon = '🖼️';
-      slideCount = imageSlides.length;
-      defaultTitle = 'Lote de Imagens (' + slideCount + ' slides)';
-      taskData = { slides: imageSlides };
-
-    } else if (currentActiveModule === 'slidekiller') {
-      const textVal = sermonTextInput ? sermonTextInput.value.trim() : '';
-      const pInput = document.getElementById('paragrafo-text-input');
-      const paragrafoVal = pInput ? pInput.value.trim() : '';
-      const hasSlides = currentSlides && currentSlides.length > 0;
-      const hasPdf = currentFile != null;
-
-      if (!hasSlides && !textVal && !paragrafoVal && !hasPdf) {
-        return { error: 'Nenhum sermão, texto ou slide adicionado para salvar ou compartilhar.' };
-      }
-      modName = 'Slide Killer';
-      modIcon = '⚡';
-      slideCount = hasSlides ? currentSlides.length : (paragrafoVal ? 1 : 1);
-      
-      const fileName = (fileNameDisplay && fileNameDisplay.textContent && fileNameDisplay.textContent !== 'Nenhum arquivo selecionado') 
-        ? fileNameDisplay.textContent 
-        : (hasSlides ? 'Apresentação' : (paragrafoVal ? 'Parágrafos' : 'Sermão'));
-
-      defaultTitle = hasSlides 
-        ? (fileName + ' (' + slideCount + ' slides)') 
-        : (paragrafoVal ? 'Rascunho de Parágrafos' : (textVal ? 'Rascunho de Sermão' : ('PDF: ' + fileName)));
-
-      taskData = {
-        slides: currentSlides || [],
-        inputText: textVal,
-        paragrafoText: paragrafoVal,
-        fileName: fileName,
-        customBg: (typeof customBgDataUrl !== 'undefined' ? customBgDataUrl : null),
-        template: (templateSelect ? templateSelect.value : ''),
-        font: (fontSelect ? fontSelect.value : '')
-      };
-
-    } else if (currentActiveModule === 'pdf-to-pptx') {
-      if (!directSlides || directSlides.length === 0) {
-        return { error: 'Nenhum slide do PDF ou foto para salvar ou compartilhar.' };
-      }
-      modName = 'PDF ➔ PPTX';
-      modIcon = '📄';
-      slideCount = directSlides.length;
-      defaultTitle = (currentDirectFile ? currentDirectFile.name.replace(/\.[^/.]+$/, '') : 'PDF Direto') + ' (' + slideCount + ' slides)';
-      taskData = { slides: directSlides };
-    } else if (currentActiveModule === 'deckcraft') {
-      return { error: 'deckcraft_notice' };
-    } else {
-      return { error: 'Nenhum conteúdo elegível neste módulo.' };
-    }
-
-    return {
-      title: defaultTitle,
-      module: currentActiveModule,
-      moduleName: modName,
-      moduleIcon: modIcon,
-      slideCount: slideCount,
-      data: taskData
-    };
-  }
-
-  // Utilitário para compartilhar ou copiar link
-  async function deliverShareLink(shareUrl, title) {
-    if (navigator.share && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-      try {
-        await navigator.share({
-          title: 'Slidekiller: ' + title,
-          text: 'Abra os slides no computador ou celular pelo link:',
-          url: shareUrl
-        });
-        showToast('✅ Compartilhado com sucesso!', 'success');
-        return;
-      } catch(e) {
-        if (e.name === 'AbortError') return;
-      }
-    }
-
-    let copied = false;
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      try {
-        await navigator.clipboard.writeText(shareUrl);
-        copied = true;
-      } catch(e) {}
-    }
-
-    if (!copied) {
-      const ta = document.createElement('textarea');
-      ta.value = shareUrl;
-      ta.style.position = 'fixed';
-      ta.style.opacity = '0';
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand('copy');
-      document.body.removeChild(ta);
-      copied = true;
-    }
-
-    showToast('🔗 Link copiado! Cole no WhatsApp e abra no PC.', 'success');
-    alert('🔗 LINK COPIADO COM SUCESSO!\n\nEnvie este link no seu WhatsApp (para você mesmo ou seu grupo de mídia) e abra no computador pelo WhatsApp Web:\n\n' + shareUrl.substring(0, 100) + '...');
-  }
-
-  // Compartilha uma tarefa salva da lista
-  async function shareTaskLink(taskId) {
-    let task = cachedTasks.find(t => t.id === taskId);
-    if (!task || !task.data) {
-      const idbTasks = await idbGetTasks();
-      if (idbTasks) {
-        const found = idbTasks.find(t => t.id === taskId);
-        if (found) task = found;
-      }
-    }
-    if (!task) {
-      showToast('Tarefa não encontrada.', 'error');
-      return;
-    }
-
-    showToast('Gerando link compacto...', 'info');
-
-    try {
-      const taskPayload = {
-        title: task.title,
-        module: task.module,
-        moduleName: task.moduleName,
-        moduleIcon: task.moduleIcon,
-        slideCount: task.slideCount,
-        data: task.data
-      };
-
-      const compressedHash = await compressTaskData(taskPayload);
-      const baseUrl = window.location.href.split('#')[0].split('?')[0];
-      const shareUrl = baseUrl + '#tarefa=' + compressedHash;
-
-      if (shareUrl.length > 14000) {
-        alert('⚠️ Esta tarefa possui muitas fotos ou slides pesados para caber inteiramente em um link de texto (' + Math.round(shareUrl.length / 1024) + ' KB).\n\nDica: Para apresentações com muitas fotos, use a mesma rede Wi-Fi ou baixe o PowerPoint (.pptx).');
-        return;
-      }
-
-      await deliverShareLink(shareUrl, task.title);
-    } catch(err) {
-      console.error('Erro ao gerar link:', err);
-      showToast('Erro ao gerar link: ' + err.message, 'error');
-    }
-  }
-
-  // Compartilha o trabalho que está na tela agora
-  async function handleShareCurrentTask() {
-    const work = extractCurrentWork();
-    if (work.error) {
-      if (work.error === 'deckcraft_notice') {
-        alert('🎨 DeckCraft Studio:\n\nPara salvar ou transferir alterações do DeckCraft Studio, utilize o botão "Baixar PowerPoint (.pptx)".');
-      } else {
-        showToast(work.error, 'error');
-      }
-      return;
-    }
-
-    showToast('Gerando link para WhatsApp / PC...', 'info');
-
-    try {
-      // Se for imagens ou PDF, otimiza
-      let taskData = work.data;
-      if (work.module === 'images-to-pptx' && taskData.slides) {
-        const optimized = [];
-        for (const s of taskData.slides) {
-          const comp = await compressDataUrlForCloud(s.dataUrl, 800, 0.70);
-          optimized.push({ id: s.id, name: s.name, dataUrl: comp });
-        }
-        taskData = { slides: optimized };
-      } else if (work.module === 'pdf-to-pptx' && taskData.slides) {
-        const optimized = [];
-        for (const s of taskData.slides) {
-          const comp = await compressDataUrlForCloud(s.imgData, 800, 0.70);
-          optimized.push({ id: s.id, title: s.title, type: s.type, imgData: comp, ratio: s.ratio });
-        }
-        taskData = { slides: optimized };
-      }
-
-      const payload = {
-        title: work.title,
-        module: work.module,
-        moduleName: work.moduleName,
-        moduleIcon: work.moduleIcon,
-        slideCount: work.slideCount,
-        data: taskData
-      };
-
-      const compressedHash = await compressTaskData(payload);
-      const baseUrl = window.location.href.split('#')[0].split('?')[0];
-      const shareUrl = baseUrl + '#tarefa=' + compressedHash;
-
-      if (shareUrl.length > 14000) {
-        alert('⚠️ O conteúdo atual possui fotos pesadas para caber em um link de texto (' + Math.round(shareUrl.length / 1024) + ' KB).\n\nDica: Salve como tarefa ou baixe o PowerPoint (.pptx).');
-        return;
-      }
-
-      await deliverShareLink(shareUrl, work.title);
-    } catch(err) {
-      console.error('Erro ao gerar link:', err);
-      showToast('Erro ao gerar link: ' + err.message, 'error');
-    }
-  }
-
-  // Salva o trabalho em andamento (com limite de 3 tarefas)
-  async function handleSaveCurrentTask() {
-    const work = extractCurrentWork();
-    if (work.error) {
-      if (work.error === 'deckcraft_notice') {
-        alert('🎨 DeckCraft Studio:\n\nPara salvar alterações feitas no DeckCraft Studio, utilize o botão "Baixar PowerPoint (.pptx)" ou exporte a apresentação diretamente pelo painel do editor.');
-      } else {
-        showToast(work.error, 'error');
-      }
-      return;
-    }
-
-    // 1. Otimiza slides se houver imagens
-    let taskData = work.data;
-    if (work.module === 'images-to-pptx' && taskData.slides) {
-      showToast('Otimizando slides para salvar...', 'info');
-      const optimized = [];
-      for (const s of taskData.slides) {
-        const comp = await compressDataUrlForCloud(s.dataUrl, 800, 0.70);
-        optimized.push({ id: s.id, name: s.name, dataUrl: comp });
-      }
-      taskData = { slides: optimized };
-    } else if (work.module === 'pdf-to-pptx' && taskData.slides) {
-      showToast('Otimizando slides para salvar...', 'info');
-      const optimized = [];
-      for (const s of taskData.slides) {
-        const comp = await compressDataUrlForCloud(s.imgData, 800, 0.70);
-        optimized.push({ id: s.id, title: s.title, type: s.type, imgData: comp, ratio: s.ratio });
-      }
-      taskData = { slides: optimized };
-    }
-
-    // 2. Validação do limite de 3 tarefas com opção de substituir a mais antiga
-    if (cachedTasks.length >= MAX_ACTIVE_TASKS) {
-      const confirmReplace = confirm(
-        '⚠️ LIMITE DE 3 TAREFAS ATINGIDO!\n\n' +
-        'Você já tem 3 tarefas salvas:\n' +
-        cachedTasks.map((t, i) => ' ' + (i + 1) + '. ' + t.title).join('\n') +
-        '\n\nDeseja substituir a tarefa mais antiga ("' + cachedTasks[cachedTasks.length - 1].title + '") pela nova?'
-      );
-      if (!confirmReplace) {
-        return;
-      }
-      const oldest = cachedTasks.pop();
-      if (oldest) {
-        await idbDeleteTask(oldest.id);
-        if (isServerOnline) {
-          try { await fetch('/api/tasks/' + oldest.id, { method: 'DELETE' }); } catch(e) {}
-        }
-      }
-    }
-
-    // 3. Nome da tarefa (com valor padrão inteligente)
-    const taskTitle = prompt('Nome para identificar esta tarefa no Celular ou PC:', work.title);
-    if (taskTitle === null) return;
-
-    const taskId = 'task_' + Date.now();
-    const newTask = {
-      id: taskId,
-      title: taskTitle.trim() || work.title,
-      module: work.module,
-      moduleName: work.moduleName,
-      moduleIcon: work.moduleIcon,
-      slideCount: work.slideCount,
-      device: getDeviceType(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      data: taskData
-    };
-
-    try {
-      if (btnSaveCurrentTask) {
-        btnSaveCurrentTask.disabled = true;
-        btnSaveCurrentTask.innerHTML = '<span>⏳</span> Salvando...';
-      }
-
-      // Salva no Servidor Local (se conectado)
-      let savedOnServer = false;
-      try {
-        const srvRes = await fetch('/api/tasks', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(newTask)
-        });
-        if (srvRes.ok) {
-          const srvData = await srvRes.json();
-          if (srvData && srvData.status === 'success' && Array.isArray(srvData.tasks)) {
-            cachedTasks = srvData.tasks;
-            savedOnServer = true;
-            isServerOnline = true;
-          }
-        }
-      } catch (err) {
-        // Servidor offline ou estático
-      }
-
-      // Salva no IndexedDB do navegador (persistência garantida e sem cota de 5MB)
-      await idbSaveTask(newTask);
-
-      if (!savedOnServer) {
-        const existIdx = cachedTasks.findIndex(t => t.id === taskId);
-        if (existIdx >= 0) {
-          cachedTasks[existIdx] = newTask;
-        } else {
-          cachedTasks.unshift(newTask);
-        }
-        if (cachedTasks.length > MAX_ACTIVE_TASKS) cachedTasks = cachedTasks.slice(0, MAX_ACTIVE_TASKS);
-      }
-
-      persistLocalCache(cachedTasks);
-      renderTasksList();
-      updateSyncStatusUI();
-
-      if (savedOnServer) {
-        showToast('✅ Tarefa salva e sincronizada! Disponível no PC e no Celular via Wi-Fi.', 'success');
-      } else {
-        showToast('✅ Tarefa salva com segurança neste dispositivo!', 'success');
-      }
-    } catch(err) {
-      console.error('Erro ao salvar tarefa:', err);
-      showToast('Erro ao salvar: ' + err.message, 'error');
-    } finally {
-      if (btnSaveCurrentTask) {
-        btnSaveCurrentTask.disabled = false;
-        btnSaveCurrentTask.innerHTML = '<span>💾</span> Salvar Trabalho Atual';
-      }
-    }
-  }
-
-  // Carrega a tarefa selecionada
-  async function loadTask(taskId) {
-    let task = cachedTasks.find(t => t.id === taskId);
-    if (!task || !task.data) {
-      const idbTasks = await idbGetTasks();
-      if (idbTasks) {
-        const found = idbTasks.find(t => t.id === taskId);
-        if (found) task = found;
-      }
-    }
-
-    if (!task) {
-      showToast('Tarefa não encontrada.', 'error');
-      return;
-    }
-
-    switchModule(task.module);
-
-    if (task.module === 'images-to-pptx') {
-      if (task.data && task.data.slides) {
-        imageSlides = task.data.slides;
-        renderImagesOrganizer();
-        showToast('Tarefa "' + task.title + '" carregada com ' + imageSlides.length + ' slides!', 'success');
-      }
-    } else if (task.module === 'slidekiller') {
-      if (task.data) {
-        if (task.data.font && fontSelect) {
-          fontSelect.value = task.data.font;
-          if (resultsFontSelect) resultsFontSelect.value = task.data.font;
-        }
-        if (task.data.template && templateSelect) {
-          templateSelect.value = task.data.template;
-        }
-        if (task.data.customBg) {
-          customBgDataUrl = task.data.customBg;
-          if (customBgPreviewBadge) customBgPreviewBadge.style.display = 'inline-flex';
-          if (customBgThumb) customBgThumb.src = customBgDataUrl;
-          if (templateSelect) templateSelect.value = '__custom_active__';
-        }
-        if (task.data.fileName && fileNameDisplay) {
-          fileNameDisplay.textContent = task.data.fileName;
-        }
-
-        if (task.data.slides && task.data.slides.length > 0) {
-          currentSlides = task.data.slides;
-          if (inputSection) inputSection.style.display = 'none';
-          if (resultsSection) resultsSection.style.display = 'block';
-          if (btnDownloadTop) btnDownloadTop.style.display = 'inline-flex';
-          renderResults();
-        } else if (task.data.paragrafoText) {
-          const pInput = document.getElementById('paragrafo-text-input');
-          if (pInput) pInput.value = task.data.paragrafoText;
-          const tabBtn = document.querySelector('.tab-btn[data-tab="tab-paragrafo"]');
-          if (tabBtn) tabBtn.click();
-          if (inputSection) inputSection.style.display = 'flex';
-          if (resultsSection) resultsSection.style.display = 'none';
-        } else if (task.data.inputText && sermonTextInput) {
-          sermonTextInput.value = task.data.inputText;
-          const tabBtn = document.querySelector('.tab-btn[data-tab="tab-text"]');
-          if (tabBtn) tabBtn.click();
-          if (inputSection) inputSection.style.display = 'flex';
-          if (resultsSection) resultsSection.style.display = 'none';
-        }
-        showToast('Tarefa "' + task.title + '" carregada com sucesso!', 'success');
-      }
-    } else if (task.module === 'pdf-to-pptx') {
-      if (task.data && (task.data.slides || task.data.pages)) {
-        const items = task.data.slides || task.data.pages;
-        directSlides = items.map((item, idx) => ({
-          id: item.id || ('slide_' + Date.now() + '_' + idx),
-          title: item.title || ('Página ' + (item.pageNum || (idx + 1))),
-          type: item.type || 'pdf',
-          imgData: item.imgData,
-          ratio: item.ratio || (16 / 9)
-        }));
-        renderDirectOrganizer();
-        showToast('Tarefa "' + task.title + '" carregada com ' + directSlides.length + ' slides!', 'success');
-      }
-    }
-
-    window.toggleTasksDrawer(false);
-  }
-
-  // Exclui a tarefa liberando espaço no limite de 3
-  async function deleteTask(taskId, evt) {
-    if (evt) evt.stopPropagation();
-    if (!confirm('Deseja excluir esta tarefa e liberar 1 vaga?')) return;
-
-    try {
-      if (isServerOnline) {
-        try {
-          await fetch('/api/tasks/' + taskId, { method: 'DELETE' });
-        } catch(e) {}
-      }
-
-      await idbDeleteTask(taskId);
-
-      cachedTasks = cachedTasks.filter(t => t.id !== taskId);
-      persistLocalCache(cachedTasks);
-      renderTasksList();
-      updateSyncStatusUI();
-
-      showToast('🗑️ Tarefa excluída. Vaga liberada!', 'info');
-    } catch(err) {
-      console.error('Erro ao excluir tarefa:', err);
-      showToast('Erro ao excluir: ' + err.message, 'error');
-    }
-  }
-
-  // Drawer toggle
-  window.toggleTasksDrawer = function(show) {
-    const overlay = document.getElementById('tasks-drawer-overlay');
-    if (overlay) {
-      if (show) {
-        overlay.classList.add('open');
-        loadAllTasks();
-      } else {
-        overlay.classList.remove('open');
-      }
-    }
-  };
-
-  window.obnotionLoadTask = loadTask;
-  window.obnotionDeleteTask = deleteTask;
-  window.obnotionShareTaskLink = shareTaskLink;
-
-  if (btnOpenTasksPanel) {
-    btnOpenTasksPanel.addEventListener('click', () => window.toggleTasksDrawer(true));
-  }
-
-  if (btnSaveCurrentTask) {
-    btnSaveCurrentTask.addEventListener('click', handleSaveCurrentTask);
-  }
-
-  if (btnShareCurrentTask) {
-    btnShareCurrentTask.addEventListener('click', handleShareCurrentTask);
-  }
-
-  // Inicia sincronização
-  initTasksSync();
-
   // Toast utilitário
   function showToast(msg, type = 'info') {
     if (!toast) return;

@@ -2,8 +2,13 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#090d16">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Central Multimídia Church — Hub de Produção e Mídia</title>
+  <link rel="icon" type="image/png" href="assets/logo_app_icon.png">
+  <link rel="apple-touch-icon" href="assets/logo_app_icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:wght@600;700;800&family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&family=Montserrat:wght@700;800;900&family=Oswald:wght@600;700&family=Roboto+Condensed:wght@600;700;800;900&display=swap" rel="stylesheet">
@@ -164,7 +169,25 @@
   <header class="app-header">
     <div class="header-left">
       <div class="church-brand">
-        <span class="brand-icon">⛪️</span>
+        <span class="brand-icon" title="Slide Killer • Bíblia & Poder">
+          <svg class="brand-logo-svg" width="24" height="24" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4 8.5C9.5 7.2 13.8 8.8 16 11C18.2 8.8 22.5 7.2 28 8.5V24C22.5 22.7 18.2 24.3 16 26.5C13.8 24.3 9.5 22.7 4 24V8.5Z" fill="rgba(232, 184, 89, 0.22)" stroke="#E8B859" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M16 11V26.5" stroke="#E8B859" stroke-width="2" stroke-linecap="round"/>
+            <path d="M7 12.5C9.5 11.8 12.5 12.4 13.5 13.2" stroke="rgba(255, 255, 255, 0.45)" stroke-width="1.4" stroke-linecap="round"/>
+            <path d="M7 16.5C9.5 15.8 12.5 16.4 13.5 17.2" stroke="rgba(255, 255, 255, 0.45)" stroke-width="1.4" stroke-linecap="round"/>
+            <path d="M25 12.5C22.5 11.8 19.5 12.4 18.5 13.2" stroke="rgba(255, 255, 255, 0.45)" stroke-width="1.4" stroke-linecap="round"/>
+            <path d="M25 16.5C22.5 15.8 19.5 16.4 18.5 17.2" stroke="rgba(255, 255, 255, 0.45)" stroke-width="1.4" stroke-linecap="round"/>
+            <path d="M19 2L10 15H16L13 29L23 13H17L19 2Z" fill="url(#brandBoltGrad)" stroke="#0A0F1D" stroke-width="1.2" stroke-linejoin="round"/>
+            <defs>
+              <linearGradient id="brandBoltGrad" x1="16.5" y1="2" x2="16.5" y2="29" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#FFF5C0"/>
+                <stop offset="0.35" stop-color="#FFD54F"/>
+                <stop offset="0.8" stop-color="#FFA000"/>
+                <stop offset="1" stop-color="#FF6F00"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </span>
         <div>
           <div style="display: flex; align-items: center; gap: 8px;">
             <h1 class="brand-title">Central Multimídia Church</h1>
@@ -198,12 +221,7 @@
         <span class="module-pill pill-purple">Organizador</span>
       </button>
 
-      <button class="nav-module-btn" data-module="deckcraft">
-        <span class="module-icon">🎨</span>
-        <span class="module-label">DeckCraft Studio</span>
-        <span class="module-pill pill-cyan">PowerPoint Web</span>
-      </button>
-    </nav>
+      </nav>
 
     <div class="header-right">
       <!-- Ações do Módulo Slide Killer -->
@@ -230,19 +248,7 @@
         </button>
       </div>
 
-      <!-- Ações do Módulo DeckCraft Studio -->
-      <div class="module-actions" id="actions-deckcraft" style="display: none;">
-        <button class="btn btn-secondary btn-sm" id="btn-deckcraft-header-newtab">
-          <span>↗️</span> Nova Aba
-        </button>
       </div>
-
-      <!-- Botão Global: Tarefas em Andamento (Celular / PC) -->
-      <button class="btn btn-tasks-toggle" id="btn-open-tasks-panel" onclick="window.toggleTasksDrawer && window.toggleTasksDrawer(true)" title="Tarefas em Andamento (Sincronização Celular / PC)">
-        <span>📌</span> <span class="btn-tasks-text">Tarefas</span>
-        <span class="tasks-counter-badge" id="tasks-counter-badge">0/3</span>
-      </button>
-    </div>
   </header>
 
   <main class="app-main">
@@ -280,7 +286,7 @@
             <div class="dropzone" id="dropzone" onclick="if (!event.target.closest('.btn-clear') && !event.target.closest('.selected-file-info')) { var fi = document.getElementById('pdf-file-input'); if (fi) { fi.value = ''; fi.click(); } }">
               <div class="dropzone-icon">📄</div>
               <div class="dropzone-text">
-                <strong>Arraste o arquivo PDF do pastor aqui</strong>
+                <strong>Arraste o arquivo PDF aqui</strong>
                 <span>ou clique / toque para selecionar do dispositivo</span>
               </div>
               <div style="margin-top: 12px; pointer-events: none;">
@@ -327,7 +333,7 @@
               </div>
             </div>
 
-            <textarea id="sermon-text-input" placeholder="Cole aqui o texto ou anotações do pastor com as referências bíblicas (ex: Mateus 6:19-21)..." rows="9"></textarea>
+            <textarea id="sermon-text-input" placeholder="Cole aqui o texto ou anotações do sermão com as referências bíblicas (ex: Mateus 6:19-21)..." rows="9"></textarea>
           </div>
 
           <!-- Aba 3: Fotos de Slides / Versículos com IA Gemini Vision -->
@@ -389,7 +395,7 @@ texto exemplo ii eii
               <label for="template-select">Plano de Fundo:</label>
               <div class="bg-selector-wrapper">
                 <select id="template-select" class="form-select">
-                  <option value="assets/church_sermon_bg.jpg">⛪️ Fundo Oficial da Igreja (Padrão)</option>
+                  <option value="assets/church_sermon_bg.jpg">📖⚡ Fundo Oficial (Padrão)</option>
                   <option value="__custom__">➕ Anexar Fundo Personalizado...</option>
                 </select>
                 <button type="button" class="btn btn-secondary btn-sm" id="btn-attach-custom-bg" title="Anexar imagem de fundo personalizada">
@@ -458,20 +464,6 @@ texto exemplo ii eii
           <button class="btn btn-action" id="btn-generate">
             <span class="btn-icon">⚡</span> Gerar Slides Instantaneamente
           </button>
-
-          <!-- Atalho na Frente: Abrir DeckCraft Avulso (Sem Projeto) -->
-          <div class="deckcraft-front-launcher" id="deckcraft-front-launcher">
-            <div style="display: flex; align-items: center; gap: 12px;">
-              <span style="font-size: 26px;">🎨</span>
-              <div>
-                <strong style="color: #fff; font-size: 13px;">Deseja apenas abrir o PowerPoint Web avulso?</strong>
-                <span style="display: block; color: var(--text-muted); font-size: 11px;">Abra o DeckCraft Studio sem projeto prévio para arrastar e editar apresentações .pptx prontas.</span>
-              </div>
-            </div>
-            <button type="button" class="btn btn-deckcraft btn-sm" id="btn-open-deckcraft-front">
-              <span>🎨</span> Abrir DeckCraft Direto ➔
-            </button>
-          </div>
         </div>
       </section>
 
@@ -507,9 +499,9 @@ texto exemplo ii eii
             <button class="btn btn-secondary" id="btn-add-slide">+ Novo Slide</button>
             <button class="btn btn-secondary" id="btn-change-bg-results" title="Alterar ou anexar imagem de fundo dos slides">🖼️ Trocar Fundo</button>
             <button class="btn btn-secondary" id="btn-rebuild">💾 Salvar Edições</button>
-            <button class="btn btn-deckcraft" id="btn-edit-deckcraft" title="Editar apresentação completa no DeckCraft Studio (Editor estilo PowerPoint web)">🎨 Editar com DeckCraft</button>
             <button class="btn btn-secondary" id="btn-download-pdf-sk" title="Baixar slides em PDF">📄 Baixar PDF</button>
             <button class="btn btn-primary" id="btn-download-main">📥 Baixar .pptx</button>
+            <button class="btn btn-whatsapp" id="btn-share-main" title="Compartilhar apresentação no WhatsApp ou outros aplicativos"><span>📲</span> Compartilhar .pptx</button>
             <button class="btn btn-outline-gold" id="btn-download-both-sk" title="Baixar PPTX e PDF juntos">✨ Ambos</button>
           </div>
         </div>
@@ -669,18 +661,9 @@ texto exemplo ii eii
           </div>
         </div>
 
-        <!-- Barra de Configurações de Exportação PPTX / PDF -->
-        <div class="card" style="margin-bottom: 20px; padding: 16px 20px;">
-          <div class="options-bar" style="margin: 0; display: flex; flex-wrap: wrap; gap: 18px; align-items: center;">
-            <div class="option-item">
-              <label for="direct-format-select">Formato de Exportação:</label>
-              <select id="direct-format-select" class="form-select" style="font-weight: 700; color: var(--primary);">
-                <option value="pptx">PowerPoint (.pptx)</option>
-                <option value="pdf">Documento PDF (.pdf)</option>
-                <option value="both">Ambos (.pptx + .pdf juntos)</option>
-                <option value="zip">Pacote ZIP com Imagens PNG (.zip)</option>
-              </select>
-            </div>
+        <!-- Barra de Configurações e Ações de Exportação -->
+        <div class="card export-settings-card">
+          <div class="export-options-grid">
             <div class="option-item">
               <label for="direct-aspect-select">Proporção dos Slides:</label>
               <select id="direct-aspect-select" class="form-select">
@@ -704,23 +687,26 @@ texto exemplo ii eii
                 <option value="FFFFFF">Branco (#FFFFFF)</option>
               </select>
             </div>
-            <div style="margin-left: auto; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-              <button type="button" class="btn btn-secondary btn-sm" id="btn-export-direct-png-zip" title="Extrair todas as telas em um pacote ZIP com imagens PNG Full HD">
-                <span>🖼️</span> Baixar ZIP (PNG)
-              </button>
-              <button type="button" class="btn btn-secondary btn-sm" id="btn-export-direct-pdf" title="Exportar rapidamente em PDF">
-                <span>📄</span> Baixar PDF
-              </button>
-              <button type="button" class="btn btn-secondary btn-sm" id="btn-export-direct-pptx" title="Exportar rapidamente em PPTX">
-                <span>📊</span> Baixar PPTX
-              </button>
-              <button class="btn btn-primary" id="btn-download-direct-main" style="padding: 10px 22px; font-weight: 700; background: linear-gradient(135deg, var(--primary), #ffd978); color: #000; box-shadow: 0 4px 15px rgba(232, 184, 89, 0.4);">
-                <span id="direct-main-btn-icon">⚡</span> <span id="direct-main-btn-label">Gerar e Baixar PowerPoint (.pptx)</span>
-              </button>
-            </div>
           </div>
 
-          <!-- Barra de Progresso da Geração de Slides PPTX -->
+          <!-- Ações de Exportação Diretas (3 Formatos Claros) -->
+          <div class="export-actions-row">
+            <button class="btn btn-primary btn-export-main" id="btn-download-direct-main" title="Baixar apresentação em PowerPoint (.pptx)">
+              <span id="direct-main-btn-icon">⚡</span> <span id="direct-main-btn-label">Baixar PowerPoint (.pptx)</span>
+            </button>
+            <button type="button" class="btn btn-secondary btn-export-sub" id="btn-export-direct-pdf" title="Exportar diretamente em PDF">
+              <span>📄</span> Baixar PDF
+            </button>
+            <button type="button" class="btn btn-secondary btn-export-sub" id="btn-export-direct-png-zip" title="Extrair todas as telas em um pacote ZIP com imagens PNG">
+              <span>🖼️</span> Baixar ZIP (PNG)
+            </button>
+            <button type="button" class="btn btn-whatsapp btn-export-sub" id="btn-share-direct-main" title="Compartilhar apresentação no WhatsApp ou outros aplicativos" style="display: none;">
+              <span>📲</span> Compartilhar .pptx
+            </button>
+          </div>
+        </div>
+
+        <!-- Barra de Progresso da Geração de Slides PPTX -->
           <div id="direct-export-progress-container" class="direct-progress-box" style="display: none; margin-top: 14px;">
             <div class="progress-info">
               <span id="direct-export-progress-status">Preparando slides...</span>
@@ -813,18 +799,9 @@ texto exemplo ii eii
           </div>
         </div>
 
-        <!-- Barra de Configurações de Exportação PPTX / PDF -->
-        <div class="card" style="margin-bottom: 20px; padding: 16px 20px;">
-          <div class="options-bar" style="margin: 0; display: flex; flex-wrap: wrap; gap: 18px; align-items: center;">
-            <div class="option-item">
-              <label for="images-format-select">Formato de Exportação:</label>
-              <select id="images-format-select" class="form-select" style="font-weight: 700; color: var(--accent-purple);">
-                <option value="pptx">PowerPoint (.pptx)</option>
-                <option value="pdf">Documento PDF (.pdf)</option>
-                <option value="both">Ambos (.pptx + .pdf juntos)</option>
-                <option value="zip">Pacote ZIP com Imagens PNG (.zip)</option>
-              </select>
-            </div>
+        <!-- Barra de Configurações e Ações de Exportação -->
+        <div class="card export-settings-card">
+          <div class="export-options-grid">
             <div class="option-item">
               <label for="images-aspect-select">Proporção dos Slides:</label>
               <select id="images-aspect-select" class="form-select">
@@ -847,23 +824,26 @@ texto exemplo ii eii
                 <option value="FFFFFF">Branco (#FFFFFF)</option>
               </select>
             </div>
-            <div style="margin-left: auto; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-              <button type="button" class="btn btn-secondary btn-sm" id="btn-export-images-png-zip" title="Extrair todas as imagens em um pacote ZIP com PNG Full HD">
-                <span>🖼️</span> Baixar ZIP (PNG)
-              </button>
-              <button type="button" class="btn btn-secondary btn-sm" id="btn-export-images-pdf" title="Exportar rapidamente em PDF">
-                <span>📄</span> Baixar PDF
-              </button>
-              <button type="button" class="btn btn-secondary btn-sm" id="btn-export-images-pptx" title="Exportar rapidamente em PPTX">
-                <span>📊</span> Baixar PPTX
-              </button>
-              <button class="btn btn-primary" id="btn-generate-images-pptx" style="padding: 10px 22px; font-weight: 700; background: linear-gradient(135deg, var(--primary), #ffd978); color: #000; box-shadow: 0 4px 15px rgba(232, 184, 89, 0.4);">
-                <span id="images-main-btn-icon">⚡</span> <span id="images-main-btn-label">Gerar e Baixar PowerPoint (.pptx)</span>
-              </button>
-            </div>
           </div>
 
-          <!-- Barra de Progresso da Geração de Slides -->
+          <!-- Ações de Exportação Diretas (3 Formatos Claros) -->
+          <div class="export-actions-row">
+            <button class="btn btn-primary btn-export-main" id="btn-generate-images-pptx" title="Baixar apresentação em PowerPoint (.pptx)">
+              <span id="images-main-btn-icon">⚡</span> <span id="images-main-btn-label">Baixar PowerPoint (.pptx)</span>
+            </button>
+            <button type="button" class="btn btn-secondary btn-export-sub" id="btn-export-images-pdf" title="Exportar diretamente em PDF">
+              <span>📄</span> Baixar PDF
+            </button>
+            <button type="button" class="btn btn-secondary btn-export-sub" id="btn-export-images-png-zip" title="Extrair todas as imagens em um pacote ZIP com PNG">
+              <span>🖼️</span> Baixar ZIP (PNG)
+            </button>
+            <button type="button" class="btn btn-whatsapp btn-export-sub" id="btn-share-images-main" title="Compartilhar apresentação no WhatsApp ou outros aplicativos" style="display: none;">
+              <span>📲</span> Compartilhar .pptx
+            </button>
+          </div>
+        </div>
+
+        <!-- Barra de Progresso da Geração de Slides -->
           <div id="images-progress-container" class="direct-progress-box" style="display: none; margin-top: 14px;">
             <div class="progress-info">
               <span id="images-progress-status">Preparando slides...</span>
@@ -877,56 +857,6 @@ texto exemplo ii eii
 
         <!-- Grid de Cards de Imagens Reordenáveis (Drag and Drop + Botões) -->
         <div class="images-reorder-grid" id="images-reorder-grid"></div>
-      </section>
-    </div>
-
-    <!-- ========================================== -->
-    <!-- MÓDULO 4: DECKCRAFT STUDIO (POWERPOINT WEB) -->
-    <!-- ========================================== -->
-    <div class="module-view" id="view-deckcraft">
-      <section class="deckcraft-standalone-section">
-        <div class="deckcraft-standalone-toolbar">
-          <div style="display: flex; align-items: center; gap: 12px;">
-            <span style="font-size: 26px;">🎨</span>
-            <div>
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <h2 style="margin: 0; font-size: 1.15rem; color: #fff;">DeckCraft Studio</h2>
-                <span class="deckcraft-badge">PowerPoint Web • v0.10.0</span>
-                <span style="font-size: 11px; background: rgba(232, 184, 89, 0.15); color: #e8b859; padding: 2px 7px; border-radius: 4px; border: 1px solid rgba(232, 184, 89, 0.3); font-weight: 600;">⭐ Fonte Padrão: Bahnschrift SemiBold Condensed</span>
-              </div>
-              <span style="font-size: 11px; color: var(--text-muted); display: block; margin-top: 2px;">
-                Editor de Apresentações PowerPoint em Rust / WebAssembly (100% Offline e Seguro)
-              </span>
-            </div>
-          </div>
-          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-            <button type="button" class="btn btn-secondary btn-sm" id="btn-deckcraft-standalone-fullscreen" title="Alternar Modo Tela Cheia">
-              <span>⛶</span> Tela Cheia
-            </button>
-            <button type="button" class="btn btn-secondary btn-sm" id="btn-deckcraft-standalone-newtab" title="Abrir DeckCraft em uma nova aba">
-              <span>↗️</span> Nova Aba
-            </button>
-          </div>
-        </div>
-
-        <div class="deckcraft-standalone-tip">
-          <span>💡 <strong>Como usar:</strong> Para editar qualquer apresentação, <strong>arraste o arquivo .pptx diretamente para a tela abaixo</strong> ou use o menu <strong>File ➔ Open</strong> no topo do editor.</span>
-        </div>
-
-        <div class="deckcraft-standalone-frame-wrapper" id="deckcraft-standalone-wrapper">
-          <div class="deckcraft-loading-overlay" id="deckcraft-standalone-loading" style="display:none;">
-            <div class="deckcraft-spinner"></div>
-            <span>Carregando DeckCraft WebAssembly...</span>
-          </div>
-          <iframe 
-            id="deckcraft-standalone-iframe" 
-            src="about:blank"
-            title="DeckCraft PowerPoint Web"
-            allow="fullscreen; clipboard-read; clipboard-write; autoplay"
-            sandbox="allow-scripts allow-same-origin allow-downloads allow-popups allow-forms allow-modals"
-            style="width: 100%; height: 100%; border: none; display: block;"
-          ></iframe>
-        </div>
       </section>
     </div>
 
@@ -1014,127 +944,98 @@ texto exemplo ii eii
       </div>
     </div>
 
-    <!-- Drawer de Tarefas em Andamento (Sincronização Celular / PC - Máx 3) -->
-    <div id="tasks-drawer-overlay" class="tasks-drawer-overlay" onclick="window.toggleTasksDrawer(false)">
-      <div class="tasks-drawer" onclick="event.stopPropagation()">
-        <div class="tasks-drawer-header">
-          <div>
-            <h3 style="margin: 0; font-size: 1.15rem; color: #fff; display: flex; align-items: center; gap: 8px;">
-              <span>📌 Tarefas em Andamento</span>
-              <span class="tasks-counter-badge" id="drawer-tasks-counter-badge">0/3</span>
-            </h3>
-            <span style="font-size: 12px; color: var(--text-muted); display: block; margin-top: 4px;">
-              Edite no celular e conclua no PC (Limite: até 3 tarefas)
-            </span>
-          </div>
-          <button class="btn-clear" onclick="window.toggleTasksDrawer(false)">✖</button>
-        </div>
-
-        <!-- Botão Salvar Tarefa Atual -->
-        <div style="padding: 14px 20px; border-bottom: 1px solid var(--border); background: rgba(0,0,0,0.2); display: flex; flex-direction: column; gap: 8px;">
-          <button class="btn btn-primary" id="btn-save-current-task" style="width: 100%; justify-content: center; font-size: 13px;">
-            <span>💾</span> Salvar Trabalho Atual
-          </button>
-          <button class="btn btn-whatsapp btn-sm" id="btn-share-current-task" style="width: 100%; justify-content: center; font-size: 12px; font-weight: 600;">
-            <span>🔗</span> Copiar Link para WhatsApp / PC
-          </button>
-        </div>
-
-        <!-- Lista de até 3 Tarefas -->
-        <div class="tasks-list" id="tasks-list-container">
-          <div class="empty-tasks-msg">
-            Nenhuma tarefa salva no momento.<br>
-            Clique em <strong>Salvar Trabalho Atual</strong> para guardar seu progresso.
-          </div>
-        </div>
-
-        <!-- Rodapé Informativo -->
-        <div class="tasks-drawer-footer">
-          <span style="font-size: 11px; color: var(--text-muted); line-height: 1.4; display: block;" id="tasks-sync-status-msg">
-            ⚡ <strong>Sincronização Ativa:</strong> Salve no celular e abra no PC na mesma rede Wi-Fi, ou continue editando neste navegador. Limite máximo de 3 tarefas simultâneas.
-          </span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Modal DeckCraft Studio (PowerPoint Web Editor) -->
-    <div id="modalDeckcraft" class="deckcraft-modal-overlay" style="display:none;">
-      <div class="deckcraft-modal-container">
-        <div class="deckcraft-modal-header">
-          <div class="deckcraft-header-left">
-            <span class="deckcraft-logo-icon">🎨</span>
-            <div>
-              <div class="deckcraft-title-row">
-                <h3 class="deckcraft-title">DeckCraft Studio</h3>
-                <span class="deckcraft-badge">PowerPoint Web • v0.10.0</span>
-                <span style="font-size: 11px; background: rgba(232, 184, 89, 0.15); color: #e8b859; padding: 2px 7px; border-radius: 4px; border: 1px solid rgba(232, 184, 89, 0.3); font-weight: 600;">⭐ Fonte Padrão: Bahnschrift SemiBold Condensed</span>
-              </div>
-              <span class="deckcraft-subtitle" id="deckcraft-filename-badge">SLIDES_CULTO.pptx</span>
-            </div>
-          </div>
-
-          <div class="deckcraft-header-actions">
-            <button type="button" class="btn btn-primary btn-sm" id="btn-deckcraft-quick-download" title="Baixar arquivo PPTX gerado para seu computador">
-              📥 Baixar PPTX do Culto
-            </button>
-            <button type="button" class="btn btn-secondary btn-sm" id="btn-deckcraft-open-file" title="Escolher outro arquivo .pptx do computador">
-              📂 Abrir Outro Arquivo
-            </button>
-            <input type="file" id="deckcraft-file-input" accept=".pptx" style="display:none;" />
-            <button type="button" class="btn btn-secondary btn-sm" id="btn-deckcraft-fullscreen" title="Alternar Modo Tela Cheia">
-              ⛶ Tela Cheia
-            </button>
-            <button type="button" class="btn btn-secondary btn-sm" id="btn-deckcraft-new-tab" title="Abrir DeckCraft em uma nova aba">
-              ↗️ Nova Aba
-            </button>
-            <button type="button" class="deckcraft-close-btn" id="btn-close-deckcraft-modal" title="Fechar editor e voltar para galeria">✖</button>
-          </div>
-        </div>
-
-        <!-- Barra Informativa / Fluxo Visual em 2 Passos -->
-        <div class="deckcraft-step-banner" id="deckcraft-helper-bar">
-          <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
-            <div class="deckcraft-step-item">
-              <span class="deckcraft-step-number">1</span>
-              <span>Arquivo <code id="deckcraft-modal-step-filename">SLIDES_CULTO.pptx</code> pronto e baixado no navegador</span>
-            </div>
-            <span style="color: var(--primary); font-weight: 700;">➔</span>
-            <div class="deckcraft-step-item" style="color: #ffd978; font-weight: 600;">
-              <span class="deckcraft-step-number" style="background: #ffd978; color: #000;">2</span>
-              <span>Arraste o arquivo da barra de downloads para a tela abaixo (ou use <strong>File ➔ Open</strong>)</span>
-            </div>
-          </div>
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <button type="button" class="btn btn-primary btn-sm" id="btn-re-download-pptx" style="font-size: 11px; padding: 4px 10px;">
-              📥 Baixar Novamente
-            </button>
-            <button type="button" class="deckcraft-helper-dismiss" id="btn-dismiss-deckcraft-helper" title="Ocultar">✕</button>
-          </div>
-        </div>
-
-        <!-- Container do Iframe com Loading Overlay -->
-        <div class="deckcraft-iframe-wrapper" id="deckcraft-iframe-wrapper">
-          <div class="deckcraft-loading-overlay" id="deckcraft-loading-overlay" style="display:none;">
-            <div class="deckcraft-spinner"></div>
-            <span>Inicializando motor DeckCraft WebAssembly...</span>
-          </div>
-          <iframe 
-            id="deckcraft-iframe" 
-            src="about:blank"
-            title="DeckCraft PowerPoint Editor"
-            allow="fullscreen; clipboard-read; clipboard-write; autoplay"
-            sandbox="allow-scripts allow-same-origin allow-downloads allow-popups allow-forms allow-modals"
-            style="width: 100%; height: 100%; border: none; display: block;"
-          ></iframe>
-        </div>
-      </div>
-    </div>
-
     <!-- Modal / Toast de Notificação -->
+    
     <div id="toast" class="toast"></div>
   </main>
+
+  <!-- Action Sheet / Menu Nativo de Opções do Slide (Mobile / Desktop) -->
+  <div id="slideActionSheet" class="slide-action-sheet-overlay" style="display: none;">
+    <div class="slide-action-sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div class="sheet-preview-box">
+          <img id="sheet-slide-img" src="" alt="Slide Preview">
+        </div>
+        <div class="sheet-info-box">
+          <div class="sheet-slide-badge" id="sheet-slide-badge">Slide #1</div>
+          <div class="sheet-slide-title" id="sheet-slide-title">Nome do Slide</div>
+        </div>
+        <button type="button" class="sheet-close-btn" id="btn-close-slide-sheet" aria-label="Fechar">&times;</button>
+      </div>
+      <div class="sheet-actions-list">
+        <button type="button" class="sheet-action-btn" id="sheet-btn-replace">
+          <span class="sheet-action-icon">🔄</span>
+          <div class="sheet-action-content">
+            <strong>Substituir Imagem</strong>
+            <span>Trocar este slide por outra imagem do celular</span>
+          </div>
+        </button>
+        <button type="button" class="sheet-action-btn" id="sheet-btn-insert-after">
+          <span class="sheet-action-icon">➕</span>
+          <div class="sheet-action-content">
+            <strong>Adicionar Slides Depois</strong>
+            <span>Inserir fotos, PDF ou ZIP a partir deste ponto</span>
+          </div>
+        </button>
+        <button type="button" class="sheet-action-btn" id="sheet-btn-dl-screen">
+          <span class="sheet-action-icon">🖼️</span>
+          <div class="sheet-action-content">
+            <strong>Baixar PNG (Telão 16:9)</strong>
+            <span>Exportar imagem ajustada em alta resolução</span>
+          </div>
+        </button>
+        <button type="button" class="sheet-action-btn" id="sheet-btn-dl-orig">
+          <span class="sheet-action-icon">📐</span>
+          <div class="sheet-action-content">
+            <strong>Baixar PNG (Original)</strong>
+            <span>Exportar na proporção original do arquivo</span>
+          </div>
+        </button>
+        <button type="button" class="sheet-action-btn sheet-btn-danger" id="sheet-btn-delete">
+          <span class="sheet-action-icon">🗑️</span>
+          <div class="sheet-action-content">
+            <strong>Excluir este Slide</strong>
+            <span>Remover definitivamente da apresentação</span>
+          </div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Barra Flutuante de Seleção em Lote (Overlay Rápido para Apagar) -->
+  <div id="selectionFloatingBar" class="selection-floating-bar" style="display: none;">
+    <div class="selection-bar-info">
+      <span class="selection-bar-badge" id="selection-bar-count">0</span>
+      <span class="selection-bar-text" id="selection-bar-text">slides selecionados</span>
+    </div>
+    <div class="selection-bar-actions">
+      <button type="button" class="btn btn-secondary btn-sm btn-selection-cancel" id="selection-bar-btn-cancel" title="Desmarcar todos os slides">
+        Desmarcar
+      </button>
+      <button type="button" class="btn btn-danger btn-sm btn-selection-delete" id="selection-bar-btn-delete" title="Apagar slides selecionados">
+        <span>🗑️</span> <span id="selection-bar-delete-label">Apagar Selecionados</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Barra de Navegação Inferior Nativa (Mobile App) -->
+  <nav class="mobile-bottom-nav" id="mobile-bottom-nav" aria-label="Navegação Principal">
+    <button type="button" class="mobile-nav-btn active" data-target-module="slidekiller" title="Slide Killer (Sermões e Telões)">
+      <span class="mobile-nav-icon">⚡</span>
+      <span class="mobile-nav-label">Slide Killer</span>
+    </button>
+    <button type="button" class="mobile-nav-btn" data-target-module="pdf-to-pptx" title="Conversor PDF ⇄ PPTX Direto">
+      <span class="mobile-nav-icon">🔄</span>
+      <span class="mobile-nav-label">PDF ⇄ PPTX</span>
+    </button>
+    <button type="button" class="mobile-nav-btn" data-target-module="images-to-pptx" title="Organizador de Imagens e ZIP">
+      <span class="mobile-nav-icon">🖼️</span>
+      <span class="mobile-nav-label">Imagens / ZIP</span>
+    </button>
+  </nav>
 
   <script src="app.js?v=2.12.12"></script>
 </body>
 </html>
-

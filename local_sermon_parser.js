@@ -199,52 +199,73 @@ function parseSermonTextOffline(rawText) {
     .replace(/\u00A0/g, ' ')
     .replace(/\r\n/g, '\n');
 
-  // 1. Divide em linhas eliminando linhas decorativas
-  const allLines = normalized
-    .split('\n')
-    .map(l => l.trim())
+  // 1. Divide em parágrafos preservando quebras duplas para não agrupar versículos distintos
+  const rawParagraphs = normalized
+    .split(/\n\s*\n+/)
+    .map(p => p.trim())
     .filter(Boolean)
-    .filter(l => !/^[⸻\-_\s]{3,}$/.test(l));
+    .filter(p => !/^[⸻\-_\s]{3,}$/.test(p));
 
   // 2. Agrupa em blocos lógicos preservando seções, tópicos e passagens bíblicas completas
   const blocks = [];
-  let curBlock = [];
 
-  for (let i = 0; i < allLines.length; i++) {
-    const line = allLines[i];
-    const isHeading = isHeadingOrTopic(line);
-    const isPureRef = isPureBibleRefLine(line);
+  for (const para of rawParagraphs) {
+    const pLines = para
+      .split('\n')
+      .map(l => l.trim())
+      .filter(Boolean)
+      .filter(l => !/^[⸻\-_\s]{3,}$/.test(l));
 
-    if (isHeading) {
-      if (curBlock.length > 0) {
-        blocks.push(curBlock);
-        curBlock = [];
-      }
-      blocks.push([line]);
-      continue;
-    }
+    if (pLines.length === 0) continue;
 
-    if (isPureRef) {
-      // Se curBlock já tinha texto e a primeira linha não era apenas outra referência bíblica
-      if (curBlock.length > 0 && !isPureBibleRefLine(curBlock[0])) {
-        curBlock.push(line);
-        blocks.push(curBlock);
-        curBlock = [];
-      } else {
-        // Referência no topo de um novo versículo
+    let curBlock = [];
+
+    for (let i = 0; i < pLines.length; i++) {
+      const line = pLines[i];
+      const isHeading = isHeadingOrTopic(line);
+      const isPureRef = isPureBibleRefLine(line);
+      const trailingRef = isBibleRef(line);
+      const isSelfContainedVerse = trailingRef && !isPureRef && (line.endsWith(trailingRef) || line.indexOf(trailingRef) >= line.length - trailingRef.length - 4);
+
+      if (isHeading) {
         if (curBlock.length > 0) {
           blocks.push(curBlock);
           curBlock = [];
         }
-        curBlock.push(line);
+        blocks.push([line]);
+        continue;
       }
-      continue;
+
+      if (isPureRef) {
+        if (curBlock.length > 0 && !isPureBibleRefLine(curBlock[0])) {
+          curBlock.push(line);
+          blocks.push(curBlock);
+          curBlock = [];
+        } else {
+          if (curBlock.length > 0) {
+            blocks.push(curBlock);
+            curBlock = [];
+          }
+          curBlock.push(line);
+        }
+        continue;
+      }
+
+      if (isSelfContainedVerse) {
+        if (curBlock.length > 0) {
+          blocks.push(curBlock);
+          curBlock = [];
+        }
+        blocks.push([line]);
+        continue;
+      }
+
+      curBlock.push(line);
     }
 
-    curBlock.push(line);
-  }
-  if (curBlock.length > 0) {
-    blocks.push(curBlock);
+    if (curBlock.length > 0) {
+      blocks.push(curBlock);
+    }
   }
 
   const slides = [];

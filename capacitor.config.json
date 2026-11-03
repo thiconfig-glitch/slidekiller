@@ -1,0 +1,9 @@
+{
+  "appId": "org.church.slidekiller",
+  "appName": "Slide Killer",
+  "webDir": "public",
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  }
+}

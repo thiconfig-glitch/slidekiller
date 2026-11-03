@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Slide Killer</string>
+    <string name="title_activity_main">Slide Killer</string>
+    <string name="package_name">org.church.slidekiller</string>
+    <string name="custom_url_scheme">org.church.slidekiller</string>
+</resources>
