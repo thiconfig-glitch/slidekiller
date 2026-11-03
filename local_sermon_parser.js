@@ -594,7 +594,7 @@ function parseTeamsDirectionText(rawText, options = { onlyVerses: true }) {
 
   return slides.length > 0 ? slides : [{
     type: 'verse',
-    reference: 'Direção Teams',
+    reference: 'Direção formatada previamente',
     runs: [{ text: rawText.substring(0, 200), highlight: false }]
   }];
 }

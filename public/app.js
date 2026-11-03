@@ -660,7 +660,7 @@ document.addEventListener('DOMContentLoaded', () => {
   applySelectedFont(currentSelectedFont, false);
   applySelectedAlign(currentSelectedAlign, false);
 
-  // Elementos do seletor de formato de texto (Esboço vs Direção Teams)
+  // Elementos do seletor de formato de texto (Esboço vs Direção formatada previamente)
   // ⚠️ Scoped to #format-pill-group to avoid selecting submode-pill-btn buttons in other modules
   const formatPillGroup = document.getElementById('format-pill-group');
   const formatPillBtns = formatPillGroup
@@ -681,7 +681,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (activeTextMode === 'teams') {
           if (teamsOptionsContainer) teamsOptionsContainer.style.display = 'inline-flex';
           if (sermonTextInput) {
-            sermonTextInput.placeholder = 'Cole aqui o texto ou mensagem da Direção Teams com as passagens bíblicas e orientações...';
+            sermonTextInput.placeholder = 'Cole aqui o texto ou mensagem da Direção formatada previamente com as passagens bíblicas e orientações...';
           }
         } else {
           if (teamsOptionsContainer) teamsOptionsContainer.style.display = 'none';
@@ -2293,7 +2293,7 @@ ${sermonText}`;
 
     return slides.length > 0 ? slides : [{
       type: 'verse',
-      reference: 'Direção Teams',
+      reference: 'Direção formatada previamente',
       runs: [{ text: rawText.substring(0, 200), highlight: false }]
     }];
   }
@@ -2337,7 +2337,7 @@ ${sermonText}`;
         if (activeSlideKillerTab === 'tab-text' && activeTextMode === 'teams') {
           currentSlides = parseTeamsDirectionTextBrowser(extractedText, { onlyVerses: activeTeamsOption === 'only-verses' });
           const desc = activeTeamsOption === 'only-verses' ? 'apenas versículos' : 'com explicações';
-          showToast(`💬 ${currentSlides.length} slides da Direção Teams (${desc}) gerados!`, 'success');
+          showToast(`💬 ${currentSlides.length} slides da Direção formatada previamente (${desc}) gerados!`, 'success');
         } else if (checkUseAi && checkUseAi.checked) {
           btnGenerate.innerHTML = '<span>🤖</span> IA Gemini refinando estrutura...';
           try {

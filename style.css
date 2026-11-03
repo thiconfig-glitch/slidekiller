@@ -578,7 +578,7 @@ textarea:focus {
   border-color: var(--border-focus);
 }
 
-/* Configuração do Formato de Texto (Esboço vs Direção Teams) */
+/* Configuração do Formato de Texto (Esboço vs Direção formatada previamente) */
 .text-mode-config-bar {
   display: flex !important;
   flex-wrap: wrap !important;

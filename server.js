@@ -211,7 +211,7 @@ app.post('/api/slides/upload-pdf', upload.fields([
     let slides = [];
 
     if (textMode === 'teams') {
-      console.log(`💬 Processando Formato Direção Teams (${teamsOption})... (${sermonText.length} caracteres)`);
+      console.log(`💬 Processando Formato Direção formatada previamente (${teamsOption})... (${sermonText.length} caracteres)`);
       slides = parseTeamsDirectionText(sermonText, { onlyVerses: teamsOption !== 'with-explanations' });
     } else if (useAi && apiKey) {
       console.log(`🤖 Processando via Inteligência Artificial Gemini... (${sermonText.length} caracteres)`);
