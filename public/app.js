@@ -1,6 +1,47 @@
 document.addEventListener('DOMContentLoaded', () => {
   // ==========================================
-  // NAVEGAÇíO DE MÓDULOS (CENTRAL MULTIMÍDIA)
+  // SPLASH SCREEN & AVISO DE PRIVACIDADE OFFLINE
+  // ==========================================
+  const splashScreen = document.getElementById('app-splash-screen');
+  const privacyModal = document.getElementById('privacy-notice-modal');
+  const checkDontShowPrivacy = document.getElementById('check-dont-show-privacy');
+  const btnConfirmPrivacy = document.getElementById('btn-confirm-privacy');
+
+  function initAppSplashAndPrivacy() {
+    if (!splashScreen) return;
+
+    // Exibe splash inicial por 2.2 segundos e transiciona suavemente
+    setTimeout(() => {
+      splashScreen.classList.add('splash-fade-out');
+      setTimeout(() => {
+        splashScreen.style.display = 'none';
+
+        // Se o usuário ainda não dispensou o aviso de privacidade, exibe o modal
+        const privacyDismissed = localStorage.getItem('slidekiller_privacy_dismissed');
+        if (!privacyDismissed && privacyModal) {
+          privacyModal.style.display = 'flex';
+        }
+      }, 550);
+    }, 2200);
+
+    if (btnConfirmPrivacy && privacyModal) {
+      btnConfirmPrivacy.addEventListener('click', () => {
+        if (checkDontShowPrivacy && checkDontShowPrivacy.checked) {
+          localStorage.setItem('slidekiller_privacy_dismissed', 'true');
+        }
+        privacyModal.style.opacity = '0';
+        privacyModal.style.transition = 'opacity 0.25s ease';
+        setTimeout(() => {
+          privacyModal.style.display = 'none';
+        }, 250);
+      });
+    }
+  }
+
+  initAppSplashAndPrivacy();
+
+  // ==========================================
+  // NAVEGAÇÃO DE MÓDULOS (CENTRAL MULTIMÍDIA)
   // ==========================================
   const navModuleBtns = document.querySelectorAll('.nav-module-btn');
   const moduleViews = {

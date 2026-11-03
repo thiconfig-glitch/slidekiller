@@ -165,6 +165,92 @@
   </style>
 </head>
 <body>
+  <!-- ========================================== -->
+  <!-- SPLASH SCREEN OFICIAL (ABERTURA COM VERSÍCULO) -->
+  <!-- ========================================== -->
+  <div id="app-splash-screen" class="app-splash-screen">
+    <div class="splash-top-space"></div>
+    
+    <div class="splash-center-content">
+      <div class="splash-logo-wrapper">
+        <div class="splash-logo-glow"></div>
+        <svg class="splash-logo-svg" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M4 8.5C9.5 7.2 13.8 8.8 16 11C18.2 8.8 22.5 7.2 28 8.5V24C22.5 22.7 18.2 24.3 16 26.5C13.8 24.3 9.5 22.7 4 24V8.5Z" fill="rgba(232, 184, 89, 0.22)" stroke="#E8B859" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M16 11V26.5" stroke="#E8B859" stroke-width="2" stroke-linecap="round"/>
+          <path d="M7 12.5C9.5 11.8 12.5 12.4 13.5 13.2" stroke="rgba(255, 255, 255, 0.45)" stroke-width="1.4" stroke-linecap="round"/>
+          <path d="M7 16.5C9.5 15.8 12.5 16.4 13.5 17.2" stroke="rgba(255, 255, 255, 0.45)" stroke-width="1.4" stroke-linecap="round"/>
+          <path d="M25 12.5C22.5 11.8 19.5 12.4 18.5 13.2" stroke="rgba(255, 255, 255, 0.45)" stroke-width="1.4" stroke-linecap="round"/>
+          <path d="M25 16.5C22.5 15.8 19.5 16.4 18.5 17.2" stroke="rgba(255, 255, 255, 0.45)" stroke-width="1.4" stroke-linecap="round"/>
+          <path d="M19 2L10 15H16L13 29L23 13H17L19 2Z" fill="url(#splashBoltGrad)" stroke="#0A0F1D" stroke-width="1.2" stroke-linejoin="round"/>
+          <defs>
+            <linearGradient id="splashBoltGrad" x1="16.5" y1="2" x2="16.5" y2="29" gradientUnits="userSpaceOnUse">
+              <stop stop-color="#FFF5C0"/>
+              <stop offset="0.35" stop-color="#FFD54F"/>
+              <stop offset="0.8" stop-color="#FFA000"/>
+              <stop offset="1" stop-color="#FF6F00"/>
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+      <h1 class="splash-app-title">Central Multimídia Church</h1>
+      <p class="splash-app-sub">Slide Killer • Hub de Mídia & Telão</p>
+      <div class="splash-loader-line">
+        <div class="splash-loader-bar"></div>
+      </div>
+    </div>
+
+    <div class="splash-bottom-verse">
+      <div class="splash-verse-divider"></div>
+      <p class="splash-verse-text">“Porque dele, e por ele, e para ele são todas as coisas; glória, pois, a ele eternamente. Amém.”</p>
+      <span class="splash-verse-ref">ROMANOS 11:36</span>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL / AVISO DE PRIVACIDADE & OFFLINE      -->
+  <!-- ========================================== -->
+  <div id="privacy-notice-modal" class="privacy-modal-overlay" style="display: none;">
+    <div class="privacy-modal-card">
+      <div class="privacy-modal-header">
+        <div class="privacy-icon-badge">
+          <span>🛡️</span>
+        </div>
+        <div>
+          <h2 class="privacy-modal-title">Privacidade & Operação 100% Local</h2>
+          <span class="privacy-modal-subtitle">Seus arquivos e apresentações protegidos no seu aparelho</span>
+        </div>
+      </div>
+      
+      <div class="privacy-modal-body">
+        <div class="privacy-feature-row">
+          <div class="privacy-feature-icon">🔒</div>
+          <div class="privacy-feature-info">
+            <strong>Processamento Totalmente no Dispositivo</strong>
+            <p>A geração de slides, formatação de textos, cortes de imagens e conversão de PDF para PowerPoint acontecem localmente na memória do seu aparelho. Nenhum documento é enviado ou gravado em servidores externos.</p>
+          </div>
+        </div>
+
+        <div class="privacy-feature-row">
+          <div class="privacy-feature-icon">⚡</div>
+          <div class="privacy-feature-info">
+            <strong>Recursos com IA (Opcionais e Seguros)</strong>
+            <p>O acesso à internet só ocorre se você optar manualmente por usar a IA (validação ou visão). Caso não queira nenhum tráfego de dados para a rede, basta utilizar todas as ferramentas normalmente sem marcar a opção de IA.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="privacy-modal-footer">
+        <label class="privacy-dont-show-label">
+          <input type="checkbox" id="check-dont-show-privacy">
+          <span>Não quero ler novamente</span>
+        </label>
+        <button type="button" class="btn btn-primary btn-confirm-privacy" id="btn-confirm-privacy">
+          <span>✨</span> Entendi e Continuar
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Cabeçalho Principal do Hub -->
   <header class="app-header">
     <div class="header-left">
