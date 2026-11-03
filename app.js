@@ -197,7 +197,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  function attachTouchDragAndDrop(card, index, onMove) {
+  function attachTouchDragAndDrop(card, index, onMove, cardSelector = '.image-slide-card') {
     card.dataset.index = String(index);
 
     let touchTimer = null;
@@ -206,8 +206,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let startY = 0;
 
     card.addEventListener('touchstart', (e) => {
-      // Se tocar em botões de ação ou checkbox, não ativa o arraste
-      if (e.target.closest('button, input, label, a, .btn-card-more, .btn-card-delete, .btn-card-reorder')) {
+      // Se tocar em botões de ação, inputs ou campos de texto/edição, não ativa o arraste
+      if (e.target.closest('button, input, textarea, label, a, .btn-card-more, .btn-card-delete, .btn-card-reorder, .slide-text-edit, .slide-ref-edit')) {
         return;
       }
 
@@ -261,8 +261,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const elUnder = document.elementFromPoint(clientX, clientY);
       card.style.pointerEvents = prevPointer;
 
-      const targetCard = elUnder ? elUnder.closest('.image-slide-card') : null;
-      document.querySelectorAll('.image-slide-card.drag-over').forEach(c => {
+      const targetCard = elUnder ? elUnder.closest(cardSelector) : null;
+      document.querySelectorAll(cardSelector + '.drag-over').forEach(c => {
         if (c !== targetCard) c.classList.remove('drag-over');
       });
 
@@ -279,7 +279,7 @@ document.addEventListener('DOMContentLoaded', () => {
         isDragging = false;
         card.classList.remove('touch-dragging');
 
-        const targetCard = document.querySelector('.image-slide-card.drag-over');
+        const targetCard = document.querySelector(cardSelector + '.drag-over');
         if (targetCard) {
           targetCard.classList.remove('drag-over');
           const targetIndex = parseInt(targetCard.dataset.index, 10);
@@ -2377,13 +2377,24 @@ ${sermonText}`;
     });
   }
 
-  // Renderizar resultados dos slides
+  let draggedSlideKillerIndex = null;
+
+  function moveSlideKillerSlide(fromIndex, toIndex) {
+    if (fromIndex < 0 || fromIndex >= currentSlides.length || toIndex < 0 || toIndex >= currentSlides.length) return;
+    if (fromIndex === toIndex) return;
+    const [moved] = currentSlides.splice(fromIndex, 1);
+    currentSlides.splice(toIndex, 0, moved);
+    currentDownloadUrl = null;
+    renderResults();
+  }
+
+  // Renderizar resultados dos slides (Módulo 1: Slide Killer)
   function renderResults() {
     inputSection.style.display = 'none';
     resultsSection.style.display = 'block';
     if (btnDownloadTop) btnDownloadTop.style.display = 'inline-flex';
 
-    slideCountBadge.textContent = `${currentSlides.length} slides`;
+    slideCountBadge.textContent = `${currentSlides.length} ${currentSlides.length === 1 ? 'slide' : 'slides'}`;
     slidesGrid.innerHTML = '';
 
     const globalBgUrl = getActiveBackgroundUrl();
@@ -2391,6 +2402,8 @@ ${sermonText}`;
     currentSlides.forEach((slide, index) => {
       const card = document.createElement('div');
       card.className = 'slide-card';
+      card.draggable = true;
+      card.dataset.index = String(index);
 
       const slideBgUrl = slide.bgImage || globalBgUrl;
       const fullText = (slide.runs || []).map(r => r.text).join('');
@@ -2398,18 +2411,35 @@ ${sermonText}`;
         return r.highlight ? `<span class="highlight">${escapeHtml(r.text)}</span>` : escapeHtml(r.text);
       }).join('');
 
+      // Ajuste proporcional do tamanho de fonte para a miniatura 16:9 refletir fielmente o telão
+      let previewFontSize = '16.5px';
+      if (fullText.length <= 80) previewFontSize = '20px';
+      else if (fullText.length <= 140) previewFontSize = '17.5px';
+      else if (fullText.length <= 220) previewFontSize = '15px';
+      else previewFontSize = '13px';
+
       card.innerHTML = `
         <div class="slide-card-header">
-          <span>SLIDE ${index + 1}</span>
-          <div style="display: flex; align-items: center; gap: 6px;">
+          <div class="slide-card-header-left">
+            <span class="slide-card-badge">SLIDE #${index + 1}</span>
+            <div class="slide-card-reorder-group">
+              <button type="button" class="btn-card-reorder btn-sk-prev" data-action="prev" title="Mover slide para trás" ${index === 0 ? 'disabled' : ''}>⬅</button>
+              <button type="button" class="btn-card-reorder btn-sk-next" data-action="next" title="Mover slide para frente" ${index === currentSlides.length - 1 ? 'disabled' : ''}>➡</button>
+            </div>
+          </div>
+          <div class="slide-card-header-right">
             ${slide.bgImage ? '<span class="slide-custom-bg-tag" title="Este slide possui um fundo personalizado individual">🖼️ Fundo Próprio</span>' : ''}
             <span class="slide-type-tag">${slide.type || 'versículo'}</span>
           </div>
         </div>
-        <div class="slide-preview-container ${currentSelectedAlign === 'center' ? 'align-center' : ''}" style="background-image: url('${slideBgUrl}');">
+        <div class="slide-preview-container ${currentSelectedAlign === 'center' ? 'align-center' : ''}" style="background-image: url('${slideBgUrl}');" title="Arraste para reordenar ou use as setas acima">
           <div class="slide-preview-content">
-            <div class="slide-preview-text">${previewHtml}</div>
-            ${slide.reference ? `<div class="slide-preview-ref">${escapeHtml(slide.reference.toUpperCase())}</div>` : ''}
+            <div class="slide-preview-verse-box">
+              <div class="slide-preview-text" style="font-size: ${previewFontSize};">${previewHtml}</div>
+            </div>
+            <div class="slide-preview-ref-box" style="${slide.reference ? '' : 'display: none;'}">
+              <span class="slide-preview-ref">${escapeHtml((slide.reference || '').toUpperCase())}</span>
+            </div>
           </div>
         </div>
         <div class="slide-editor">
@@ -2432,11 +2462,71 @@ ${sermonText}`;
         </div>
       `;
 
+      // Botões de reordenação direta (⬅ / ➡)
+      const btnPrev = card.querySelector('.btn-sk-prev');
+      const btnNext = card.querySelector('.btn-sk-next');
+
+      if (btnPrev && index > 0) {
+        btnPrev.addEventListener('click', (e) => {
+          e.stopPropagation();
+          moveSlideKillerSlide(index, index - 1);
+        });
+      }
+
+      if (btnNext && index < currentSlides.length - 1) {
+        btnNext.addEventListener('click', (e) => {
+          e.stopPropagation();
+          moveSlideKillerSlide(index, index + 1);
+        });
+      }
+
+      // Drag and Drop nativo no PC
+      card.addEventListener('dragstart', (e) => {
+        if (e.target.closest('textarea, input, button, select, a, label')) {
+          e.preventDefault();
+          return;
+        }
+        draggedSlideKillerIndex = index;
+        card.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', String(index));
+      });
+
+      card.addEventListener('dragend', () => {
+        card.classList.remove('dragging');
+        document.querySelectorAll('#slides-grid .slide-card').forEach(c => c.classList.remove('drag-over'));
+        draggedSlideKillerIndex = null;
+      });
+
+      card.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        if (draggedSlideKillerIndex !== null && draggedSlideKillerIndex !== index) {
+          card.classList.add('drag-over');
+        }
+      });
+
+      card.addEventListener('dragleave', () => {
+        card.classList.remove('drag-over');
+      });
+
+      card.addEventListener('drop', (e) => {
+        e.preventDefault();
+        card.classList.remove('drag-over');
+        if (draggedSlideKillerIndex !== null && draggedSlideKillerIndex !== index) {
+          moveSlideKillerSlide(draggedSlideKillerIndex, index);
+        }
+      });
+
+      // Touch Drag & Drop para celulares (toque longo de 220ms com haptic feedback e auto-scroll)
+      attachTouchDragAndDrop(card, index, moveSlideKillerSlide, '.slide-card');
+
       // Listeners do editor do card
       const textEdit = card.querySelector('.slide-text-edit');
       const refEdit = card.querySelector('.slide-ref-edit');
       const btnDelete = card.querySelector('.btn-delete-slide');
       const previewText = card.querySelector('.slide-preview-text');
+      const previewRefBox = card.querySelector('.slide-preview-ref-box');
       const previewRef = card.querySelector('.slide-preview-ref');
       const bgInput = card.querySelector('.slide-bg-input');
       const btnBg = card.querySelector('.btn-slide-bg');
@@ -2446,15 +2536,32 @@ ${sermonText}`;
         textEdit.addEventListener('input', (e) => {
           const val = e.target.value;
           currentSlides[index].runs = [{ text: val, highlight: false }];
-          if (previewText) previewText.textContent = val;
+          if (previewText) {
+            previewText.textContent = val;
+            let newFs = '16.5px';
+            if (val.length <= 80) newFs = '20px';
+            else if (val.length <= 140) newFs = '17.5px';
+            else if (val.length <= 220) newFs = '15px';
+            else newFs = '13px';
+            previewText.style.fontSize = newFs;
+          }
           currentDownloadUrl = null;
         });
       }
 
       if (refEdit) {
         refEdit.addEventListener('input', (e) => {
-          currentSlides[index].reference = e.target.value;
-          if (previewRef) previewRef.textContent = e.target.value;
+          const val = e.target.value.trim();
+          currentSlides[index].reference = val;
+          if (previewRef && previewRefBox) {
+            if (val) {
+              previewRef.textContent = val.toUpperCase();
+              previewRefBox.style.display = 'block';
+            } else {
+              previewRef.textContent = '';
+              previewRefBox.style.display = 'none';
+            }
+          }
           currentDownloadUrl = null;
         });
       }
@@ -2462,6 +2569,7 @@ ${sermonText}`;
       if (btnDelete) {
         btnDelete.addEventListener('click', () => {
           currentSlides.splice(index, 1);
+          currentDownloadUrl = null;
           renderResults();
         });
       }
