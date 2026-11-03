@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function initAppSplashAndPrivacy() {
     if (!splashScreen) return;
 
-    // Exibe splash inicial por 2.2 segundos e transiciona suavemente
+    // Exibe splash inicial por 5 segundos e transiciona suavemente
     setTimeout(() => {
       splashScreen.classList.add('splash-fade-out');
       setTimeout(() => {
@@ -21,8 +21,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!privacyDismissed && privacyModal) {
           privacyModal.style.display = 'flex';
         }
-      }, 550);
-    }, 2200);
+      }, 650);
+    }, 5000);
 
     if (btnConfirmPrivacy && privacyModal) {
       btnConfirmPrivacy.addEventListener('click', () => {
