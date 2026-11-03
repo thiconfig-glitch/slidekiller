@@ -3037,8 +3037,9 @@ ${sermonText}`;
       let modified = false;
 
       // 1. Atualizar ppt/theme/theme1.xml para que o PowerPoint usem a fonte como tema Major e Minor
-      if (zip.file('ppt/theme/theme1.xml')) {
-        let themeXml = await zip.file('ppt/theme/theme1.xml').async('text');
+      const themeFile = zip.file('ppt/theme/theme1.xml');
+      if (themeFile && typeof themeFile.async === 'function') {
+        let themeXml = await themeFile.async('text');
         themeXml = themeXml.replace(/<a:latin typeface="[^"]*"/g, `<a:latin typeface="${fontFaceName}"`);
         zip.file('ppt/theme/theme1.xml', themeXml);
         modified = true;
@@ -3061,16 +3062,18 @@ ${sermonText}`;
           if (fontBuf) {
             zip.file('ppt/fonts/font1.fntdata', fontBuf);
 
-            if (zip.file('[Content_Types].xml')) {
-              let ct = await zip.file('[Content_Types].xml').async('text');
+            const ctFile = zip.file('[Content_Types].xml');
+            if (ctFile && typeof ctFile.async === 'function') {
+              let ct = await ctFile.async('text');
               if (!ct.includes('Extension="fntdata"')) {
                 ct = ct.replace('</Types>', '<Default Extension="fntdata" ContentType="application/x-fontdata"/></Types>');
                 zip.file('[Content_Types].xml', ct);
               }
             }
 
-            if (zip.file('ppt/_rels/presentation.xml.rels')) {
-              let rels = await zip.file('ppt/_rels/presentation.xml.rels').async('text');
+            const relsFile = zip.file('ppt/_rels/presentation.xml.rels');
+            if (relsFile && typeof relsFile.async === 'function') {
+              let rels = await relsFile.async('text');
               if (!rels.includes('rIdFontBahnschrift')) {
                 const rel = '<Relationship Id="rIdFontBahnschrift" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/font" Target="fonts/font1.fntdata"/>';
                 rels = rels.replace('</Relationships>', rel + '</Relationships>');
@@ -3078,8 +3081,9 @@ ${sermonText}`;
               }
             }
 
-            if (zip.file('ppt/presentation.xml')) {
-              let pres = await zip.file('ppt/presentation.xml').async('text');
+            const presFile = zip.file('ppt/presentation.xml');
+            if (presFile && typeof presFile.async === 'function') {
+              let pres = await presFile.async('text');
               if (!pres.includes('embeddedFontLst')) {
                 const embedded = '<p:embeddedFontLst>' +
                   '<p:embeddedFont>' +
@@ -4171,8 +4175,9 @@ ${sermonText}`;
       // 1. Dimensões do slide
       let presWidth = 12192000;
       let presHeight = 6858000;
-      if (zip.file('ppt/presentation.xml')) {
-        const presXml = await zip.file('ppt/presentation.xml').async('text');
+      const presEntry = zip.file('ppt/presentation.xml');
+      if (presEntry && typeof presEntry.async === 'function') {
+        const presXml = await presEntry.async('text');
         const m = presXml.match(/<p:sldSz\s+[^>]*cx="(\d+)"[^>]*cy="(\d+)"/i) || presXml.match(/<p:sldSz\s+[^>]*cy="(\d+)"[^>]*cx="(\d+)"/i);
         if (m) {
           if (presXml.indexOf('cx="') < presXml.indexOf('cy="')) {
@@ -4188,8 +4193,9 @@ ${sermonText}`;
 
       // 2. Mapeamento e ordem dos slides
       let slidePaths = [];
-      if (zip.file('ppt/_rels/presentation.xml.rels')) {
-        const relsXml = await zip.file('ppt/_rels/presentation.xml.rels').async('text');
+      const relsEntry = zip.file('ppt/_rels/presentation.xml.rels');
+      if (relsEntry && typeof relsEntry.async === 'function') {
+        const relsXml = await relsEntry.async('text');
         const rRegex = /<Relationship[^>]+Id="([^"]+)"[^>]+Type="[^"]*\/slide"[^>]+Target="([^"]+)"/gi;
         const map = {};
         let rm;
@@ -4199,8 +4205,8 @@ ${sermonText}`;
           map[rm[1]] = 'ppt/' + target;
         }
 
-        if (zip.file('ppt/presentation.xml')) {
-          const presXml = await zip.file('ppt/presentation.xml').async('text');
+        if (presEntry && typeof presEntry.async === 'function') {
+          const presXml = await presEntry.async('text');
           const idRegex = /<p:sldId\s+[^>]*r:id="([^"]+)"/gi;
           let im;
           while ((im = idRegex.exec(presXml)) !== null) {
@@ -4211,11 +4217,19 @@ ${sermonText}`;
 
       // Fallback: ordenar numericamente slide1.xml, slide2.xml...
       if (slidePaths.length === 0) {
-        slidePaths = Object.keys(zip.files).filter(k => /^ppt\/slides\/slide\d+\.xml$/i.test(k));
+        slidePaths = Object.keys(zip.files).filter(k => /^ppt\/slides\/slide\d+\.xml$/i.test(k) && !zip.files[k].dir && zip.file(k));
         slidePaths.sort((a, b) => {
-          const na = parseInt(a.match(/slide(\d+)\.xml/i)[1], 10);
-          const nb = parseInt(b.match(/slide(\d+)\.xml/i)[1], 10);
+          const ma = a.match(/slide(\d+)\.xml/i);
+          const mb = b.match(/slide(\d+)\.xml/i);
+          const na = ma ? parseInt(ma[1], 10) : 0;
+          const nb = mb ? parseInt(mb[1], 10) : 0;
           return na - nb;
+        });
+      } else {
+        // Garantir que todos os paths mapeados realmente existem como arquivo no ZIP
+        slidePaths = slidePaths.filter(p => {
+          const entry = zip.file(p);
+          return entry && !zip.files[p]?.dir && typeof entry.async === 'function';
         });
       }
 
@@ -4225,10 +4239,14 @@ ${sermonText}`;
 
       showPptxReverseProgress(12, 'Extraindo mídias e imagens em alta definição...');
 
-      // 3. Cache de mídias em base64
-      const mediaFiles = Object.keys(zip.files).filter(k => k.startsWith('ppt/media/'));
+      // 3. Cache de mídias em base64 (ignora diretórios virtuais e verifica se entry existe)
+      const mediaFiles = Object.keys(zip.files).filter(k => {
+        return k.startsWith('ppt/media/') && !zip.files[k].dir && zip.file(k);
+      });
       const mediaDataUrls = {};
       for (const mf of mediaFiles) {
+        const mEntry = zip.file(mf);
+        if (!mEntry || typeof mEntry.async !== 'function') continue;
         const ext = mf.split('.').pop().toLowerCase();
         let mime = 'image/png';
         if (ext === 'jpg' || ext === 'jpeg') mime = 'image/jpeg';
@@ -4236,8 +4254,12 @@ ${sermonText}`;
         else if (ext === 'gif') mime = 'image/gif';
         else if (ext === 'svg') mime = 'image/svg+xml';
 
-        const b64 = await zip.file(mf).async('base64');
-        mediaDataUrls[mf] = `data:${mime};base64,${b64}`;
+        try {
+          const b64 = await mEntry.async('base64');
+          mediaDataUrls[mf] = `data:${mime};base64,${b64}`;
+        } catch (mediaErr) {
+          console.warn(`Aviso: falha ao extrair mídia ${mf}:`, mediaErr);
+        }
       }
 
       if (!isAppend) {
@@ -4254,42 +4276,78 @@ ${sermonText}`;
         showPptxReverseProgress(pct, `Renderizando slide ${idx + 1} de ${total}...`);
 
         const slidePath = slidePaths[idx];
-        const xml = await zip.file(slidePath).async('text');
+        const sEntry = zip.file(slidePath);
+        if (!sEntry || typeof sEntry.async !== 'function') {
+          console.warn(`Arquivo do slide não encontrado: ${slidePath}`);
+          continue;
+        }
+        const xml = await sEntry.async('text');
 
         const relsPath = slidePath.replace('ppt/slides/', 'ppt/slides/_rels/') + '.rels';
         const rels = {};
-        if (zip.file(relsPath)) {
-          const relsXml = await zip.file(relsPath).async('text');
-          const relRegex = /<Relationship[^>]+Id="([^"]+)"[^>]+Target="([^"]+)"/gi;
-          let rm;
-          while ((rm = relRegex.exec(relsXml)) !== null) {
-            let tgt = rm[2].replace(/^\.\.\//, 'ppt/');
-            if (!tgt.startsWith('ppt/')) tgt = 'ppt/' + tgt;
-            rels[rm[1]] = tgt;
+        const relEntry = zip.file(relsPath);
+        if (relEntry && typeof relEntry.async === 'function') {
+          try {
+            const relsXml = await relEntry.async('text');
+            const relRegex = /<Relationship[^>]+Id="([^"]+)"[^>]+Target="([^"]+)"/gi;
+            let rm;
+            while ((rm = relRegex.exec(relsXml)) !== null) {
+              let tgt = rm[2].replace(/^\.\.\//, 'ppt/');
+              if (!tgt.startsWith('ppt/')) tgt = 'ppt/' + tgt;
+              rels[rm[1]] = tgt;
+            }
+          } catch (relErr) {
+            console.warn(`Aviso ao ler rels do slide ${idx + 1}:`, relErr);
           }
         }
 
-        const slideResult = await renderPptxSlideToCanvas({
-          xml,
-          rels,
-          mediaDataUrls,
-          presWidth,
-          presHeight,
-          ratio,
-          slideIndex: idx + 1
-        });
+        try {
+          const slideResult = await renderPptxSlideToCanvas({
+            xml,
+            rels,
+            mediaDataUrls,
+            presWidth,
+            presHeight,
+            ratio,
+            slideIndex: idx + 1
+          });
 
-        directSlides.push({
-          id: 'pptx_' + Date.now() + '_' + idx + '_' + Math.random().toString(36).substr(2, 5),
-          title: slideResult.title || `${file.name.replace(/\.[^/.]+$/, '')} - Slide ${idx + 1}`,
-          type: 'pptx',
-          source: file.name,
-          pageNum: idx + 1,
-          imgData: slideResult.dataUrl,
-          ratio: ratio,
-          width: slideResult.width,
-          height: slideResult.height
-        });
+          directSlides.push({
+            id: 'pptx_' + Date.now() + '_' + idx + '_' + Math.random().toString(36).substr(2, 5),
+            title: slideResult.title || `${file.name.replace(/\.[^/.]+$/, '')} - Slide ${idx + 1}`,
+            type: 'pptx',
+            source: file.name,
+            pageNum: idx + 1,
+            imgData: slideResult.dataUrl,
+            ratio: ratio,
+            width: slideResult.width,
+            height: slideResult.height
+          });
+        } catch (slideErr) {
+          console.warn(`Erro ao renderizar slide ${idx + 1}:`, slideErr);
+          // Fallback canvas para não abortar toda a conversão
+          const fbCanvas = document.createElement('canvas');
+          fbCanvas.width = 1920;
+          fbCanvas.height = Math.round(1920 / ratio);
+          const fbCtx = fbCanvas.getContext('2d');
+          fbCtx.fillStyle = '#0f172a';
+          fbCtx.fillRect(0, 0, fbCanvas.width, fbCanvas.height);
+          fbCtx.fillStyle = '#f8fafc';
+          fbCtx.font = 'bold 36px sans-serif';
+          fbCtx.textAlign = 'center';
+          fbCtx.fillText(`Slide ${idx + 1}`, fbCanvas.width / 2, fbCanvas.height / 2);
+          directSlides.push({
+            id: 'pptx_' + Date.now() + '_' + idx + '_' + Math.random().toString(36).substr(2, 5),
+            title: `${file.name.replace(/\.[^/.]+$/, '')} - Slide ${idx + 1}`,
+            type: 'pptx',
+            source: file.name,
+            pageNum: idx + 1,
+            imgData: fbCanvas.toDataURL('image/png'),
+            ratio: ratio,
+            width: fbCanvas.width,
+            height: fbCanvas.height
+          });
+        }
       }
 
       showPptxReverseProgress(100, 'Slides prontos!');
@@ -4681,28 +4739,36 @@ ${sermonText}`;
       const arrayBuffer = await file.arrayBuffer();
       const zip = await JSZip.loadAsync(arrayBuffer);
       let presWidth = 12192000, presHeight = 6858000;
-      if (zip.file('ppt/presentation.xml')) {
-        const presXml = await zip.file('ppt/presentation.xml').async('text');
-        const m = presXml.match(/<p:sldSz\s+[^>]*cx="(\d+)"[^>]*cy="(\d+)"/i);
+      const presEntry = zip.file('ppt/presentation.xml');
+      if (presEntry && typeof presEntry.async === 'function') {
+        const presXml = await presEntry.async('text');
+        const m = presXml.match(/<p:sldSz\s+[^>]*cx="(\d+)"[^>]*cy="(\d+)"/i) || presXml.match(/<p:sldSz\s+[^>]*cy="(\d+)"[^>]*cx="(\d+)"/i);
         if (m) {
           presWidth = parseInt(m[1], 10);
           presHeight = parseInt(m[2], 10);
         }
       }
-      const ratio = presWidth / presHeight;
-      let slidePaths = Object.keys(zip.files).filter(k => /^ppt\/slides\/slide\d+\.xml$/i.test(k));
+      const ratio = (presWidth && presHeight) ? (presWidth / presHeight) : (16 / 9);
+
+      let slidePaths = Object.keys(zip.files).filter(k => /^ppt\/slides\/slide\d+\.xml$/i.test(k) && !zip.files[k].dir && zip.file(k));
       slidePaths.sort((a, b) => {
-        const na = parseInt(a.match(/slide(\d+)\.xml/i)[1], 10);
-        const nb = parseInt(b.match(/slide(\d+)\.xml/i)[1], 10);
+        const ma = a.match(/slide(\d+)\.xml/i);
+        const mb = b.match(/slide(\d+)\.xml/i);
+        const na = ma ? parseInt(ma[1], 10) : 0;
+        const nb = mb ? parseInt(mb[1], 10) : 0;
         return na - nb;
       });
       if (slidePaths.length === 0) {
         showToast('Nenhum slide encontrado no PowerPoint.', 'error');
         return;
       }
-      const mediaFiles = Object.keys(zip.files).filter(k => k.startsWith('ppt/media/'));
+      const mediaFiles = Object.keys(zip.files).filter(k => {
+        return k.startsWith('ppt/media/') && !zip.files[k].dir && zip.file(k);
+      });
       const mediaDataUrls = {};
       for (const mf of mediaFiles) {
+        const mEntry = zip.file(mf);
+        if (!mEntry || typeof mEntry.async !== 'function') continue;
         const ext = mf.split('.').pop().toLowerCase();
         let mime = 'image/png';
         if (ext === 'jpg' || ext === 'jpeg') mime = 'image/jpeg';
@@ -4710,33 +4776,48 @@ ${sermonText}`;
         else if (ext === 'gif') mime = 'image/gif';
         else if (ext === 'svg') mime = 'image/svg+xml';
 
-        const b64 = await zip.file(mf).async('base64');
-        mediaDataUrls[mf] = `data:${mime};base64,${b64}`;
+        try {
+          const b64 = await mEntry.async('base64');
+          mediaDataUrls[mf] = `data:${mime};base64,${b64}`;
+        } catch (mediaErr) {
+          console.warn(`Aviso: falha ao extrair mídia ${mf}:`, mediaErr);
+        }
       }
       for (let idx = 0; idx < slidePaths.length; idx++) {
         const sf = slidePaths[idx];
-        const xml = await zip.file(sf).async('text');
+        const sEntry = zip.file(sf);
+        if (!sEntry || typeof sEntry.async !== 'function') continue;
+        const xml = await sEntry.async('text');
         const relsPath = sf.replace('ppt/slides/', 'ppt/slides/_rels/') + '.rels';
         const rels = {};
-        if (zip.file(relsPath)) {
-          const relsXml = await zip.file(relsPath).async('text');
-          const relRegex = /<Relationship[^>]+Id="([^"]+)"[^>]+Target="([^"]+)"/gi;
-          let rm;
-          while ((rm = relRegex.exec(relsXml)) !== null) {
-            let tgt = rm[2].replace(/^\.\.\//, 'ppt/');
-            if (!tgt.startsWith('ppt/')) tgt = 'ppt/' + tgt;
-            rels[rm[1]] = tgt;
+        const relEntry = zip.file(relsPath);
+        if (relEntry && typeof relEntry.async === 'function') {
+          try {
+            const relsXml = await relEntry.async('text');
+            const relRegex = /<Relationship[^>]+Id="([^"]+)"[^>]+Target="([^"]+)"/gi;
+            let rm;
+            while ((rm = relRegex.exec(relsXml)) !== null) {
+              let tgt = rm[2].replace(/^\.\.\//, 'ppt/');
+              if (!tgt.startsWith('ppt/')) tgt = 'ppt/' + tgt;
+              rels[rm[1]] = tgt;
+            }
+          } catch(relErr) {
+            console.warn(`Aviso ao ler rels de ${sf}:`, relErr);
           }
         }
-        const slideResult = await renderPptxSlideToCanvas({
-          xml, rels, mediaDataUrls, presWidth, presHeight, ratio, slideIndex: idx + 1
-        });
-        imageSlides.push({
-          id: 'img_pptx_' + Date.now() + '_' + idx,
-          name: slideResult.title || `Slide ${idx + 1}`,
-          dataUrl: slideResult.dataUrl,
-          ratio: ratio
-        });
+        try {
+          const slideResult = await renderPptxSlideToCanvas({
+            xml, rels, mediaDataUrls, presWidth, presHeight, ratio, slideIndex: idx + 1
+          });
+          imageSlides.push({
+            id: 'img_pptx_' + Date.now() + '_' + idx,
+            name: slideResult.title || `Slide ${idx + 1}`,
+            dataUrl: slideResult.dataUrl,
+            ratio: ratio
+          });
+        } catch (sErr) {
+          console.warn(`Aviso ao renderizar slide ${idx + 1}:`, sErr);
+        }
       }
       renderImagesOrganizer();
       showToast(`🎉 ${slidePaths.length} slide(s) do PowerPoint adicionado(s) ao organizador!`, 'success');
@@ -4845,6 +4926,7 @@ ${sermonText}`;
           entries.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
 
           for (const entry of entries) {
+            if (!entry || typeof entry.async !== 'function') continue;
             const ext = entry.name.split('.').pop().toLowerCase();
             const mime = ext === 'png' ? 'image/png' : (ext === 'webp' ? 'image/webp' : 'image/jpeg');
             const base64Data = await entry.async('base64');
@@ -4958,8 +5040,8 @@ ${sermonText}`;
       }
     }
     if (labelSelectAllDirect) {
-      updateSelectionFloatingBar();
-    labelSelectAllDirect.textContent = (directSlides.length > 0 && selectedDirectSlideIds.size === directSlides.length)
+      if (typeof updateSelectionFloatingBar === 'function') updateSelectionFloatingBar();
+      labelSelectAllDirect.textContent = (directSlides.length > 0 && selectedDirectSlideIds.size === directSlides.length)
         ? 'Desmarcar Todos'
         : 'Selecionar Todos';
     }
@@ -5992,6 +6074,7 @@ ${sermonText}`;
           entries.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
 
           for (const entry of entries) {
+            if (!entry || typeof entry.async !== 'function') continue;
             const ext = entry.name.split('.').pop().toLowerCase();
             const mime = ext === 'png' ? 'image/png' : (ext === 'webp' ? 'image/webp' : 'image/jpeg');
             const base64Data = await entry.async('base64');
@@ -6077,8 +6160,8 @@ ${sermonText}`;
       }
     }
     if (labelSelectAllImages) {
-      updateSelectionFloatingBar();
-    labelSelectAllImages.textContent = (imageSlides.length > 0 && selectedImageSlideIds.size === imageSlides.length)
+      if (typeof updateSelectionFloatingBar === 'function') updateSelectionFloatingBar();
+      labelSelectAllImages.textContent = (imageSlides.length > 0 && selectedImageSlideIds.size === imageSlides.length)
         ? 'Desmarcar Todos'
         : 'Selecionar Todos';
     }

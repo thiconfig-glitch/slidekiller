@@ -259,8 +259,9 @@ async function buildSermonPptx(slidesData, bgImagePath, outputFilePath) {
   const rawBuffer = await pptx.write({ outputType: 'nodebuffer' });
   try {
     const zip = await JSZip.loadAsync(rawBuffer);
-    if (zip.file('ppt/theme/theme1.xml')) {
-      let themeXml = await zip.file('ppt/theme/theme1.xml').async('text');
+    const themeFile = zip.file('ppt/theme/theme1.xml');
+    if (themeFile && typeof themeFile.async === 'function') {
+      let themeXml = await themeFile.async('text');
       themeXml = themeXml.replace(/<a:latin typeface="[^"]*"/g, '<a:latin typeface="Bahnschrift SemiBold Condensed"');
       zip.file('ppt/theme/theme1.xml', themeXml);
     }
@@ -271,23 +272,26 @@ async function buildSermonPptx(slidesData, bgImagePath, outputFilePath) {
     if (fontToUse) {
       const fontBuf = fs.readFileSync(fontToUse);
       zip.file('ppt/fonts/font1.fntdata', fontBuf);
-      if (zip.file('[Content_Types].xml')) {
-        let ct = await zip.file('[Content_Types].xml').async('text');
+      const ctFile = zip.file('[Content_Types].xml');
+      if (ctFile && typeof ctFile.async === 'function') {
+        let ct = await ctFile.async('text');
         if (!ct.includes('Extension="fntdata"')) {
           ct = ct.replace('</Types>', '<Default Extension="fntdata" ContentType="application/x-fontdata"/></Types>');
           zip.file('[Content_Types].xml', ct);
         }
       }
-      if (zip.file('ppt/_rels/presentation.xml.rels')) {
-        let rels = await zip.file('ppt/_rels/presentation.xml.rels').async('text');
+      const relsFile = zip.file('ppt/_rels/presentation.xml.rels');
+      if (relsFile && typeof relsFile.async === 'function') {
+        let rels = await relsFile.async('text');
         if (!rels.includes('rIdFontBahnschrift')) {
           const rel = '<Relationship Id="rIdFontBahnschrift" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/font" Target="fonts/font1.fntdata"/>';
           rels = rels.replace('</Relationships>', rel + '</Relationships>');
           zip.file('ppt/_rels/presentation.xml.rels', rels);
         }
       }
-      if (zip.file('ppt/presentation.xml')) {
-        let pres = await zip.file('ppt/presentation.xml').async('text');
+      const presFile = zip.file('ppt/presentation.xml');
+      if (presFile && typeof presFile.async === 'function') {
+        let pres = await presFile.async('text');
         if (!pres.includes('embeddedFontLst')) {
           const embedded = '<p:embeddedFontLst>' +
             '<p:embeddedFont>' +
