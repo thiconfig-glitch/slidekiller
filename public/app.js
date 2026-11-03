@@ -57,6 +57,72 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let currentActiveModule = 'slidekiller';
 
+  // Conjuntos de seleção em lote compartilhados
+  // selectedDirectSlideIds definido no escopo principal
+  // selectedImageSlideIds definido no escopo principal
+
+  // ==========================================
+  // BARRA FLUTUANTE DE SELEÇÃO EM LOTE (OVERLAY)
+  // ==========================================
+  const selectionFloatingBar = document.getElementById('selectionFloatingBar');
+  const selectionBarCount = document.getElementById('selection-bar-count');
+  const selectionBarText = document.getElementById('selection-bar-text');
+  const selectionBarDeleteLabel = document.getElementById('selection-bar-delete-label');
+  const selectionBarBtnCancel = document.getElementById('selection-bar-btn-cancel');
+  const selectionBarBtnDelete = document.getElementById('selection-bar-btn-delete');
+
+  function updateSelectionFloatingBar() {
+    if (!selectionFloatingBar) return;
+
+    let count = 0;
+    if (currentActiveModule === 'pdf-to-pptx') {
+      count = (typeof selectedDirectSlideIds !== 'undefined' && selectedDirectSlideIds) ? selectedDirectSlideIds.size : 0;
+    } else if (currentActiveModule === 'images-to-pptx') {
+      count = (typeof selectedImageSlideIds !== 'undefined' && selectedImageSlideIds) ? selectedImageSlideIds.size : 0;
+    }
+
+    if (count > 0) {
+      if (selectionBarCount) selectionBarCount.textContent = count;
+      if (selectionBarText) selectionBarText.textContent = count === 1 ? 'slide selecionado' : 'slides selecionados';
+      if (selectionBarDeleteLabel) selectionBarDeleteLabel.textContent = `Apagar (${count})`;
+      selectionFloatingBar.style.display = 'flex';
+      requestAnimationFrame(() => {
+        selectionFloatingBar.classList.add('active');
+      });
+    } else {
+      selectionFloatingBar.classList.remove('active');
+      setTimeout(() => {
+        if (!selectionFloatingBar.classList.contains('active')) {
+          selectionFloatingBar.style.display = 'none';
+        }
+      }, 200);
+    }
+  }
+  window.updateSelectionFloatingBar = updateSelectionFloatingBar;
+
+  if (selectionBarBtnCancel) {
+    selectionBarBtnCancel.addEventListener('click', () => {
+      if (currentActiveModule === 'pdf-to-pptx') {
+        if (typeof selectedDirectSlideIds !== 'undefined' && selectedDirectSlideIds) selectedDirectSlideIds.clear();
+        if (typeof renderDirectOrganizer === 'function') renderDirectOrganizer();
+      } else if (currentActiveModule === 'images-to-pptx') {
+        if (typeof selectedImageSlideIds !== 'undefined' && selectedImageSlideIds) selectedImageSlideIds.clear();
+        if (typeof renderImagesOrganizer === 'function') renderImagesOrganizer();
+      }
+      updateSelectionFloatingBar();
+    });
+  }
+
+  if (selectionBarBtnDelete) {
+    selectionBarBtnDelete.addEventListener('click', () => {
+      if (currentActiveModule === 'pdf-to-pptx') {
+        if (typeof deleteSelectedDirectSlides === 'function') deleteSelectedDirectSlides();
+      } else if (currentActiveModule === 'images-to-pptx') {
+        if (typeof deleteSelectedImageSlides === 'function') deleteSelectedImageSlides();
+      }
+    });
+  }
+
   function switchModule(targetModule) {
     if (!targetModule || !moduleViews[targetModule]) return;
     currentActiveModule = targetModule;
