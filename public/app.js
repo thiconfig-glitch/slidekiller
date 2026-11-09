@@ -7123,6 +7123,10 @@ ${sermonText}`;
   const enhanceSlideInfoBadge = document.getElementById('enhance-slide-info-badge');
   const enhanceAiLoading = document.getElementById('enhance-ai-loading');
   const enhanceAiLoadingText = document.getElementById('enhance-ai-loading-text');
+  const enhanceSlidePreviewDom = document.getElementById('enhance-slide-preview-dom');
+  const enhancePreviewDomText = document.getElementById('enhance-preview-dom-text');
+  const enhancePreviewDomRef = document.getElementById('enhance-preview-dom-ref');
+  const enhancePreviewDomRefBox = document.getElementById('enhance-preview-dom-ref-box');
   const enhancePreviewCanvas = document.getElementById('enhance-preview-canvas');
   const btnEnhanceReanalyze = document.getElementById('btn-enhance-reanalyze');
   const enhanceSlideType = document.getElementById('enhance-slide-type');
@@ -7190,11 +7194,8 @@ ${sermonText}`;
       enhanceSlideInfoBadge.textContent = `Slide #${index + 1} de ${totalCount} • Pré-visualização e Ajuste`;
     }
 
-    // Valores iniciais: Fundo Oficial da Bíblia por padrão!
     if (enhanceSlideType) enhanceSlideType.value = 'verse';
-    if (enhanceBgTheme) enhanceBgTheme.value = 'church-official';
     if (enhanceTextAlign) enhanceTextAlign.value = 'left';
-    if (enhanceFontSize) enhanceFontSize.value = 'auto';
 
     modalEnhanceAi.style.display = 'flex';
     renderEnhanceCanvasPreview();
@@ -7402,9 +7403,52 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
   }
 
   // ==========================================
-  // RENDERIZAÇÃO DO PREVIEW FULL HD (1920x1080)
+  // RENDERIZAÇÃO DO PREVIEW OFICIAL (HTML & CANVAS FULL HD)
   // ==========================================
-  function renderEnhanceCanvasPreview() {
+  function updateEnhanceDomPreview(rawText, refText, align, type) {
+    if (!enhanceSlidePreviewDom || !enhancePreviewDomText) return;
+
+    // Converte [HL]...[/HL] para <span class="highlight">...</span> idêntico ao Módulo 1
+    let previewHtml = escapeHtml(rawText).replace(/\[HL\](.*?)\[\/HL\]/gi, '<span class="highlight">$1</span>');
+
+    const fullCleanText = rawText.replace(/\[\/?HL\]/gi, '').trim();
+    let previewFontSize = '16.5px';
+    if (fullCleanText.length <= 80) previewFontSize = '20px';
+    else if (fullCleanText.length <= 140) previewFontSize = '17.5px';
+    else if (fullCleanText.length <= 220) previewFontSize = '15px';
+    else previewFontSize = '13px';
+
+    enhancePreviewDomText.style.fontSize = previewFontSize;
+    enhancePreviewDomText.innerHTML = previewHtml;
+
+    if (enhancePreviewDomRef) {
+      enhancePreviewDomRef.textContent = (refText || '').toUpperCase();
+    }
+    if (enhancePreviewDomRefBox) {
+      enhancePreviewDomRefBox.style.display = refText ? 'block' : 'none';
+    }
+
+    if (align === 'center') {
+      enhanceSlidePreviewDom.classList.add('align-center');
+    } else {
+      enhanceSlidePreviewDom.classList.remove('align-center');
+    }
+  }
+
+  async function renderEnhanceCanvasPreview() {
+    const rawText = enhanceTextInput ? enhanceTextInput.value.trim() : '';
+    const refText = enhanceRefInput ? enhanceRefInput.value.trim() : '';
+    const align = enhanceTextAlign ? enhanceTextAlign.value : 'left';
+    const type = enhanceSlideType ? enhanceSlideType.value : 'verse';
+
+    if (enhanceRefBox) {
+      enhanceRefBox.style.display = type === 'verse' ? 'block' : 'none';
+    }
+
+    // 1. Atualiza na hora o preview visual DOM (idêntico ao Módulo 1)
+    updateEnhanceDomPreview(rawText, refText, align, type);
+
+    // 2. Renderiza o Canvas 1920x1080 Full HD fiel ao sermon_slide_engine.js
     if (!enhancePreviewCanvas) return;
     const ctx = enhancePreviewCanvas.getContext('2d');
     if (!ctx) return;
@@ -7414,39 +7458,12 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
     enhancePreviewCanvas.width = w;
     enhancePreviewCanvas.height = h;
 
-    const type = enhanceSlideType ? enhanceSlideType.value : 'verse';
-    const theme = enhanceBgTheme ? enhanceBgTheme.value : 'dark-cinema';
-    const refText = enhanceRefInput ? enhanceRefInput.value.trim() : '';
-    const rawText = enhanceTextInput ? enhanceTextInput.value.trim() : '';
-    const align = enhanceTextAlign ? enhanceTextAlign.value : 'left';
-    const fontSizeChoice = enhanceFontSize ? enhanceFontSize.value : 'auto';
-
-    if (enhanceRefBox) {
-      enhanceRefBox.style.display = type === 'verse' ? 'block' : 'none';
-    }
-
-    // 1. Desenhar Fundo
-    if (theme === 'church-official') {
-      if (defaultChurchBgImage && defaultChurchBgImage.complete && defaultChurchBgImage.naturalWidth > 0) {
-        ctx.drawImage(defaultChurchBgImage, 0, 0, w, h);
-      } else {
-        const grad = ctx.createLinearGradient(0, 0, w, h);
-        grad.addColorStop(0, '#1a130b');
-        grad.addColorStop(0.5, '#0d0905');
-        grad.addColorStop(1, '#050302');
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, w, h);
-
-        loadDefaultChurchBgImage().then(img => {
-          if (img && enhanceBgTheme && enhanceBgTheme.value === 'church-official') {
-            renderEnhanceCanvasPreview();
-          }
-        });
-      }
-    } else if (theme === 'black') {
-      ctx.fillStyle = '#000000';
-      ctx.fillRect(0, 0, w, h);
-    } else if (theme === 'bible-dark') {
+    // Fundo oficial da Bíblia sagrada da igreja
+    const bgImg = await loadDefaultChurchBgImage();
+    if (bgImg && bgImg.complete && bgImg.naturalWidth > 0) {
+      ctx.drawImage(bgImg, 0, 0, w, h);
+    } else {
+      // Se a imagem ainda estiver carregando, faz fallback e re-renderiza quando pronta
       const grad = ctx.createLinearGradient(0, 0, w, h);
       grad.addColorStop(0, '#1a130b');
       grad.addColorStop(0.5, '#0d0905');
@@ -7454,27 +7471,12 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, w, h);
 
-      // Moldura fina dourada suave
-      ctx.strokeStyle = 'rgba(232, 184, 89, 0.18)';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(60, 60, w - 120, h - 120);
-    } else if (theme === 'blue-subtle') {
-      const grad = ctx.createLinearGradient(0, 0, 0, h);
-      grad.addColorStop(0, '#0c1a33');
-      grad.addColorStop(1, '#030712');
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, w, h);
-    } else {
-      // dark-cinema
-      const grad = ctx.createRadialGradient(w / 2, h / 2, 250, w / 2, h / 2, 1150);
-      grad.addColorStop(0, '#171f2e');
-      grad.addColorStop(0.65, '#0a0e16');
-      grad.addColorStop(1, '#020407');
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, w, h);
+      loadDefaultChurchBgImage().then(img => {
+        if (img) renderEnhanceCanvasPreview();
+      });
     }
 
-    // 2. Parse do Texto em Runs ([HL]...[/HL])
+    // Parse de Runs ([HL]...[/HL])
     const segments = [];
     const hlRegex = /\[HL\](.*?)\[\/HL\]/gi;
     let lastIdx = 0;
@@ -7493,7 +7495,6 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
       segments.push({ text: rawText, highlight: false });
     }
 
-    // Converte segments em tokens de palavras preservando tags
     const words = [];
     segments.forEach(seg => {
       const parts = seg.text.split(/(\s+)/);
@@ -7504,45 +7505,28 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
       });
     });
 
-    // 3. Determinar Tamanho da Fonte
     const totalChars = rawText.replace(/\[\/?HL\]/gi, '').length;
     let fontSize = 54;
-    let lineHeight = 78;
-
-    if (fontSizeChoice === 'huge') {
-      fontSize = 72;
-      lineHeight = 100;
-    } else if (fontSizeChoice === 'large') {
+    let lineHeight = 76;
+    if (totalChars <= 80) {
+      fontSize = 68;
+      lineHeight = 94;
+    } else if (totalChars <= 140) {
       fontSize = 60;
       lineHeight = 84;
-    } else if (fontSizeChoice === 'medium') {
-      fontSize = 50;
-      lineHeight = 70;
-    } else if (fontSizeChoice === 'compact') {
-      fontSize = 40;
-      lineHeight = 58;
+    } else if (totalChars <= 200) {
+      fontSize = 54;
+      lineHeight = 76;
     } else {
-      // auto
-      if (totalChars <= 75) {
-        fontSize = 68;
-        lineHeight = 94;
-      } else if (totalChars <= 140) {
-        fontSize = 58;
-        lineHeight = 82;
-      } else if (totalChars <= 220) {
-        fontSize = 50;
-        lineHeight = 72;
-      } else {
-        fontSize = 42;
-        lineHeight = 60;
-      }
+      fontSize = 48;
+      lineHeight = 68;
     }
 
-    const fontStyle = `bold ${fontSize}px "Montserrat", "Bahnschrift", "Inter", sans-serif`;
-    ctx.font = fontStyle;
+    const churchFont = `bold ${fontSize}px "Bahnschrift SemiBold Condensed", "Bahnschrift", "Roboto Condensed", "Arial Narrow", sans-serif`;
+    ctx.font = churchFont;
 
-    // 4. Quebra de Linhas Inteligente
-    const marginSide = 140;
+    // Margens simétricas oficiais (0.9" de 13.333" = ~130px de cada lado)
+    const marginSide = 130;
     const maxContentWidth = w - (marginSide * 2);
     const lines = [];
     let currentLine = [];
@@ -7561,7 +7545,6 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
       }
 
       if (currentLineWidth + tokenWidth > maxContentWidth && currentLine.length > 0) {
-        // Encerra linha atual
         lines.push({ items: currentLine, width: currentLineWidth });
         currentLine = [token];
         currentLineWidth = tokenWidth;
@@ -7574,20 +7557,10 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
       lines.push({ items: currentLine, width: currentLineWidth });
     }
 
-    // 5. Posicionamento Vertical
+    // Posição vertical: centralizado na área de 160px a 820px (altura 660px)
     const totalTextHeight = lines.length * lineHeight;
-    let startY = 240;
+    let startY = 160 + Math.max(10, (660 - totalTextHeight) / 2) + (fontSize * 0.85);
 
-    if (type === 'verse') {
-      // Área de texto entre Y = 100 e Y = 860 (760px)
-      const availableArea = 760;
-      startY = 100 + Math.max(20, (availableArea - totalTextHeight) / 2) + (fontSize * 0.85);
-    } else {
-      // Tópico/Frase centralizada
-      startY = Math.max(180, (h - totalTextHeight) / 2) + (fontSize * 0.85);
-    }
-
-    // 6. Desenhar Texto das Linhas
     ctx.textBaseline = 'alphabetic';
 
     lines.forEach((lineObj, lineIdx) => {
@@ -7595,7 +7568,6 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
       let curX = marginSide;
 
       if (align === 'center') {
-        // Remove espaços do cálculo de centralização
         let visualWidth = 0;
         lineObj.items.forEach(it => { visualWidth += ctx.measureText(it.text).width; });
         curX = (w - visualWidth) / 2;
@@ -7605,14 +7577,13 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
         const tokenW = ctx.measureText(token.text).width;
         if (!token.isSpace) {
           ctx.save();
-          // Sombra de alto contraste para telão de culto
-          ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
-          ctx.shadowBlur = 12;
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
+          ctx.shadowBlur = 10;
           ctx.shadowOffsetX = 2;
           ctx.shadowOffsetY = 4;
 
           if (token.highlight) {
-            ctx.fillStyle = '#E8B859'; // Dourado igreja
+            ctx.fillStyle = '#E8B859';
           } else {
             ctx.fillStyle = '#FFFFFF';
           }
@@ -7624,51 +7595,24 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
       });
     });
 
-    // 7. Desenhar Referência Bíblica (Rodapé ou Topo)
-    if (refText) {
+    // Referência Bíblica no Rodapé (idêntico ao PptxGenJS / Módulo 1)
+    if (refText && type === 'verse') {
       ctx.save();
-      if (type === 'verse') {
-        const refY = 960;
-        ctx.font = 'bold 30px "Montserrat", "Bahnschrift", "Inter", sans-serif';
-        const displayRef = refText.toUpperCase();
+      const refY = 920;
+      ctx.font = 'bold 44px "Bahnschrift SemiBold Condensed", "Bahnschrift", "Roboto Condensed", "Arial Narrow", sans-serif';
+      ctx.fillStyle = '#E8B859';
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
+      ctx.shadowBlur = 8;
+      ctx.shadowOffsetX = 2;
+      ctx.shadowOffsetY = 3;
 
-        if (align === 'center') {
-          // Traço decorativo dourado centralizado
-          ctx.fillStyle = '#E8B859';
-          ctx.fillRect((w - 50) / 2, refY - 42, 50, 4);
-
-          ctx.textAlign = 'center';
-          ctx.fillStyle = '#E2E8F0';
-          ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-          ctx.shadowBlur = 8;
-          ctx.shadowOffsetX = 1;
-          ctx.shadowOffsetY = 3;
-          ctx.fillText(displayRef, w / 2, refY);
-        } else {
-          // Traço decorativo dourado alinhado à esquerda
-          ctx.fillStyle = '#E8B859';
-          ctx.fillRect(marginSide, refY - 42, 50, 4);
-
-          ctx.textAlign = 'left';
-          ctx.fillStyle = '#E2E8F0';
-          ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-          ctx.shadowBlur = 8;
-          ctx.shadowOffsetX = 1;
-          ctx.shadowOffsetY = 3;
-          ctx.fillText(displayRef, marginSide, refY);
-        }
+      const displayRef = refText.toUpperCase();
+      if (align === 'center') {
+        ctx.textAlign = 'center';
+        ctx.fillText(displayRef, w / 2, refY);
       } else {
-        // Tópico: Categoria/Referência no topo
-        const refY = 130;
-        ctx.font = 'bold 24px "Montserrat", "Bahnschrift", "Inter", sans-serif';
-        const displayRef = refText.toUpperCase();
-
-        ctx.fillStyle = '#E8B859';
-        ctx.textAlign = align === 'center' ? 'center' : 'left';
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-        ctx.shadowBlur = 6;
-        const targetX = align === 'center' ? (w / 2) : marginSide;
-        ctx.fillText(displayRef, targetX, refY);
+        ctx.textAlign = 'left';
+        ctx.fillText(displayRef, marginSide, refY);
       }
       ctx.restore();
     }
@@ -7678,9 +7622,7 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
   if (enhanceTextInput) enhanceTextInput.addEventListener('input', renderEnhanceCanvasPreview);
   if (enhanceRefInput) enhanceRefInput.addEventListener('input', renderEnhanceCanvasPreview);
   if (enhanceSlideType) enhanceSlideType.addEventListener('change', renderEnhanceCanvasPreview);
-  if (enhanceBgTheme) enhanceBgTheme.addEventListener('change', renderEnhanceCanvasPreview);
   if (enhanceTextAlign) enhanceTextAlign.addEventListener('change', renderEnhanceCanvasPreview);
-  if (enhanceFontSize) enhanceFontSize.addEventListener('change', renderEnhanceCanvasPreview);
 
   // Botões de Formatação Rápida do Texto
   if (btnEnhanceHighlight) {
