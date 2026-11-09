@@ -1037,6 +1037,145 @@ texto exemplo ii eii
       </div>
     </div>
 
+    <!-- Modal Melhorar Slide com IA -->
+    <div id="modalEnhanceAi" class="modal-enhance-ai-overlay" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.85); z-index:10000; align-items:center; justify-content:center; backdrop-filter:blur(6px); padding:12px; box-sizing:border-box;">
+      <div class="modal-enhance-ai-card" style="background:var(--bg-card, #121824); border:1px solid rgba(232, 184, 89, 0.4); border-radius:16px; padding:20px; max-width:860px; width:100%; box-shadow:0 25px 60px rgba(0,0,0,0.85); max-height:94vh; overflow-y:auto; display:flex; flex-direction:column; gap:14px;">
+        
+        <!-- Topo -->
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:10px;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span style="font-size:22px;">✨</span>
+            <div>
+              <h3 style="margin:0; font-size:17px; font-weight:700; color:#FFFFFF;">Melhorar Slide com IA</h3>
+              <span id="enhance-slide-info-badge" style="font-size:11px; color:#A0AEC0;">Lâmina #1 • Pré-visualização e Ajuste</span>
+            </div>
+          </div>
+          <button type="button" class="btn-clear" id="btn-close-enhance-modal" style="font-size:20px; color:#A0AEC0; cursor:pointer; background:none; border:none; padding:4px 8px;">✖</button>
+        </div>
+
+        <!-- Banner de Status / Loading da IA -->
+        <div id="enhance-ai-loading" style="display:none; background:rgba(232, 184, 89, 0.12); border:1px solid rgba(232, 184, 89, 0.35); border-radius:8px; padding:10px 14px; align-items:center; gap:10px;">
+          <div class="spinner-small" style="width:18px; height:18px; border:2px solid rgba(232,184,89,0.3); border-top-color:#E8B859; border-radius:50%; animation:spin 0.8s linear infinite;"></div>
+          <span id="enhance-ai-loading-text" style="font-size:12px; color:#E8B859; font-weight:600;">IA Gemini Vision analisando slide e identificando versículo...</span>
+        </div>
+
+        <!-- Seção Principal: Grid Responsivo com Preview e Edição -->
+        <div class="enhance-modal-grid" style="display:grid; grid-template-columns: minmax(280px, 1.15fr) minmax(280px, 1fr); gap:16px;">
+          
+          <!-- Coluna Esquerda: Preview 16:9 em Tempo Real -->
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span style="font-size:12px; font-weight:600; color:#E8B859; text-transform:uppercase; letter-spacing:0.5px;">Pré-visualização (16:9 Telão)</span>
+              <span style="font-size:10px; background:rgba(255,255,255,0.08); padding:2px 6px; border-radius:4px; color:#A0AEC0;">Full HD 1920x1080</span>
+            </div>
+
+            <!-- Canvas Container -->
+            <div style="position:relative; width:100%; aspect-ratio:16/9; background:#000; border-radius:8px; overflow:hidden; border:1px solid rgba(255,255,255,0.15); box-shadow:0 10px 25px rgba(0,0,0,0.5);">
+              <canvas id="enhance-preview-canvas" width="1920" height="1080" style="width:100%; height:100%; object-fit:contain; display:block;"></canvas>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; color:#718096;">
+              <span>💡 Ajuste os campos ao lado para atualizar</span>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-enhance-reanalyze" style="padding:4px 8px; font-size:11px;">
+                🔄 Reanalisar com IA
+              </button>
+            </div>
+          </div>
+
+          <!-- Coluna Direita: Controles e Edição Livre -->
+          <div style="display:flex; flex-direction:column; gap:10px;">
+            
+            <!-- Tipo de Conteúdo e Tema -->
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+              <div>
+                <label style="font-size:11px; font-weight:600; color:#A0AEC0; display:block; margin-bottom:4px;">Tipo de Slide:</label>
+                <select id="enhance-slide-type" class="form-select" style="width:100%; height:34px; font-size:12px;">
+                  <option value="verse">📖 Versículo Bíblico</option>
+                  <option value="topic">📌 Tópico / Frase</option>
+                </select>
+              </div>
+              <div>
+                <label style="font-size:11px; font-weight:600; color:#A0AEC0; display:block; margin-bottom:4px;">Estilo de Fundo:</label>
+                <select id="enhance-bg-theme" class="form-select" style="width:100%; height:34px; font-size:12px;">
+                  <option value="dark-cinema">🎬 Dark Cinema (Vignette)</option>
+                  <option value="black">⚫ Preto Puro (OLED / Telão)</option>
+                  <option value="bible-dark">📖 Bíblia Escura Sutil</option>
+                  <option value="blue-subtle">🌌 Azul Noturno Elegante</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Referência Bíblica -->
+            <div id="enhance-ref-box">
+              <label style="font-size:11px; font-weight:600; color:#A0AEC0; display:block; margin-bottom:4px;">Referência Bíblica:</label>
+              <div style="display:flex; gap:6px;">
+                <input type="text" id="enhance-ref-input" placeholder="Ex: Lucas 6:24 (ARA)" class="form-select" style="flex:1; height:34px; font-size:12px; font-weight:600; padding:0 8px;" />
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-enhance-fetch-verse" style="height:34px; padding:0 10px; font-size:11px;" title="Buscar texto oficial na bíblia">
+                  🔍 Buscar
+                </button>
+              </div>
+            </div>
+
+            <!-- Toolbar de Formatação do Texto -->
+            <div>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                <label style="font-size:11px; font-weight:600; color:#A0AEC0; margin:0;">Texto do Slide:</label>
+                <div style="display:flex; gap:4px;">
+                  <button type="button" class="btn btn-outline-gold btn-sm" id="btn-enhance-highlight" style="padding:2px 8px; font-size:11px;" title="Destacar palavra selecionada em dourado">
+                    ⭐ [HL] Dourado
+                  </button>
+                  <button type="button" class="btn btn-secondary btn-sm" id="btn-enhance-quotes" style="padding:2px 6px; font-size:11px;" title="Adicionar ou remover aspas">
+                    “ ” Aspas
+                  </button>
+                  <button type="button" class="btn btn-secondary btn-sm" id="btn-enhance-clear-tags" style="padding:2px 6px; font-size:11px;" title="Remover destaques">
+                    Limpar
+                  </button>
+                </div>
+              </div>
+
+              <textarea id="enhance-text-input" rows="4" class="form-select" style="width:100%; box-sizing:border-box; font-family:'Inter', sans-serif; font-size:13px; line-height:1.4; padding:8px; resize:vertical;" placeholder="Digite o texto do versículo ou frase. Use [HL]palavra[/HL] para destaque dourado."></textarea>
+            </div>
+
+            <!-- Alinhamento & Tamanho da Fonte -->
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+              <div>
+                <label style="font-size:11px; font-weight:600; color:#A0AEC0; display:block; margin-bottom:4px;">Alinhamento:</label>
+                <select id="enhance-text-align" class="form-select" style="width:100%; height:32px; font-size:12px;">
+                  <option value="left">Alinhado à Esquerda</option>
+                  <option value="center">Centralizado</option>
+                </select>
+              </div>
+              <div>
+                <label style="font-size:11px; font-weight:600; color:#A0AEC0; display:block; margin-bottom:4px;">Tamanho do Texto:</label>
+                <select id="enhance-font-size" class="form-select" style="width:100%; height:32px; font-size:12px;">
+                  <option value="auto">Automático (Inteligente)</option>
+                  <option value="huge">Gigante</option>
+                  <option value="large">Grande</option>
+                  <option value="medium">Médio</option>
+                  <option value="compact">Compacto</option>
+                </select>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Rodapé / Ações -->
+        <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid rgba(255,255,255,0.08); padding-top:12px; flex-wrap:wrap; gap:8px;">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-enhance-modal">Cancelar</button>
+          <div style="display:flex; gap:8px;">
+            <button type="button" class="btn btn-secondary" id="btn-enhance-insert-as-new" title="Mantém o slide original e insere o novo logo depois">
+              ➕ Inserir como Novo
+            </button>
+            <button type="button" class="btn btn-primary" id="btn-enhance-apply-replace" style="background:linear-gradient(135deg, #E8B859, #D49D35); color:#000; font-weight:700; border:none; box-shadow:0 4px 14px rgba(232,184,89,0.4);">
+              ✨ Substituir Slide Atual
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
     <!-- Modal / Toast de Notificação -->
     
     <div id="toast" class="toast"></div>
@@ -1057,6 +1196,13 @@ texto exemplo ii eii
         <button type="button" class="sheet-close-btn" id="btn-close-slide-sheet" aria-label="Fechar">&times;</button>
       </div>
       <div class="sheet-actions-list">
+        <button type="button" class="sheet-action-btn sheet-btn-ai" id="sheet-btn-enhance-ai">
+          <span class="sheet-action-icon">✨</span>
+          <div class="sheet-action-content">
+            <strong style="color:#E8B859;">Melhorar com IA</strong>
+            <span>Detectar versículo e recriar com layout profissional</span>
+          </div>
+        </button>
         <button type="button" class="sheet-action-btn" id="sheet-btn-replace">
           <span class="sheet-action-icon">🔄</span>
           <div class="sheet-action-content">

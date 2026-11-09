@@ -222,6 +222,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const slideActionSheetOverlay = document.getElementById('slideActionSheet');
   const btnCloseSlideSheet = document.getElementById('btn-close-slide-sheet');
+  const sheetBtnEnhanceAi = document.getElementById('sheet-btn-enhance-ai');
   const sheetBtnReplace = document.getElementById('sheet-btn-replace');
   const sheetBtnInsertAfter = document.getElementById('sheet-btn-insert-after');
   const sheetBtnDlScreen = document.getElementById('sheet-btn-dl-screen');
@@ -236,6 +237,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (btnCloseSlideSheet) {
     btnCloseSlideSheet.addEventListener('click', closeSlideActionSheet);
+  }
+
+  if (sheetBtnEnhanceAi) {
+    sheetBtnEnhanceAi.addEventListener('click', () => {
+      if (activeSheetOptions && activeSheetOptions.onEnhanceAi) {
+        const fn = activeSheetOptions.onEnhanceAi;
+        closeSlideActionSheet();
+        setTimeout(fn, 120);
+      }
+    });
   }
 
   if (sheetBtnReplace) {
@@ -5217,6 +5228,9 @@ ${sermonText}`;
             slide,
             index,
             total: directSlides.length,
+            onEnhanceAi: () => {
+              openEnhanceAiModal(slide, index, 'direct');
+            },
             onReplace: () => {
               if (inputReplace) {
                 inputReplace.value = '';
@@ -6330,6 +6344,9 @@ ${sermonText}`;
             slide,
             index,
             total: imageSlides.length,
+            onEnhanceAi: () => {
+              openEnhanceAiModal(slide, index, 'images');
+            },
             onReplace: () => {
               if (inputReplace) {
                 inputReplace.value = '';
@@ -7094,6 +7111,684 @@ ${sermonText}`;
 
       renderResults();
       showToast('Slides gerados a partir do parágrafo!', 'success');
+    });
+  }
+
+  // ==========================================
+  // MELHORAR SLIDE COM IA (MODAL INTERATIVO & PREVIEW FULL HD)
+  // ==========================================
+  const modalEnhanceAi = document.getElementById('modalEnhanceAi');
+  const btnCloseEnhanceModal = document.getElementById('btn-close-enhance-modal');
+  const btnCancelEnhanceModal = document.getElementById('btn-cancel-enhance-modal');
+  const enhanceSlideInfoBadge = document.getElementById('enhance-slide-info-badge');
+  const enhanceAiLoading = document.getElementById('enhance-ai-loading');
+  const enhanceAiLoadingText = document.getElementById('enhance-ai-loading-text');
+  const enhancePreviewCanvas = document.getElementById('enhance-preview-canvas');
+  const btnEnhanceReanalyze = document.getElementById('btn-enhance-reanalyze');
+  const enhanceSlideType = document.getElementById('enhance-slide-type');
+  const enhanceBgTheme = document.getElementById('enhance-bg-theme');
+  const enhanceRefBox = document.getElementById('enhance-ref-box');
+  const enhanceRefInput = document.getElementById('enhance-ref-input');
+  const btnEnhanceFetchVerse = document.getElementById('btn-enhance-fetch-verse');
+  const btnEnhanceHighlight = document.getElementById('btn-enhance-highlight');
+  const btnEnhanceQuotes = document.getElementById('btn-enhance-quotes');
+  const btnEnhanceClearTags = document.getElementById('btn-enhance-clear-tags');
+  const enhanceTextInput = document.getElementById('enhance-text-input');
+  const enhanceTextAlign = document.getElementById('enhance-text-align');
+  const enhanceFontSize = document.getElementById('enhance-font-size');
+  const btnEnhanceInsertAsNew = document.getElementById('btn-enhance-insert-as-new');
+  const btnEnhanceApplyReplace = document.getElementById('btn-enhance-apply-replace');
+
+  let activeEnhanceTarget = null; // { slide, index, organizerType: 'direct'|'images' }
+
+  function closeEnhanceModal() {
+    if (modalEnhanceAi) {
+      modalEnhanceAi.style.display = 'none';
+    }
+    activeEnhanceTarget = null;
+  }
+
+  if (btnCloseEnhanceModal) btnCloseEnhanceModal.addEventListener('click', closeEnhanceModal);
+  if (btnCancelEnhanceModal) btnCancelEnhanceModal.addEventListener('click', closeEnhanceModal);
+
+  function openEnhanceAiModal(slide, index, organizerType) {
+    if (!modalEnhanceAi) return;
+
+    activeEnhanceTarget = { slide, index, organizerType };
+    const totalCount = organizerType === 'direct' ? directSlides.length : imageSlides.length;
+
+    if (enhanceSlideInfoBadge) {
+      enhanceSlideInfoBadge.textContent = `Slide #${index + 1} de ${totalCount} • Pré-visualização e Ajuste`;
+    }
+
+    // Valores iniciais seguros
+    if (enhanceSlideType) enhanceSlideType.value = 'verse';
+    if (enhanceBgTheme) enhanceBgTheme.value = 'dark-cinema';
+    if (enhanceTextAlign) enhanceTextAlign.value = 'left';
+    if (enhanceFontSize) enhanceFontSize.value = 'auto';
+
+    modalEnhanceAi.style.display = 'flex';
+    renderEnhanceCanvasPreview();
+
+    // Dispara a leitura multimodal com IA
+    analyzeSlideWithAi(slide);
+  }
+
+  // Redimensiona/comprime imagem para envio rápido para a API Gemini Vision
+  async function prepareImageBase64ForAi(imgSrc) {
+    return new Promise((resolve) => {
+      if (!imgSrc) return resolve(null);
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        let maxW = 1280;
+        let maxH = 720;
+        let w = img.width;
+        let h = img.height;
+        if (w > maxW || h > maxH) {
+          const ratio = Math.min(maxW / w, maxH / h);
+          w = Math.round(w * ratio);
+          h = Math.round(h * ratio);
+        }
+        const cv = document.createElement('canvas');
+        cv.width = w;
+        cv.height = h;
+        const ctx = cv.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        const dataUrl = cv.toDataURL('image/jpeg', 0.85);
+        const parts = dataUrl.split(',');
+        resolve({
+          mimeType: 'image/jpeg',
+          base64: parts[1] || ''
+        });
+      };
+      img.onerror = () => {
+        // Fallback: se já for dataURL puro
+        if (imgSrc.startsWith('data:')) {
+          const mimeMatch = imgSrc.match(/^data:(.*?);base64,/);
+          const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+          const base64 = imgSrc.split(',')[1] || '';
+          resolve({ mimeType, base64 });
+        } else {
+          resolve(null);
+        }
+      };
+      img.src = imgSrc;
+    });
+  }
+
+  async function analyzeSlideWithAi(slide) {
+    if (!slide) return;
+    const imgSrc = slide.imgData || slide.dataUrl;
+
+    if (enhanceAiLoading) {
+      enhanceAiLoading.style.display = 'flex';
+      if (enhanceAiLoadingText) {
+        enhanceAiLoadingText.textContent = 'IA Gemini Vision analisando slide e identificando versículo...';
+      }
+    }
+
+    try {
+      const imgData = await prepareImageBase64ForAi(imgSrc);
+      if (!imgData || !imgData.base64) {
+        throw new Error('Não foi possível carregar a imagem do slide.');
+      }
+
+      const defaultKey = atob('QVEuQWI4Uk42Si1lTWMtdVdvWVlpMWpsVGw4WXVvZ3RTajhuTXE2VzdSdVl1Zk8zbi1LcXc=');
+      const apiKey = localStorage.getItem('GEMINI_API_KEY') || defaultKey;
+
+      const prompt = `Você é um assistente especialista em produção de slides de cultos e sermões da igreja.
+Analise a imagem desta lâmina/slide de apresentação.
+Sua missão:
+1. Detectar se é um versículo bíblico ("type": "verse") ou frase/tópico de sermão ("type": "topic").
+2. Se for versículo bíblico:
+   - "reference": Identifique o Livro, Capítulo e Versículo canônico (ex: "Lucas 6:24", "João 3:16", "Romanos 8:28"). Mesmo que a referência não esteja escrita ou esteja abreviada, deduza pelo texto bíblico canônico.
+   - "text": O texto bíblico exato e limpo da passagem (sem a referência embutida e sem números soltos).
+   - "highlights": De 2 a 4 termos ou palavras-chave de maior ênfase para destaque dourado na projeção (ex: ["ai de vós", "ricos", "consolação"]).
+3. Se for tópico/título:
+   - "reference": Título se houver (ou deixe vazio se não houver).
+   - "text": O texto da frase ou tópico.
+   - "highlights": Palavras-chave principais para destaque.
+
+Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
+{
+  "type": "verse",
+  "reference": "Lucas 6:24",
+  "text": "Mas ai de vós, ricos! Porque já tendes a vossa consolação.",
+  "highlights": ["ai de vós", "ricos"]
+}`;
+
+      const parts = [
+        {
+          inline_data: {
+            mime_type: imgData.mimeType,
+            data: imgData.base64
+          }
+        },
+        { text: prompt }
+      ];
+
+      const models = [
+        'gemini-2.5-flash',
+        'gemini-1.5-flash',
+        'gemini-2.0-flash',
+        'gemini-3.5-flash',
+        'gemini-3.5-flash-lite',
+        'gemini-flash-latest'
+      ];
+
+      let jsonResult = null;
+
+      for (const model of models) {
+        try {
+          if (enhanceAiLoadingText) {
+            enhanceAiLoadingText.textContent = `Consultando modelo de IA (${model})...`;
+          }
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 20000);
+
+          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+            method: 'POST',
+            signal: controller.signal,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts }],
+              generationConfig: {
+                temperature: 0.1,
+                responseMimeType: 'application/json'
+              }
+            })
+          });
+          clearTimeout(timeoutId);
+
+          const data = await res.json();
+          if (data && data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) {
+            const rawText = data.candidates[0].content.parts[0].text;
+            const cleaned = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
+            jsonResult = JSON.parse(cleaned);
+            if (jsonResult) break;
+          }
+        } catch(e) {
+          console.warn(`Tentativa com ${model} falhou:`, e.message);
+        }
+      }
+
+      if (jsonResult) {
+        applyAiResultToModal(jsonResult);
+        showToast('✨ Slide interpretado pela IA com sucesso!', 'success');
+      } else {
+        throw new Error('A IA não conseguiu interpretar a imagem.');
+      }
+    } catch(err) {
+      console.warn('Falha no reconhecimento com IA:', err);
+      if (enhanceRefInput && !enhanceRefInput.value) {
+        enhanceRefInput.value = (slide.title && slide.title.length < 35) ? slide.title : 'Versículo / Tópico';
+      }
+      if (enhanceTextInput && !enhanceTextInput.value) {
+        enhanceTextInput.value = 'Digite o texto do versículo ou frase aqui.';
+      }
+      renderEnhanceCanvasPreview();
+      showToast('Você pode ajustar os textos manualmente abaixo.', 'info');
+    } finally {
+      if (enhanceAiLoading) {
+        enhanceAiLoading.style.display = 'none';
+      }
+    }
+  }
+
+  function applyAiResultToModal(data) {
+    if (!data) return;
+
+    if (enhanceSlideType) {
+      enhanceSlideType.value = data.type === 'topic' ? 'topic' : 'verse';
+    }
+
+    if (enhanceRefInput) {
+      enhanceRefInput.value = data.reference || '';
+    }
+
+    let cleanText = (data.text || '').trim();
+    const highlights = Array.isArray(data.highlights) ? data.highlights : [];
+
+    // Aplica [HL] nas palavras-chave detectadas
+    if (highlights.length > 0) {
+      highlights.forEach(h => {
+        if (!h || typeof h !== 'string' || h.trim().length === 0) return;
+        const escaped = h.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const reg = new RegExp(`(?<!\\[HL\\])(${escaped})(?!\\[\\/HL\\])`, 'gi');
+        cleanText = cleanText.replace(reg, '[HL]$1[/HL]');
+      });
+    }
+
+    // Se for versículo e não tiver aspas, adiciona aspas
+    if (data.type !== 'topic' && !cleanText.startsWith('“') && !cleanText.startsWith('"')) {
+      cleanText = `“${cleanText}”`;
+    }
+
+    if (enhanceTextInput) {
+      enhanceTextInput.value = cleanText;
+    }
+
+    renderEnhanceCanvasPreview();
+  }
+
+  // ==========================================
+  // RENDERIZAÇÃO DO PREVIEW FULL HD (1920x1080)
+  // ==========================================
+  function renderEnhanceCanvasPreview() {
+    if (!enhancePreviewCanvas) return;
+    const ctx = enhancePreviewCanvas.getContext('2d');
+    if (!ctx) return;
+
+    const w = 1920;
+    const h = 1080;
+    enhancePreviewCanvas.width = w;
+    enhancePreviewCanvas.height = h;
+
+    const type = enhanceSlideType ? enhanceSlideType.value : 'verse';
+    const theme = enhanceBgTheme ? enhanceBgTheme.value : 'dark-cinema';
+    const refText = enhanceRefInput ? enhanceRefInput.value.trim() : '';
+    const rawText = enhanceTextInput ? enhanceTextInput.value.trim() : '';
+    const align = enhanceTextAlign ? enhanceTextAlign.value : 'left';
+    const fontSizeChoice = enhanceFontSize ? enhanceFontSize.value : 'auto';
+
+    if (enhanceRefBox) {
+      enhanceRefBox.style.display = type === 'verse' ? 'block' : 'none';
+    }
+
+    // 1. Desenhar Fundo
+    if (theme === 'black') {
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, w, h);
+    } else if (theme === 'bible-dark') {
+      const grad = ctx.createLinearGradient(0, 0, w, h);
+      grad.addColorStop(0, '#1a130b');
+      grad.addColorStop(0.5, '#0d0905');
+      grad.addColorStop(1, '#050302');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h);
+
+      // Moldura fina dourada suave
+      ctx.strokeStyle = 'rgba(232, 184, 89, 0.18)';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(60, 60, w - 120, h - 120);
+    } else if (theme === 'blue-subtle') {
+      const grad = ctx.createLinearGradient(0, 0, 0, h);
+      grad.addColorStop(0, '#0c1a33');
+      grad.addColorStop(1, '#030712');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h);
+    } else {
+      // dark-cinema
+      const grad = ctx.createRadialGradient(w / 2, h / 2, 250, w / 2, h / 2, 1150);
+      grad.addColorStop(0, '#171f2e');
+      grad.addColorStop(0.65, '#0a0e16');
+      grad.addColorStop(1, '#020407');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h);
+    }
+
+    // 2. Parse do Texto em Runs ([HL]...[/HL])
+    const segments = [];
+    const hlRegex = /\[HL\](.*?)\[\/HL\]/gi;
+    let lastIdx = 0;
+    let m;
+    while ((m = hlRegex.exec(rawText)) !== null) {
+      if (m.index > lastIdx) {
+        segments.push({ text: rawText.substring(lastIdx, m.index), highlight: false });
+      }
+      segments.push({ text: m[1], highlight: true });
+      lastIdx = m.index + m[0].length;
+    }
+    if (lastIdx < rawText.length) {
+      segments.push({ text: rawText.substring(lastIdx), highlight: false });
+    }
+    if (segments.length === 0 && rawText.length > 0) {
+      segments.push({ text: rawText, highlight: false });
+    }
+
+    // Converte segments em tokens de palavras preservando tags
+    const words = [];
+    segments.forEach(seg => {
+      const parts = seg.text.split(/(\s+)/);
+      parts.forEach(p => {
+        if (p.length > 0) {
+          words.push({ text: p, isSpace: /^\s+$/.test(p), highlight: seg.highlight });
+        }
+      });
+    });
+
+    // 3. Determinar Tamanho da Fonte
+    const totalChars = rawText.replace(/\[\/?HL\]/gi, '').length;
+    let fontSize = 54;
+    let lineHeight = 78;
+
+    if (fontSizeChoice === 'huge') {
+      fontSize = 72;
+      lineHeight = 100;
+    } else if (fontSizeChoice === 'large') {
+      fontSize = 60;
+      lineHeight = 84;
+    } else if (fontSizeChoice === 'medium') {
+      fontSize = 50;
+      lineHeight = 70;
+    } else if (fontSizeChoice === 'compact') {
+      fontSize = 40;
+      lineHeight = 58;
+    } else {
+      // auto
+      if (totalChars <= 75) {
+        fontSize = 68;
+        lineHeight = 94;
+      } else if (totalChars <= 140) {
+        fontSize = 58;
+        lineHeight = 82;
+      } else if (totalChars <= 220) {
+        fontSize = 50;
+        lineHeight = 72;
+      } else {
+        fontSize = 42;
+        lineHeight = 60;
+      }
+    }
+
+    const fontStyle = `bold ${fontSize}px "Montserrat", "Bahnschrift", "Inter", sans-serif`;
+    ctx.font = fontStyle;
+
+    // 4. Quebra de Linhas Inteligente
+    const marginSide = 140;
+    const maxContentWidth = w - (marginSide * 2);
+    const lines = [];
+    let currentLine = [];
+    let currentLineWidth = 0;
+
+    for (let i = 0; i < words.length; i++) {
+      const token = words[i];
+      const tokenWidth = ctx.measureText(token.text).width;
+
+      if (token.isSpace) {
+        if (currentLine.length > 0) {
+          currentLine.push(token);
+          currentLineWidth += tokenWidth;
+        }
+        continue;
+      }
+
+      if (currentLineWidth + tokenWidth > maxContentWidth && currentLine.length > 0) {
+        // Encerra linha atual
+        lines.push({ items: currentLine, width: currentLineWidth });
+        currentLine = [token];
+        currentLineWidth = tokenWidth;
+      } else {
+        currentLine.push(token);
+        currentLineWidth += tokenWidth;
+      }
+    }
+    if (currentLine.length > 0) {
+      lines.push({ items: currentLine, width: currentLineWidth });
+    }
+
+    // 5. Posicionamento Vertical
+    const totalTextHeight = lines.length * lineHeight;
+    let startY = 240;
+
+    if (type === 'verse') {
+      // Área de texto entre Y = 100 e Y = 860 (760px)
+      const availableArea = 760;
+      startY = 100 + Math.max(20, (availableArea - totalTextHeight) / 2) + (fontSize * 0.85);
+    } else {
+      // Tópico/Frase centralizada
+      startY = Math.max(180, (h - totalTextHeight) / 2) + (fontSize * 0.85);
+    }
+
+    // 6. Desenhar Texto das Linhas
+    ctx.textBaseline = 'alphabetic';
+
+    lines.forEach((lineObj, lineIdx) => {
+      const lineY = startY + (lineIdx * lineHeight);
+      let curX = marginSide;
+
+      if (align === 'center') {
+        // Remove espaços do cálculo de centralização
+        let visualWidth = 0;
+        lineObj.items.forEach(it => { visualWidth += ctx.measureText(it.text).width; });
+        curX = (w - visualWidth) / 2;
+      }
+
+      lineObj.items.forEach(token => {
+        const tokenW = ctx.measureText(token.text).width;
+        if (!token.isSpace) {
+          ctx.save();
+          // Sombra de alto contraste para telão de culto
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
+          ctx.shadowBlur = 12;
+          ctx.shadowOffsetX = 2;
+          ctx.shadowOffsetY = 4;
+
+          if (token.highlight) {
+            ctx.fillStyle = '#E8B859'; // Dourado igreja
+          } else {
+            ctx.fillStyle = '#FFFFFF';
+          }
+
+          ctx.fillText(token.text, curX, lineY);
+          ctx.restore();
+        }
+        curX += tokenW;
+      });
+    });
+
+    // 7. Desenhar Referência Bíblica (Rodapé ou Topo)
+    if (refText) {
+      ctx.save();
+      if (type === 'verse') {
+        const refY = 960;
+        ctx.font = 'bold 30px "Montserrat", "Bahnschrift", "Inter", sans-serif';
+        const displayRef = refText.toUpperCase();
+
+        if (align === 'center') {
+          // Traço decorativo dourado centralizado
+          ctx.fillStyle = '#E8B859';
+          ctx.fillRect((w - 50) / 2, refY - 42, 50, 4);
+
+          ctx.textAlign = 'center';
+          ctx.fillStyle = '#E2E8F0';
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+          ctx.shadowBlur = 8;
+          ctx.shadowOffsetX = 1;
+          ctx.shadowOffsetY = 3;
+          ctx.fillText(displayRef, w / 2, refY);
+        } else {
+          // Traço decorativo dourado alinhado à esquerda
+          ctx.fillStyle = '#E8B859';
+          ctx.fillRect(marginSide, refY - 42, 50, 4);
+
+          ctx.textAlign = 'left';
+          ctx.fillStyle = '#E2E8F0';
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+          ctx.shadowBlur = 8;
+          ctx.shadowOffsetX = 1;
+          ctx.shadowOffsetY = 3;
+          ctx.fillText(displayRef, marginSide, refY);
+        }
+      } else {
+        // Tópico: Categoria/Referência no topo
+        const refY = 130;
+        ctx.font = 'bold 24px "Montserrat", "Bahnschrift", "Inter", sans-serif';
+        const displayRef = refText.toUpperCase();
+
+        ctx.fillStyle = '#E8B859';
+        ctx.textAlign = align === 'center' ? 'center' : 'left';
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+        ctx.shadowBlur = 6;
+        const targetX = align === 'center' ? (w / 2) : marginSide;
+        ctx.fillText(displayRef, targetX, refY);
+      }
+      ctx.restore();
+    }
+  }
+
+  // Listeners de Redesenho em Tempo Real
+  if (enhanceTextInput) enhanceTextInput.addEventListener('input', renderEnhanceCanvasPreview);
+  if (enhanceRefInput) enhanceRefInput.addEventListener('input', renderEnhanceCanvasPreview);
+  if (enhanceSlideType) enhanceSlideType.addEventListener('change', renderEnhanceCanvasPreview);
+  if (enhanceBgTheme) enhanceBgTheme.addEventListener('change', renderEnhanceCanvasPreview);
+  if (enhanceTextAlign) enhanceTextAlign.addEventListener('change', renderEnhanceCanvasPreview);
+  if (enhanceFontSize) enhanceFontSize.addEventListener('change', renderEnhanceCanvasPreview);
+
+  // Botões de Formatação Rápida do Texto
+  if (btnEnhanceHighlight) {
+    btnEnhanceHighlight.addEventListener('click', () => {
+      if (!enhanceTextInput) return;
+      const start = enhanceTextInput.selectionStart;
+      const end = enhanceTextInput.selectionEnd;
+      const val = enhanceTextInput.value;
+      if (start !== end) {
+        const selected = val.substring(start, end).replace(/\[\/?HL\]/gi, '');
+        const replacement = `[HL]${selected}[/HL]`;
+        enhanceTextInput.value = val.substring(0, start) + replacement + val.substring(end);
+        enhanceTextInput.selectionStart = start;
+        enhanceTextInput.selectionEnd = start + replacement.length;
+      } else {
+        showToast('Selecione uma palavra ou trecho para destacar em dourado.', 'info');
+      }
+      enhanceTextInput.focus();
+      renderEnhanceCanvasPreview();
+    });
+  }
+
+  if (btnEnhanceQuotes) {
+    btnEnhanceQuotes.addEventListener('click', () => {
+      if (!enhanceTextInput) return;
+      let val = enhanceTextInput.value.trim();
+      if ((val.startsWith('“') && val.endsWith('”')) || (val.startsWith('"') && val.endsWith('"'))) {
+        val = val.replace(/^[“”"]|[“”"]$/g, '').trim();
+      } else {
+        val = `“${val}”`;
+      }
+      enhanceTextInput.value = val;
+      enhanceTextInput.focus();
+      renderEnhanceCanvasPreview();
+    });
+  }
+
+  if (btnEnhanceClearTags) {
+    btnEnhanceClearTags.addEventListener('click', () => {
+      if (!enhanceTextInput) return;
+      enhanceTextInput.value = enhanceTextInput.value.replace(/\[\/?HL\]/gi, '');
+      enhanceTextInput.focus();
+      renderEnhanceCanvasPreview();
+    });
+  }
+
+  // Buscar Versículo Oficial na API Bíblica Pública
+  if (btnEnhanceFetchVerse) {
+    btnEnhanceFetchVerse.addEventListener('click', async () => {
+      if (!enhanceRefInput) return;
+      const query = enhanceRefInput.value.trim();
+      if (!query) {
+        showToast('Digite a referência do versículo (ex: Lucas 6:24, João 3:16).', 'error');
+        return;
+      }
+
+      btnEnhanceFetchVerse.disabled = true;
+      btnEnhanceFetchVerse.innerHTML = '⏳...';
+
+      try {
+        const cleanQuery = query.replace(/\s+/g, '+').replace(/salmo\b/i, 'salmos').replace(/cântico\b/i, 'cantares');
+        const res = await fetch(`https://bible-api.com/${encodeURIComponent(cleanQuery)}?translation=almeida`);
+        if (res.ok) {
+          const d = await res.json();
+          if (d && d.text) {
+            let found = d.text.replace(/\s+/g, ' ').trim();
+            if (!found.startsWith('“') && !found.startsWith('"')) found = `“${found}”`;
+            if (enhanceTextInput) enhanceTextInput.value = found;
+            if (d.reference) enhanceRefInput.value = `${d.reference} (Almeida)`;
+            renderEnhanceCanvasPreview();
+            showToast('Texto bíblico atualizado!', 'success');
+          } else {
+            showToast('Passagem não localizada automaticamente.', 'warning');
+          }
+        } else {
+          showToast('Passagem não localizada automaticamente.', 'warning');
+        }
+      } catch(e) {
+        showToast('Erro ao consultar versículo online.', 'warning');
+      } finally {
+        btnEnhanceFetchVerse.disabled = false;
+        btnEnhanceFetchVerse.innerHTML = '🔍 Buscar';
+      }
+    });
+  }
+
+  if (btnEnhanceReanalyze) {
+    btnEnhanceReanalyze.addEventListener('click', () => {
+      if (activeEnhanceTarget && activeEnhanceTarget.slide) {
+        analyzeSlideWithAi(activeEnhanceTarget.slide);
+      }
+    });
+  }
+
+  // Confirmação: Substituir Slide Atual
+  if (btnEnhanceApplyReplace) {
+    btnEnhanceApplyReplace.addEventListener('click', () => {
+      if (!activeEnhanceTarget || !enhancePreviewCanvas) return;
+      const newImgData = enhancePreviewCanvas.toDataURL('image/jpeg', 0.96);
+      const newTitle = enhanceRefInput && enhanceRefInput.value.trim() ? enhanceRefInput.value.trim() : 'Slide Melhorado por IA';
+
+      if (activeEnhanceTarget.organizerType === 'direct') {
+        const targetSlide = directSlides[activeEnhanceTarget.index];
+        if (targetSlide) {
+          targetSlide.imgData = newImgData;
+          targetSlide.dataUrl = newImgData;
+          targetSlide.title = newTitle;
+          targetSlide.enhanced = true;
+          renderDirectOrganizer();
+        }
+      } else {
+        const targetSlide = imageSlides[activeEnhanceTarget.index];
+        if (targetSlide) {
+          targetSlide.imgData = newImgData;
+          targetSlide.dataUrl = newImgData;
+          targetSlide.name = newTitle;
+          targetSlide.enhanced = true;
+          renderImagesOrganizer();
+        }
+      }
+
+      const idxNum = activeEnhanceTarget.index + 1;
+      closeEnhanceModal();
+      showToast(`✨ Slide #${idxNum} recriado e substituído com sucesso!`, 'success');
+    });
+  }
+
+  // Confirmação: Inserir como Novo Slide na sequência
+  if (btnEnhanceInsertAsNew) {
+    btnEnhanceInsertAsNew.addEventListener('click', () => {
+      if (!activeEnhanceTarget || !enhancePreviewCanvas) return;
+      const newImgData = enhancePreviewCanvas.toDataURL('image/jpeg', 0.96);
+      const newTitle = enhanceRefInput && enhanceRefInput.value.trim() ? enhanceRefInput.value.trim() : 'Slide IA';
+
+      const newSlide = {
+        id: 'slide_enh_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+        imgData: newImgData,
+        dataUrl: newImgData,
+        title: newTitle,
+        name: newTitle,
+        type: 'enhanced',
+        enhanced: true
+      };
+
+      if (activeEnhanceTarget.organizerType === 'direct') {
+        directSlides.splice(activeEnhanceTarget.index + 1, 0, newSlide);
+        renderDirectOrganizer();
+      } else {
+        imageSlides.splice(activeEnhanceTarget.index + 1, 0, newSlide);
+        renderImagesOrganizer();
+      }
+
+      closeEnhanceModal();
+      showToast('✨ Novo slide profissional inserido na apresentação!', 'success');
     });
   }
 

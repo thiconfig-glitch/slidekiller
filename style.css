@@ -3174,6 +3174,23 @@ textarea:focus {
   color: #f87171;
 }
 
+.sheet-btn-ai {
+  background: linear-gradient(135deg, rgba(232, 184, 89, 0.12), rgba(147, 51, 234, 0.12));
+  border: 1px solid rgba(232, 184, 89, 0.35);
+}
+
+.sheet-btn-ai:hover,
+.sheet-btn-ai:active {
+  background: linear-gradient(135deg, rgba(232, 184, 89, 0.22), rgba(147, 51, 234, 0.22));
+  border-color: #E8B859;
+}
+
+@media (max-width: 680px) {
+  .enhance-modal-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
 /* Oculta o dropdown flutuante interno para evitar bug de overflow / aumento de imagem */
 .card-dropdown-menu {
   display: none !important;
