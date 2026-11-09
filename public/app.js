@@ -7152,14 +7152,13 @@ ${sermonText}`;
     }
     return new Promise((resolve) => {
       const img = new Image();
-      img.crossOrigin = 'anonymous';
+      // Não definir crossOrigin para caminhos relativos locais, evitando tainted canvas!
       img.onload = () => {
         defaultChurchBgImage = img;
         resolve(img);
       };
       img.onerror = () => {
         const imgPng = new Image();
-        imgPng.crossOrigin = 'anonymous';
         imgPng.onload = () => {
           defaultChurchBgImage = imgPng;
           resolve(imgPng);
@@ -7463,17 +7462,8 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
     if (bgImg && bgImg.complete && bgImg.naturalWidth > 0) {
       ctx.drawImage(bgImg, 0, 0, w, h);
     } else {
-      // Se a imagem ainda estiver carregando, faz fallback e re-renderiza quando pronta
-      const grad = ctx.createLinearGradient(0, 0, w, h);
-      grad.addColorStop(0, '#1a130b');
-      grad.addColorStop(0.5, '#0d0905');
-      grad.addColorStop(1, '#050302');
-      ctx.fillStyle = grad;
+      ctx.fillStyle = '#0b0f19';
       ctx.fillRect(0, 0, w, h);
-
-      loadDefaultChurchBgImage().then(img => {
-        if (img) renderEnhanceCanvasPreview();
-      });
     }
 
     // Parse de Runs ([HL]...[/HL])
@@ -7506,71 +7496,86 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
     });
 
     const totalChars = rawText.replace(/\[\/?HL\]/gi, '').length;
-    let fontSize = 54;
-    let lineHeight = 76;
-    if (totalChars <= 80) {
-      fontSize = 68;
-      lineHeight = 94;
-    } else if (totalChars <= 140) {
-      fontSize = 60;
-      lineHeight = 84;
-    } else if (totalChars <= 200) {
-      fontSize = 54;
-      lineHeight = 76;
+    
+    // Escala cinematográfica oficial da igreja para 1080p (idêntica ao Slide Killer)
+    let fontSize = 108;
+    if (type === 'topic') {
+      if (totalChars < 40) fontSize = 156;
+      else if (totalChars > 90) fontSize = 108;
+      else fontSize = 132;
     } else {
-      fontSize = 48;
-      lineHeight = 68;
+      // Versículo bíblico
+      if (totalChars <= 80) fontSize = 136;
+      else if (totalChars <= 140) fontSize = 120;
+      else if (totalChars <= 200) fontSize = 108;
+      else fontSize = 96;
     }
 
-    const churchFont = `bold ${fontSize}px "Bahnschrift SemiBold Condensed", "Bahnschrift", "Roboto Condensed", "Arial Narrow", sans-serif`;
-    ctx.font = churchFont;
+    const fontCss = '"Bahnschrift SemiBold Condensed", "Bahnschrift", "Roboto Condensed", "Arial Narrow", sans-serif';
+    ctx.font = `bold ${fontSize}px ${fontCss}`;
+    let lineHeight = fontSize * 1.22;
 
     // Margens simétricas oficiais (0.9" de 13.333" = ~130px de cada lado)
-    const marginSide = 130;
-    const maxContentWidth = w - (marginSide * 2);
-    const lines = [];
-    let currentLine = [];
-    let currentLineWidth = 0;
+    const startX = 130;
+    const maxWidth = w - (startX * 2); // 1660px
+    const topLimit = 150;
+    const availableHeight = 690;
 
-    for (let i = 0; i < words.length; i++) {
-      const token = words[i];
-      const tokenWidth = ctx.measureText(token.text).width;
-
-      if (token.isSpace) {
-        if (currentLine.length > 0) {
-          currentLine.push(token);
-          currentLineWidth += tokenWidth;
+    function buildLines(fSize) {
+      ctx.font = `bold ${fSize}px ${fontCss}`;
+      const resLines = [];
+      let curL = [];
+      let curW = 0;
+      for (let i = 0; i < words.length; i++) {
+        const token = words[i];
+        const tokenW = ctx.measureText(token.text).width;
+        if (token.isSpace) {
+          if (curL.length > 0) {
+            curL.push(token);
+            curW += tokenW;
+          }
+          continue;
         }
-        continue;
+        if (curW + tokenW > maxWidth && curL.length > 0) {
+          resLines.push({ items: curL, width: curW });
+          curL = [token];
+          curW = tokenW;
+        } else {
+          curL.push(token);
+          curW += tokenW;
+        }
       }
-
-      if (currentLineWidth + tokenWidth > maxContentWidth && currentLine.length > 0) {
-        lines.push({ items: currentLine, width: currentLineWidth });
-        currentLine = [token];
-        currentLineWidth = tokenWidth;
-      } else {
-        currentLine.push(token);
-        currentLineWidth += tokenWidth;
+      if (curL.length > 0) {
+        resLines.push({ items: curL, width: curW });
       }
-    }
-    if (currentLine.length > 0) {
-      lines.push({ items: currentLine, width: currentLineWidth });
+      return resLines;
     }
 
-    // Posição vertical: centralizado na área de 160px a 820px (altura 660px)
-    const totalTextHeight = lines.length * lineHeight;
-    let startY = 160 + Math.max(10, (660 - totalTextHeight) / 2) + (fontSize * 0.85);
+    let lines = buildLines(fontSize);
+    let totalTextHeight = lines.length * lineHeight;
 
-    ctx.textBaseline = 'alphabetic';
+    // Auto-fit inteligente oficial: reduz suavemente se versículo longo exceder a área útil
+    while (totalTextHeight > availableHeight && fontSize > 64) {
+      fontSize -= 4;
+      lineHeight = fontSize * 1.22;
+      lines = buildLines(fontSize);
+      totalTextHeight = lines.length * lineHeight;
+    }
+
+    // Posição vertical: centralizado na área de 150px a 840px (valign: middle)
+    const startY = topLimit + Math.max(0, (availableHeight - totalTextHeight) / 2);
+
+    ctx.textBaseline = 'top';
+    ctx.textAlign = 'left';
 
     lines.forEach((lineObj, lineIdx) => {
       const lineY = startY + (lineIdx * lineHeight);
-      let curX = marginSide;
+      let curX = startX;
 
       if (align === 'center') {
         let visualWidth = 0;
         lineObj.items.forEach(it => { visualWidth += ctx.measureText(it.text).width; });
-        curX = (w - visualWidth) / 2;
+        curX = Math.round((w - visualWidth) / 2);
       }
 
       lineObj.items.forEach(token => {
@@ -7579,11 +7584,11 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
           ctx.save();
           ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
           ctx.shadowBlur = 10;
-          ctx.shadowOffsetX = 2;
-          ctx.shadowOffsetY = 4;
+          ctx.shadowOffsetX = 3;
+          ctx.shadowOffsetY = 3;
 
           if (token.highlight) {
-            ctx.fillStyle = '#E8B859';
+            ctx.fillStyle = '#E8B859'; // Dourado igreja
           } else {
             ctx.fillStyle = '#FFFFFF';
           }
@@ -7595,16 +7600,18 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
       });
     });
 
-    // Referência Bíblica no Rodapé (idêntico ao PptxGenJS / Módulo 1)
+    // Referência Bíblica SEPARADA no Rodapé (y = 880px, fontSize: 68px, idêntico ao Slide Killer)
     if (refText && type === 'verse') {
       ctx.save();
-      const refY = 920;
-      ctx.font = 'bold 44px "Bahnschrift SemiBold Condensed", "Bahnschrift", "Roboto Condensed", "Arial Narrow", sans-serif';
+      const refY = 880;
+      const refFontSize = 68;
+      ctx.font = `bold ${refFontSize}px ${fontCss}`;
       ctx.fillStyle = '#E8B859';
       ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
       ctx.shadowBlur = 8;
       ctx.shadowOffsetX = 2;
-      ctx.shadowOffsetY = 3;
+      ctx.shadowOffsetY = 2;
+      ctx.textBaseline = 'top';
 
       const displayRef = refText.toUpperCase();
       if (align === 'center') {
@@ -7612,7 +7619,7 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
         ctx.fillText(displayRef, w / 2, refY);
       } else {
         ctx.textAlign = 'left';
-        ctx.fillText(displayRef, marginSide, refY);
+        ctx.fillText(displayRef, startX, refY);
       }
       ctx.restore();
     }
@@ -7719,64 +7726,133 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
 
   // Confirmação: Substituir Slide Atual
   if (btnEnhanceApplyReplace) {
-    btnEnhanceApplyReplace.addEventListener('click', () => {
+    btnEnhanceApplyReplace.addEventListener('click', async () => {
       if (!activeEnhanceTarget || !enhancePreviewCanvas) return;
-      const newImgData = enhancePreviewCanvas.toDataURL('image/jpeg', 0.96);
-      const newTitle = enhanceRefInput && enhanceRefInput.value.trim() ? enhanceRefInput.value.trim() : 'Slide Melhorado por IA';
 
-      if (activeEnhanceTarget.organizerType === 'direct') {
-        const targetSlide = directSlides[activeEnhanceTarget.index];
-        if (targetSlide) {
-          targetSlide.imgData = newImgData;
-          targetSlide.dataUrl = newImgData;
-          targetSlide.title = newTitle;
-          targetSlide.enhanced = true;
-          renderDirectOrganizer();
+      btnEnhanceApplyReplace.disabled = true;
+      btnEnhanceApplyReplace.innerHTML = '⏳ Atualizando slide...';
+
+      try {
+        // 1. Garante renderização no canvas Full HD e aguarda conclusão
+        await renderEnhanceCanvasPreview();
+
+        // 2. Extrai dataURL em alta resolução
+        const newImgData = enhancePreviewCanvas.toDataURL('image/jpeg', 0.95);
+        if (!newImgData || newImgData === 'data:,') {
+          throw new Error('Falha ao gerar imagem do canvas.');
         }
-      } else {
-        const targetSlide = imageSlides[activeEnhanceTarget.index];
-        if (targetSlide) {
-          targetSlide.imgData = newImgData;
-          targetSlide.dataUrl = newImgData;
-          targetSlide.name = newTitle;
-          targetSlide.enhanced = true;
+
+        const newTitle = enhanceRefInput && enhanceRefInput.value.trim() ? enhanceRefInput.value.trim() : 'Slide Bíblico';
+        const targetIndex = activeEnhanceTarget.index;
+        const orgType = activeEnhanceTarget.organizerType;
+
+        // 3. Atualiza o objeto de slide por referência
+        if (activeEnhanceTarget.slide) {
+          activeEnhanceTarget.slide.imgData = newImgData;
+          activeEnhanceTarget.slide.dataUrl = newImgData;
+          activeEnhanceTarget.slide.title = newTitle;
+          activeEnhanceTarget.slide.name = newTitle;
+          activeEnhanceTarget.slide.ratio = 16 / 9;
+          activeEnhanceTarget.slide.width = 1920;
+          activeEnhanceTarget.slide.height = 1080;
+          activeEnhanceTarget.slide.type = 'enhanced';
+          activeEnhanceTarget.slide.enhanced = true;
+        }
+
+        // 4. Atualiza no array específico do organizador e redesenha a tela
+        if (orgType === 'direct') {
+          if (directSlides[targetIndex]) {
+            Object.assign(directSlides[targetIndex], {
+              imgData: newImgData,
+              dataUrl: newImgData,
+              title: newTitle,
+              type: 'enhanced',
+              ratio: 16 / 9,
+              width: 1920,
+              height: 1080,
+              enhanced: true
+            });
+          }
+          renderDirectOrganizer();
+        } else {
+          if (imageSlides[targetIndex]) {
+            Object.assign(imageSlides[targetIndex], {
+              imgData: newImgData,
+              dataUrl: newImgData,
+              name: newTitle,
+              type: 'enhanced',
+              ratio: 16 / 9,
+              width: 1920,
+              height: 1080,
+              enhanced: true
+            });
+          }
           renderImagesOrganizer();
         }
-      }
 
-      const idxNum = activeEnhanceTarget.index + 1;
-      closeEnhanceModal();
-      showToast(`✨ Slide #${idxNum} recriado e substituído com sucesso!`, 'success');
+        // 5. Atualização visual instantânea direta no card do DOM
+        const gridSelector = orgType === 'direct' ? '#direct-slides-grid' : '#images-reorder-grid';
+        const cardImg = document.querySelector(`${gridSelector} [data-index="${targetIndex}"] img`);
+        if (cardImg) {
+          cardImg.src = newImgData;
+        }
+
+        const idxNum = targetIndex + 1;
+        closeEnhanceModal();
+        showToast(`✨ Slide #${idxNum} atualizado com sucesso no organizador!`, 'success');
+      } catch (err) {
+        console.error('Erro ao substituir slide:', err);
+        showToast('Erro ao atualizar slide: ' + err.message, 'error');
+      } finally {
+        btnEnhanceApplyReplace.disabled = false;
+        btnEnhanceApplyReplace.innerHTML = '✨ Substituir Slide Atual';
+      }
     });
   }
 
   // Confirmação: Inserir como Novo Slide na sequência
   if (btnEnhanceInsertAsNew) {
-    btnEnhanceInsertAsNew.addEventListener('click', () => {
+    btnEnhanceInsertAsNew.addEventListener('click', async () => {
       if (!activeEnhanceTarget || !enhancePreviewCanvas) return;
-      const newImgData = enhancePreviewCanvas.toDataURL('image/jpeg', 0.96);
-      const newTitle = enhanceRefInput && enhanceRefInput.value.trim() ? enhanceRefInput.value.trim() : 'Slide IA';
 
-      const newSlide = {
-        id: 'slide_enh_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
-        imgData: newImgData,
-        dataUrl: newImgData,
-        title: newTitle,
-        name: newTitle,
-        type: 'enhanced',
-        enhanced: true
-      };
+      btnEnhanceInsertAsNew.disabled = true;
+      btnEnhanceInsertAsNew.innerHTML = '⏳ Inserindo...';
 
-      if (activeEnhanceTarget.organizerType === 'direct') {
-        directSlides.splice(activeEnhanceTarget.index + 1, 0, newSlide);
-        renderDirectOrganizer();
-      } else {
-        imageSlides.splice(activeEnhanceTarget.index + 1, 0, newSlide);
-        renderImagesOrganizer();
+      try {
+        await renderEnhanceCanvasPreview();
+        const newImgData = enhancePreviewCanvas.toDataURL('image/jpeg', 0.95);
+        const newTitle = enhanceRefInput && enhanceRefInput.value.trim() ? enhanceRefInput.value.trim() : 'Slide Bíblico';
+
+        const newSlide = {
+          id: 'slide_enh_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+          imgData: newImgData,
+          dataUrl: newImgData,
+          title: newTitle,
+          name: newTitle,
+          type: 'enhanced',
+          ratio: 16 / 9,
+          width: 1920,
+          height: 1080,
+          enhanced: true
+        };
+
+        if (activeEnhanceTarget.organizerType === 'direct') {
+          directSlides.splice(activeEnhanceTarget.index + 1, 0, newSlide);
+          renderDirectOrganizer();
+        } else {
+          imageSlides.splice(activeEnhanceTarget.index + 1, 0, newSlide);
+          renderImagesOrganizer();
+        }
+
+        closeEnhanceModal();
+        showToast('✨ Novo slide oficial inserido na sequência!', 'success');
+      } catch (err) {
+        console.error('Erro ao inserir slide:', err);
+        showToast('Erro ao inserir slide: ' + err.message, 'error');
+      } finally {
+        btnEnhanceInsertAsNew.disabled = false;
+        btnEnhanceInsertAsNew.innerHTML = '➕ Inserir como Novo';
       }
-
-      closeEnhanceModal();
-      showToast('✨ Novo slide profissional inserido na apresentação!', 'success');
     });
   }
 
