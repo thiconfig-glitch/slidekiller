@@ -7139,11 +7139,15 @@ ${sermonText}`;
   const btnEnhanceClearTags = document.getElementById('btn-enhance-clear-tags');
   const enhanceTextInput = document.getElementById('enhance-text-input');
   const enhanceTextAlign = document.getElementById('enhance-text-align');
-  const enhanceFontSize = document.getElementById('enhance-font-size');
+  const btnEnhanceFontMinus = document.getElementById('btn-enhance-font-minus');
+  const btnEnhanceFontPlus = document.getElementById('btn-enhance-font-plus');
+  const btnEnhanceFontReset = document.getElementById('btn-enhance-font-reset');
+  const enhanceFontSizeDisplay = document.getElementById('enhance-font-size-display');
   const btnEnhanceInsertAsNew = document.getElementById('btn-enhance-insert-as-new');
   const btnEnhanceApplyReplace = document.getElementById('btn-enhance-apply-replace');
 
   let activeEnhanceTarget = null; // { slide, index, organizerType: 'direct'|'images' }
+  let enhanceManualFontSizeDelta = 0; // Ajuste estilo PowerPoint (A▲ / A▼)
 
   let defaultChurchBgImage = null;
   function loadDefaultChurchBgImage() {
@@ -7195,6 +7199,7 @@ ${sermonText}`;
 
     if (enhanceSlideType) enhanceSlideType.value = 'verse';
     if (enhanceTextAlign) enhanceTextAlign.value = 'left';
+    enhanceManualFontSizeDelta = 0;
 
     modalEnhanceAi.style.display = 'flex';
     renderEnhanceCanvasPreview();
@@ -7411,12 +7416,13 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
     let previewHtml = escapeHtml(rawText).replace(/\[HL\](.*?)\[\/HL\]/gi, '<span class="highlight">$1</span>');
 
     const fullCleanText = rawText.replace(/\[\/?HL\]/gi, '').trim();
-    let previewFontSize = '16.5px';
-    if (fullCleanText.length <= 80) previewFontSize = '20px';
-    else if (fullCleanText.length <= 140) previewFontSize = '17.5px';
-    else if (fullCleanText.length <= 220) previewFontSize = '15px';
-    else previewFontSize = '13px';
+    let basePreviewFontSize = 16.5;
+    if (fullCleanText.length <= 80) basePreviewFontSize = 21;
+    else if (fullCleanText.length <= 140) basePreviewFontSize = 18.5;
+    else if (fullCleanText.length <= 220) basePreviewFontSize = 16;
+    else basePreviewFontSize = 14;
 
+    const previewFontSize = Math.max(10, Math.round(basePreviewFontSize + (enhanceManualFontSizeDelta * 0.16))) + 'px';
     enhancePreviewDomText.style.fontSize = previewFontSize;
     enhancePreviewDomText.innerHTML = previewHtml;
 
@@ -7498,17 +7504,32 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
     const totalChars = rawText.replace(/\[\/?HL\]/gi, '').length;
     
     // Escala cinematográfica oficial e idêntica ao Slide Killer (Full HD 1080p)
-    let fontSize = 108;
+    let baseFontSize = 108;
     if (type === 'topic') {
-      if (totalChars < 40) fontSize = 156;
-      else if (totalChars > 90) fontSize = 108;
-      else fontSize = 132;
+      if (totalChars < 40) baseFontSize = 156;
+      else if (totalChars > 90) baseFontSize = 108;
+      else baseFontSize = 132;
     } else {
       // Versículo bíblico oficial
-      if (totalChars <= 80) fontSize = 136;
-      else if (totalChars <= 140) fontSize = 120;
-      else if (totalChars <= 200) fontSize = 108;
-      else fontSize = 96;
+      if (totalChars <= 80) baseFontSize = 136;
+      else if (totalChars <= 140) baseFontSize = 120;
+      else if (totalChars <= 200) baseFontSize = 108;
+      else baseFontSize = 96;
+    }
+
+    let fontSize = Math.max(36, Math.min(240, baseFontSize + enhanceManualFontSizeDelta));
+
+    if (enhanceFontSizeDisplay) {
+      if (enhanceManualFontSizeDelta === 0) {
+        enhanceFontSizeDisplay.textContent = `${fontSize}px`;
+        enhanceFontSizeDisplay.title = 'Tamanho automático padrão';
+        enhanceFontSizeDisplay.style.color = '#E8B859';
+      } else {
+        const sign = enhanceManualFontSizeDelta > 0 ? `+${enhanceManualFontSizeDelta}` : `${enhanceManualFontSizeDelta}`;
+        enhanceFontSizeDisplay.textContent = `${fontSize}px (${sign})`;
+        enhanceFontSizeDisplay.title = `Tamanho manual ajustado: ${fontSize}px (${sign})`;
+        enhanceFontSizeDisplay.style.color = '#48BB78';
+      }
     }
 
     const fontCss = '"Bahnschrift SemiBold Condensed", "Bahnschrift", "Roboto Condensed", "Arial Narrow", sans-serif';
@@ -7555,15 +7576,18 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
     let totalTextHeight = lines.length * lineHeight;
 
     // Auto-fit inteligente oficial: reduz gradualmente se o texto exceder a altura útil
-    while (totalTextHeight > availableHeight && fontSize > 68) {
-      fontSize -= 4;
-      lineHeight = fontSize * 1.22;
-      lines = buildLines(fontSize);
-      totalTextHeight = lines.length * lineHeight;
+    // Se o usuário aumentou manualmente (delta > 0), respeitamos a escolha do usuário
+    if (enhanceManualFontSizeDelta <= 0) {
+      while (totalTextHeight > availableHeight && fontSize > 52) {
+        fontSize -= 4;
+        lineHeight = fontSize * 1.22;
+        lines = buildLines(fontSize);
+        totalTextHeight = lines.length * lineHeight;
+      }
     }
 
     // Posição vertical: centralizado perfeitamente na área superior/média (valign: middle)
-    const startY = topLimit + Math.max(0, (availableHeight - totalTextHeight) / 2);
+    const startY = Math.max(90, topLimit + Math.max(0, (availableHeight - totalTextHeight) / 2));
 
     ctx.textBaseline = 'top';
     ctx.textAlign = 'left';
@@ -7630,6 +7654,28 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
   if (enhanceRefInput) enhanceRefInput.addEventListener('input', renderEnhanceCanvasPreview);
   if (enhanceSlideType) enhanceSlideType.addEventListener('change', renderEnhanceCanvasPreview);
   if (enhanceTextAlign) enhanceTextAlign.addEventListener('change', renderEnhanceCanvasPreview);
+
+  // Botões de Tamanho estilo PowerPoint (A▲ / A▼ / ↺)
+  if (btnEnhanceFontMinus) {
+    btnEnhanceFontMinus.addEventListener('click', () => {
+      enhanceManualFontSizeDelta = Math.max(-60, enhanceManualFontSizeDelta - 6);
+      renderEnhanceCanvasPreview();
+    });
+  }
+
+  if (btnEnhanceFontPlus) {
+    btnEnhanceFontPlus.addEventListener('click', () => {
+      enhanceManualFontSizeDelta = Math.min(84, enhanceManualFontSizeDelta + 6);
+      renderEnhanceCanvasPreview();
+    });
+  }
+
+  if (btnEnhanceFontReset) {
+    btnEnhanceFontReset.addEventListener('click', () => {
+      enhanceManualFontSizeDelta = 0;
+      renderEnhanceCanvasPreview();
+    });
+  }
 
   // Botões de Formatação Rápida do Texto
   if (btnEnhanceHighlight) {

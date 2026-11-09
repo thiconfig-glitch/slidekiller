@@ -1128,9 +1128,25 @@ texto exemplo ii eii
 
             <!-- Toolbar de Formatação do Texto -->
             <div>
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:6px;">
                 <label style="font-size:11px; font-weight:600; color:#A0AEC0; margin:0;">Texto do Slide:</label>
-                <div style="display:flex; gap:4px;">
+                
+                <div style="display:flex; gap:6px; align-items:center;">
+                  <!-- Controles de Tamanho estilo PowerPoint (A▲ / A▼) -->
+                  <div style="display:inline-flex; align-items:center; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); border-radius:6px; padding:1px 4px; gap:2px;">
+                    <button type="button" class="btn-clear" id="btn-enhance-font-minus" style="font-size:13px; font-weight:700; color:#E2E8F0; padding:2px 6px; cursor:pointer;" title="Diminuir tamanho da fonte (PowerPoint)">
+                      A<span style="font-size:10px; vertical-align:super;">▼</span>
+                    </button>
+                    <span id="enhance-font-size-display" style="font-size:11px; font-weight:700; color:#E8B859; padding:0 4px; min-width:30px; text-align:center;">Auto</span>
+                    <button type="button" class="btn-clear" id="btn-enhance-font-plus" style="font-size:13px; font-weight:700; color:#E2E8F0; padding:2px 6px; cursor:pointer;" title="Aumentar tamanho da fonte (PowerPoint)">
+                      A<span style="font-size:10px; vertical-align:super;">▲</span>
+                    </button>
+                    <button type="button" class="btn-clear" id="btn-enhance-font-reset" style="font-size:10px; color:#A0AEC0; padding:2px 4px; cursor:pointer;" title="Restaurar tamanho automático">
+                      ↺
+                    </button>
+                  </div>
+
+                  <!-- Ações de Destaque e Aspas -->
                   <button type="button" class="btn btn-outline-gold btn-sm" id="btn-enhance-highlight" style="padding:2px 8px; font-size:11px;" title="Destacar palavra selecionada em dourado">
                     ⭐ [HL] Dourado
                   </button>
