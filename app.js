@@ -7497,28 +7497,28 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
 
     const totalChars = rawText.replace(/\[\/?HL\]/gi, '').length;
     
-    // Escala cinematográfica oficial e balanceada da igreja (16:9 Full HD)
-    let fontSize = 76;
+    // Escala cinematográfica oficial e idêntica ao Slide Killer (Full HD 1080p)
+    let fontSize = 108;
     if (type === 'topic') {
-      if (totalChars < 40) fontSize = 100;
-      else if (totalChars > 90) fontSize = 74;
-      else fontSize = 86;
+      if (totalChars < 40) fontSize = 156;
+      else if (totalChars > 90) fontSize = 108;
+      else fontSize = 132;
     } else {
-      // Versículo bíblico
-      if (totalChars <= 80) fontSize = 88;
-      else if (totalChars <= 140) fontSize = 76;
-      else if (totalChars <= 200) fontSize = 68;
-      else fontSize = 58;
+      // Versículo bíblico oficial
+      if (totalChars <= 80) fontSize = 136;
+      else if (totalChars <= 140) fontSize = 120;
+      else if (totalChars <= 200) fontSize = 108;
+      else fontSize = 96;
     }
 
     const fontCss = '"Bahnschrift SemiBold Condensed", "Bahnschrift", "Roboto Condensed", "Arial Narrow", sans-serif';
     ctx.font = `bold ${fontSize}px ${fontCss}`;
-    let lineHeight = Math.round(fontSize * 1.25);
+    let lineHeight = fontSize * 1.22;
 
-    // Margens balanceadas para amplitude horizontal no telão (área útil ampla de 1680px)
-    const startX = 120;
-    const maxWidth = w - (startX * 2); // 1680px
-    const topLimit = 160;
+    // Margens simétricas oficiais (0.9" = 130px de cada lado em 1920x1080)
+    const startX = 130;
+    const maxWidth = 1660; // 1920 - (130 * 2)
+    const topLimit = 150;
     const availableHeight = 670;
 
     function buildLines(fSize) {
@@ -7554,15 +7554,15 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
     let lines = buildLines(fontSize);
     let totalTextHeight = lines.length * lineHeight;
 
-    // Auto-fit inteligente: reduz suavemente se o texto exceder a altura disponível
-    while (totalTextHeight > availableHeight && fontSize > 46) {
-      fontSize -= 3;
-      lineHeight = Math.round(fontSize * 1.25);
+    // Auto-fit inteligente oficial: reduz gradualmente se o texto exceder a altura útil
+    while (totalTextHeight > availableHeight && fontSize > 68) {
+      fontSize -= 4;
+      lineHeight = fontSize * 1.22;
       lines = buildLines(fontSize);
       totalTextHeight = lines.length * lineHeight;
     }
 
-    // Posição vertical: centralizado perfeitamente na área superior/média
+    // Posição vertical: centralizado perfeitamente na área superior/média (valign: middle)
     const startY = topLimit + Math.max(0, (availableHeight - totalTextHeight) / 2);
 
     ctx.textBaseline = 'top';
@@ -7582,8 +7582,8 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
         const tokenW = ctx.measureText(token.text).width;
         if (!token.isSpace) {
           ctx.save();
-          ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
-          ctx.shadowBlur = 10;
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
+          ctx.shadowBlur = 8;
           ctx.shadowOffsetX = 3;
           ctx.shadowOffsetY = 3;
 
@@ -7600,15 +7600,15 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
       });
     });
 
-    // Referência Bíblica SEPARADA no Rodapé (proporção oficial harmoniosa)
+    // Referência Bíblica SEPARADA no Rodapé (y = 880px, fontSize: 68px, idêntico ao Slide Killer)
     if (refText && type === 'verse') {
       ctx.save();
-      const refY = 910;
-      const refFontSize = 46;
+      const refY = 880;
+      const refFontSize = 68;
       ctx.font = `bold ${refFontSize}px ${fontCss}`;
       ctx.fillStyle = '#E8B859';
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
-      ctx.shadowBlur = 8;
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+      ctx.shadowBlur = 6;
       ctx.shadowOffsetX = 2;
       ctx.shadowOffsetY = 2;
       ctx.textBaseline = 'top';
