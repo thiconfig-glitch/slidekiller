@@ -7141,6 +7141,35 @@ ${sermonText}`;
 
   let activeEnhanceTarget = null; // { slide, index, organizerType: 'direct'|'images' }
 
+  let defaultChurchBgImage = null;
+  function loadDefaultChurchBgImage() {
+    if (defaultChurchBgImage && defaultChurchBgImage.complete && defaultChurchBgImage.naturalWidth > 0) {
+      return Promise.resolve(defaultChurchBgImage);
+    }
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        defaultChurchBgImage = img;
+        resolve(img);
+      };
+      img.onerror = () => {
+        const imgPng = new Image();
+        imgPng.crossOrigin = 'anonymous';
+        imgPng.onload = () => {
+          defaultChurchBgImage = imgPng;
+          resolve(imgPng);
+        };
+        imgPng.onerror = () => resolve(null);
+        imgPng.src = 'assets/church_sermon_bg.png';
+      };
+      img.src = 'assets/church_sermon_bg.jpg';
+    });
+  }
+
+  // Pré-carrega a imagem oficial da Bíblia na memória
+  loadDefaultChurchBgImage();
+
   function closeEnhanceModal() {
     if (modalEnhanceAi) {
       modalEnhanceAi.style.display = 'none';
@@ -7161,9 +7190,9 @@ ${sermonText}`;
       enhanceSlideInfoBadge.textContent = `Slide #${index + 1} de ${totalCount} • Pré-visualização e Ajuste`;
     }
 
-    // Valores iniciais seguros
+    // Valores iniciais: Fundo Oficial da Bíblia por padrão!
     if (enhanceSlideType) enhanceSlideType.value = 'verse';
-    if (enhanceBgTheme) enhanceBgTheme.value = 'dark-cinema';
+    if (enhanceBgTheme) enhanceBgTheme.value = 'church-official';
     if (enhanceTextAlign) enhanceTextAlign.value = 'left';
     if (enhanceFontSize) enhanceFontSize.value = 'auto';
 
@@ -7397,7 +7426,24 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
     }
 
     // 1. Desenhar Fundo
-    if (theme === 'black') {
+    if (theme === 'church-official') {
+      if (defaultChurchBgImage && defaultChurchBgImage.complete && defaultChurchBgImage.naturalWidth > 0) {
+        ctx.drawImage(defaultChurchBgImage, 0, 0, w, h);
+      } else {
+        const grad = ctx.createLinearGradient(0, 0, w, h);
+        grad.addColorStop(0, '#1a130b');
+        grad.addColorStop(0.5, '#0d0905');
+        grad.addColorStop(1, '#050302');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, w, h);
+
+        loadDefaultChurchBgImage().then(img => {
+          if (img && enhanceBgTheme && enhanceBgTheme.value === 'church-official') {
+            renderEnhanceCanvasPreview();
+          }
+        });
+      }
+    } else if (theme === 'black') {
       ctx.fillStyle = '#000000';
       ctx.fillRect(0, 0, w, h);
     } else if (theme === 'bible-dark') {
