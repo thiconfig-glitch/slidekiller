@@ -7124,6 +7124,7 @@ ${sermonText}`;
   const enhanceAiLoading = document.getElementById('enhance-ai-loading');
   const enhanceAiLoadingText = document.getElementById('enhance-ai-loading-text');
   const enhanceSlidePreviewDom = document.getElementById('enhance-slide-preview-dom');
+  const enhanceLivePreviewImg = document.getElementById('enhance-live-preview-img');
   const enhancePreviewDomText = document.getElementById('enhance-preview-dom-text');
   const enhancePreviewDomRef = document.getElementById('enhance-preview-dom-ref');
   const enhancePreviewDomRefBox = document.getElementById('enhance-preview-dom-ref-box');
@@ -7200,6 +7201,8 @@ ${sermonText}`;
     if (enhanceSlideType) enhanceSlideType.value = 'verse';
     if (enhanceTextAlign) enhanceTextAlign.value = 'left';
     enhanceManualFontSizeDelta = 0;
+    if (enhanceTextInput) enhanceTextInput.value = 'Carregando análise da IA...';
+    if (enhanceRefInput) enhanceRefInput.value = '';
 
     modalEnhanceAi.style.display = 'flex';
     renderEnhanceCanvasPreview();
@@ -7403,40 +7406,23 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
       enhanceTextInput.value = cleanText;
     }
 
+    enhanceManualFontSizeDelta = 0;
     renderEnhanceCanvasPreview();
   }
 
   // ==========================================
-  // RENDERIZAÇÃO DO PREVIEW OFICIAL (HTML & CANVAS FULL HD)
+  // RENDERIZAÇÃO DO PREVIEW OFICIAL (CANVAS FULL HD & PREVIEW EM TEMPO REAL)
   // ==========================================
   function updateEnhanceDomPreview(rawText, refText, align, type) {
-    if (!enhanceSlidePreviewDom || !enhancePreviewDomText) return;
-
-    // Converte [HL]...[/HL] para <span class="highlight">...</span> idêntico ao Módulo 1
-    let previewHtml = escapeHtml(rawText).replace(/\[HL\](.*?)\[\/HL\]/gi, '<span class="highlight">$1</span>');
-
-    const fullCleanText = rawText.replace(/\[\/?HL\]/gi, '').trim();
-    let basePreviewFontSize = 16.5;
-    if (fullCleanText.length <= 80) basePreviewFontSize = 21;
-    else if (fullCleanText.length <= 140) basePreviewFontSize = 18.5;
-    else if (fullCleanText.length <= 220) basePreviewFontSize = 16;
-    else basePreviewFontSize = 14;
-
-    const previewFontSize = Math.max(10, Math.round(basePreviewFontSize + (enhanceManualFontSizeDelta * 0.16))) + 'px';
-    enhancePreviewDomText.style.fontSize = previewFontSize;
-    enhancePreviewDomText.innerHTML = previewHtml;
-
+    if (enhancePreviewDomText) {
+      let previewHtml = escapeHtml(rawText).replace(/\[HL\](.*?)\[\/HL\]/gi, '<span class="highlight">$1</span>');
+      enhancePreviewDomText.innerHTML = previewHtml;
+    }
     if (enhancePreviewDomRef) {
       enhancePreviewDomRef.textContent = (refText || '').toUpperCase();
     }
     if (enhancePreviewDomRefBox) {
       enhancePreviewDomRefBox.style.display = refText ? 'block' : 'none';
-    }
-
-    if (align === 'center') {
-      enhanceSlidePreviewDom.classList.add('align-center');
-    } else {
-      enhanceSlidePreviewDom.classList.remove('align-center');
     }
   }
 
@@ -7450,13 +7436,13 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
       enhanceRefBox.style.display = type === 'verse' ? 'block' : 'none';
     }
 
-    // 1. Atualiza na hora o preview visual DOM (idêntico ao Módulo 1)
-    updateEnhanceDomPreview(rawText, refText, align, type);
-
-    // 2. Renderiza o Canvas 1920x1080 Full HD fiel ao sermon_slide_engine.js
     if (!enhancePreviewCanvas) return;
     const ctx = enhancePreviewCanvas.getContext('2d');
     if (!ctx) return;
+
+    if (document.fonts && document.fonts.ready) {
+      try { await document.fonts.ready; } catch(e) {}
+    }
 
     const w = 1920;
     const h = 1080;
@@ -7503,44 +7489,31 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
 
     const totalChars = rawText.replace(/\[\/?HL\]/gi, '').length;
     
-    // Escala cinematográfica oficial e idêntica ao Slide Killer (Full HD 1080p)
-    let baseFontSize = 108;
+    // Proporção cinematográfica oficial 1080p fiel ao PowerPoint (96 DPI / Módulo 1)
+    let baseFontSize = 84;
     if (type === 'topic') {
-      if (totalChars < 40) baseFontSize = 156;
-      else if (totalChars > 90) baseFontSize = 108;
-      else baseFontSize = 132;
+      if (totalChars < 40) baseFontSize = 108;
+      else if (totalChars > 90) baseFontSize = 78;
+      else baseFontSize = 92;
     } else {
       // Versículo bíblico oficial
-      if (totalChars <= 80) baseFontSize = 136;
-      else if (totalChars <= 140) baseFontSize = 120;
-      else if (totalChars <= 200) baseFontSize = 108;
-      else baseFontSize = 96;
+      if (totalChars <= 80) baseFontSize = 92;
+      else if (totalChars <= 140) baseFontSize = 82;
+      else if (totalChars <= 200) baseFontSize = 72;
+      else baseFontSize = 64;
     }
 
-    let fontSize = Math.max(36, Math.min(240, baseFontSize + enhanceManualFontSizeDelta));
-
-    if (enhanceFontSizeDisplay) {
-      if (enhanceManualFontSizeDelta === 0) {
-        enhanceFontSizeDisplay.textContent = `${fontSize}px`;
-        enhanceFontSizeDisplay.title = 'Tamanho automático padrão';
-        enhanceFontSizeDisplay.style.color = '#E8B859';
-      } else {
-        const sign = enhanceManualFontSizeDelta > 0 ? `+${enhanceManualFontSizeDelta}` : `${enhanceManualFontSizeDelta}`;
-        enhanceFontSizeDisplay.textContent = `${fontSize}px (${sign})`;
-        enhanceFontSizeDisplay.title = `Tamanho manual ajustado: ${fontSize}px (${sign})`;
-        enhanceFontSizeDisplay.style.color = '#48BB78';
-      }
-    }
+    let fontSize = Math.max(34, Math.min(150, baseFontSize + enhanceManualFontSizeDelta));
 
     const fontCss = '"Bahnschrift SemiBold Condensed", "Bahnschrift", "Roboto Condensed", "Arial Narrow", sans-serif';
     ctx.font = `bold ${fontSize}px ${fontCss}`;
-    let lineHeight = fontSize * 1.22;
+    let lineHeight = fontSize * 1.25;
 
     // Margens simétricas oficiais (0.9" = 130px de cada lado em 1920x1080)
     const startX = 130;
     const maxWidth = 1660; // 1920 - (130 * 2)
-    const topLimit = 150;
-    const availableHeight = 670;
+    const topLimit = 160;
+    const availableHeight = 650; // Área útil livre acima da referência (y=880)
 
     function buildLines(fSize) {
       ctx.font = `bold ${fSize}px ${fontCss}`;
@@ -7575,19 +7548,29 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
     let lines = buildLines(fontSize);
     let totalTextHeight = lines.length * lineHeight;
 
-    // Auto-fit inteligente oficial: reduz gradualmente se o texto exceder a altura útil
-    // Se o usuário aumentou manualmente (delta > 0), respeitamos a escolha do usuário
-    if (enhanceManualFontSizeDelta <= 0) {
-      while (totalTextHeight > availableHeight && fontSize > 52) {
-        fontSize -= 4;
-        lineHeight = fontSize * 1.22;
-        lines = buildLines(fontSize);
-        totalTextHeight = lines.length * lineHeight;
+    // Auto-fit inteligente de proteção: NUNCA deixa o texto ultrapassar a altura útil ou colidir com a referência
+    while (totalTextHeight > availableHeight && fontSize > 38) {
+      fontSize -= 2;
+      lineHeight = fontSize * 1.25;
+      lines = buildLines(fontSize);
+      totalTextHeight = lines.length * lineHeight;
+    }
+
+    if (enhanceFontSizeDisplay) {
+      if (enhanceManualFontSizeDelta === 0) {
+        enhanceFontSizeDisplay.textContent = `${fontSize}px`;
+        enhanceFontSizeDisplay.title = 'Tamanho automático padrão';
+        enhanceFontSizeDisplay.style.color = '#E8B859';
+      } else {
+        const sign = enhanceManualFontSizeDelta > 0 ? `+${enhanceManualFontSizeDelta}` : `${enhanceManualFontSizeDelta}`;
+        enhanceFontSizeDisplay.textContent = `${fontSize}px (${sign})`;
+        enhanceFontSizeDisplay.title = `Tamanho manual ajustado: ${fontSize}px (${sign})`;
+        enhanceFontSizeDisplay.style.color = '#48BB78';
       }
     }
 
     // Posição vertical: centralizado perfeitamente na área superior/média (valign: middle)
-    const startY = Math.max(90, topLimit + Math.max(0, (availableHeight - totalTextHeight) / 2));
+    const startY = topLimit + Math.max(0, (availableHeight - totalTextHeight) / 2);
 
     ctx.textBaseline = 'top';
     ctx.textAlign = 'left';
@@ -7624,11 +7607,11 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
       });
     });
 
-    // Referência Bíblica SEPARADA no Rodapé (y = 880px, fontSize: 68px, idêntico ao Slide Killer)
+    // Referência Bíblica SEPARADA no Rodapé (y = 880px, fontSize: 52px, idêntico ao Slide Killer / PowerPoint)
     if (refText && type === 'verse') {
       ctx.save();
       const refY = 880;
-      const refFontSize = 68;
+      const refFontSize = 52;
       ctx.font = `bold ${refFontSize}px ${fontCss}`;
       ctx.fillStyle = '#E8B859';
       ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
@@ -7647,6 +7630,16 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
       }
       ctx.restore();
     }
+
+    // Atualiza o preview visual do modal com o Canvas real (100% o que você vê é o que você terá!)
+    try {
+      const previewDataUrl = enhancePreviewCanvas.toDataURL('image/jpeg', 0.92);
+      if (enhanceLivePreviewImg) {
+        enhanceLivePreviewImg.src = previewDataUrl;
+      }
+    } catch(err) {
+      console.warn('Erro ao atualizar imagem de preview do modal:', err);
+    }
   }
 
   // Listeners de Redesenho em Tempo Real
@@ -7658,14 +7651,14 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
   // Botões de Tamanho estilo PowerPoint (A▲ / A▼ / ↺)
   if (btnEnhanceFontMinus) {
     btnEnhanceFontMinus.addEventListener('click', () => {
-      enhanceManualFontSizeDelta = Math.max(-60, enhanceManualFontSizeDelta - 6);
+      enhanceManualFontSizeDelta = Math.max(-48, enhanceManualFontSizeDelta - 4);
       renderEnhanceCanvasPreview();
     });
   }
 
   if (btnEnhanceFontPlus) {
     btnEnhanceFontPlus.addEventListener('click', () => {
-      enhanceManualFontSizeDelta = Math.min(84, enhanceManualFontSizeDelta + 6);
+      enhanceManualFontSizeDelta = Math.min(60, enhanceManualFontSizeDelta + 4);
       renderEnhanceCanvasPreview();
     });
   }

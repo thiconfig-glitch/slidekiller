@@ -1069,21 +1069,12 @@ texto exemplo ii eii
               <span style="font-size:10px; background:rgba(232, 184, 89, 0.15); border:1px solid rgba(232,184,89,0.3); padding:2px 7px; border-radius:4px; color:#E8B859; font-weight:600;">📖 Padrão Oficial Igreja (16:9)</span>
             </div>
 
-            <!-- Preview HTML Oficial idêntico aos outros módulos -->
-            <div id="enhance-slide-preview-dom" class="slide-preview-container" style="background-image: url('assets/church_sermon_bg.jpg'); width:100%; aspect-ratio:16/9; border-radius:8px; box-shadow:0 12px 30px rgba(0,0,0,0.7); border:1px solid rgba(232, 184, 89, 0.35); overflow:hidden; position:relative; cursor:default;">
-              <div class="slide-preview-content" style="padding:16px 20px 14px 20px;">
-                <div class="slide-preview-verse-box">
-                  <div id="enhance-preview-dom-text" class="slide-preview-text" style="font-size: 17.5px;">
-                    Carregando preview...
-                  </div>
-                </div>
-                <div id="enhance-preview-dom-ref-box" class="slide-preview-ref-box">
-                  <span id="enhance-preview-dom-ref" class="slide-preview-ref"></span>
-                </div>
-              </div>
+            <!-- Preview Oficial 100% fiel ao slide gerado em Full HD -->
+            <div id="enhance-slide-preview-dom" class="slide-preview-container" style="background:#0b0f19 url('assets/church_sermon_bg.jpg') center/cover no-repeat; width:100%; aspect-ratio:16/9; border-radius:8px; box-shadow:0 12px 30px rgba(0,0,0,0.7); border:1px solid rgba(232, 184, 89, 0.35); overflow:hidden; position:relative; cursor:default; display:flex; align-items:center; justify-content:center;">
+              <img id="enhance-live-preview-img" style="width:100%; height:100%; object-fit:contain; display:block;" alt="Pré-visualização Oficial do Slide" />
             </div>
 
-            <!-- Canvas Full HD (1920x1080) idêntico ao engine oficial para gerar a imagem final -->
+            <!-- Canvas Full HD (1920x1080) oficial para gerar a imagem final e alimentar o preview -->
             <canvas id="enhance-preview-canvas" width="1920" height="1080" style="position:absolute; left:-9999px; top:-9999px; width:1920px; height:1080px; visibility:hidden; pointer-events:none;"></canvas>
 
             <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; color:#718096; margin-top:2px;">
