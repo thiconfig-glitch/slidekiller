@@ -9,12 +9,10 @@ async function extractTextFromPdf(pdfBuffer) {
 }
 
 const FALLBACK_MODELS = [
-  'gemini-flash-lite-latest',
-  'gemini-flash-latest',
-  'gemini-3.1-flash-lite',
-  'gemini-3.5-flash-lite',
-  'gemini-3.6-flash',
-  'gemini-3.7-flash'
+  'gemini-2.5-flash',
+  'gemini-2.5-flash-lite',
+  'gemini-2.0-flash',
+  'gemini-1.5-flash'
 ];
 
 /**
@@ -106,6 +104,15 @@ ${sermonText}
       });
 
       clearTimeout(timeoutId);
+      timeoutId = null;
+
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        const errMsg = errBody?.error?.message || `HTTP ${res.status} ${res.statusText}`;
+        console.warn(`[Gemini AI] Modelo ${model} retornou erro:`, errMsg);
+        lastError = errMsg;
+        continue;
+      }
 
       const data = await res.json();
       if (data.error) {

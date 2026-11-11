@@ -49,7 +49,9 @@ slides.forEach((s, idx) => {
   console.log(`   ${s.runs.map(r => r.highlight ? `[${r.text}]` : r.text).join('')}`);
 });
 
-const bgPath = path.join(__dirname, 'public/assets/church_sermon_bg.png');
+const jpgBgPath = path.join(__dirname, 'public/assets/church_sermon_bg.jpg');
+const pngBgPath = path.join(__dirname, 'public/assets/church_sermon_bg.png');
+const bgPath = fs.existsSync(jpgBgPath) ? jpgBgPath : pngBgPath;
 const outPath = path.join(__dirname, 'downloads/sermao_offline_teste.pptx');
 
 buildSermonPptx(slides, bgPath, outPath).then(() => {

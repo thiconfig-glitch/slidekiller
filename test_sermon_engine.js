@@ -28,7 +28,9 @@ async function testEngine() {
     }
   ];
 
-  const bgPath = path.join(__dirname, 'public/assets/church_sermon_bg.png');
+  const jpgBgPath = path.join(__dirname, 'public/assets/church_sermon_bg.jpg');
+  const pngBgPath = path.join(__dirname, 'public/assets/church_sermon_bg.png');
+  const bgPath = fs.existsSync(jpgBgPath) ? jpgBgPath : pngBgPath;
   const outPath = path.join(__dirname, 'downloads/teste_sermao.pptx');
 
   if (!fs.existsSync(path.dirname(outPath))) {

@@ -12,16 +12,16 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:wght@600;700;800&family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&family=Montserrat:wght@700;800;900&family=Oswald:wght@600;700&family=Roboto+Condensed:wght@600;700;800;900&display=swap" rel="stylesheet">
-  <script src="error_tracker.js"></script>
+  <script src="error_tracker.js?v=2.12.13"></script>
   <script src="pdf.min.js" onerror="this.onerror=null;this.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js';"></script>
   <script src="jszip.min.js" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/libs/jszip.min.js';"></script>
   <script src="pptxgen.min.js" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/dist/pptxgen.min.js';"></script>
   <!-- jsPDF para exportação instantânea em PDF no navegador (com fallback offline) -->
-  <script src="jspdf.umd.min.js" onerror="this.onerror=null;this.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';"></script>
+  <script src="jspdf.umd.min.js" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/jspdf@4.2.1/dist/jspdf.umd.min.js';"></script>
 
 
 
-  <link rel="stylesheet" href="style.css?v=2.12.12">
+  <link rel="stylesheet" href="style.css?v=2.12.13">
   <script>
     // Submode switcher acessível globalmente de imediato
     window.switchConverterSubmode = function(mode) {
@@ -277,7 +277,7 @@
         <div>
           <div style="display: flex; align-items: center; gap: 8px;">
             <h1 class="brand-title">Central Multimídia Church</h1>
-            <span class="version-tag">v2.12.12</span>
+            <span class="version-tag">v2.12.13</span>
           </div>
           <span class="brand-subtitle">Plataforma Unificada de Mídia & Culto</span>
         </div>
@@ -311,11 +311,11 @@
 
     <div class="header-right">
       <!-- Botão Download APK (Visível exclusivamente no Computador / Desktop) -->
-      <a href="slidekiller.apk" download="slidekiller.apk" class="btn-download-apk-desktop" id="btn-download-apk-desktop" title="Baixar aplicativo SlideKiller para celular Android (.apk)">
+      <a href="slidekiller.apk?v=2.12.13" download="slidekiller.apk" class="btn-download-apk-desktop" id="btn-download-apk-desktop" title="Baixar aplicativo SlideKiller v2.12.13 para celular Android (.apk)">
         <span class="apk-icon">📱</span>
         <span class="apk-text">
           <strong>Baixar App Android</strong>
-          <small>Versão Celular (.apk)</small>
+          <small>Versão Celular (.apk • v2.12.13)</small>
         </span>
       </a>
 
@@ -901,6 +901,7 @@ texto exemplo ii eii
               <select id="images-aspect-select" class="form-select">
                 <option value="16x9">Widescreen 16:9 Full HD (Padrão Telão)</option>
                 <option value="4x3">Proporção 4:3 Tradicional</option>
+                <option value="original">Proporção Original da Imagem</option>
               </select>
             </div>
             <div class="option-item">
@@ -974,12 +975,13 @@ texto exemplo ii eii
             <input type="text" id="verseRefInput" placeholder="Ex: João 3:16, Sl 23:1-3, Rm 8:28" class="form-select" style="width:100%; box-sizing:border-box; font-size:13px; font-weight:600; padding:6px 10px;" />
           </div>
           <div style="flex:1; min-width:130px;">
-            <label style="font-size:11px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Versão:</label>
+            <label style="font-size:11px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Versão / Rótulo:</label>
             <select id="verseVersionSelect" class="form-select" style="width:100%; height:34px;">
-              <option value="ACF">ACF (Almeida Corrigida Fiel)</option>
-              <option value="ARA">ARA (Almeida Revista e Atualizada)</option>
-              <option value="ARC">ARC (Revista e Corrigida)</option>
-              <option value="NVI">NVI (Nova Versão Internacional)</option>
+              <option value="Almeida" selected>Almeida (Busca Online)</option>
+              <option value="ACF">ACF (Rótulo Manual)</option>
+              <option value="ARA">ARA (Rótulo Manual)</option>
+              <option value="ARC">ARC (Rótulo Manual)</option>
+              <option value="NVI">NVI (Rótulo Manual)</option>
             </select>
           </div>
           <div style="display:flex; align-items:flex-end;">
@@ -1277,6 +1279,6 @@ texto exemplo ii eii
     </button>
   </nav>
 
-  <script src="app.js?v=2.12.12"></script>
+  <script src="app.js?v=2.12.13"></script>
 </body>
 </html>

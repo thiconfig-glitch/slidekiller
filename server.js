@@ -28,6 +28,17 @@ if (!fs.existsSync(downloadsDir)) {
   fs.mkdirSync(downloadsDir, { recursive: true });
 }
 
+function getDefaultBgPath() {
+  const jpgPath = path.join(__dirname, 'public/assets/church_sermon_bg.jpg');
+  if (fs.existsSync(jpgPath)) return jpgPath;
+  return path.join(__dirname, 'public/assets/church_sermon_bg.png');
+}
+
+function getSafeImageExt(originalname) {
+  const ext = path.extname(String(originalname || '')).toLowerCase();
+  return ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp'].includes(ext) ? ext : '.png';
+}
+
 // Limpeza automática periódica de arquivos temporários (> 24h)
 function cleanupOldDownloads() {
   try {
@@ -36,7 +47,7 @@ function cleanupOldDownloads() {
     const maxAgeMs = 24 * 60 * 60 * 1000;
     const files = fs.readdirSync(downloadsDir);
     for (const f of files) {
-      if (f === '.gitkeep' || f === 'active_tasks.json') continue;
+      if (f === '.gitkeep' || f === 'active_tasks.json' || f === 'system_errors.log') continue;
       const full = path.join(downloadsDir, f);
       try {
         const stat = fs.statSync(full);
@@ -56,6 +67,7 @@ cleanupOldDownloads();
 // RASTREAMENTO GLOBAL DE FALHAS E TELEMETRIA
 // ==========================================
 const errorLogPath = path.join(downloadsDir, 'system_errors.log');
+const MAX_ERROR_LOG_BYTES = 1024 * 1024; // 1 MB
 
 function logSystemError(type, err, extra = {}) {
   const timestamp = new Date().toISOString();
@@ -65,6 +77,13 @@ function logSystemError(type, err, extra = {}) {
   
   console.error(`🚨 [TELEMETRIA] ${type}:`, message);
   try {
+    if (fs.existsSync(errorLogPath)) {
+      const stat = fs.statSync(errorLogPath);
+      if (stat.size >= MAX_ERROR_LOG_BYTES) {
+        const prev = fs.readFileSync(errorLogPath, 'utf8');
+        fs.writeFileSync(errorLogPath, prev.slice(-Math.floor(MAX_ERROR_LOG_BYTES / 2)), 'utf8');
+      }
+    }
     fs.appendFileSync(errorLogPath, entry, 'utf8');
   } catch (logErr) {
     console.error('Falha ao gravar system_errors.log:', logErr.message);
@@ -109,8 +128,8 @@ app.get('/api/health', (req, res) => {
   res.json({
     status: 'online',
     service: 'Central Multimídia Church',
-    version: '2.3.0',
-    modules: ['slidekiller', 'pdf-to-pptx', 'images-to-pptx', 'video-editor'],
+    version: '2.12.13',
+    modules: ['slidekiller', 'pdf-to-pptx', 'images-to-pptx'],
     timestamp: new Date().toISOString()
   });
 });
@@ -207,9 +226,10 @@ app.post('/api/slides/upload-pdf', upload.fields([
     }
 
     // Plano de fundo customizado ou padrão
-    let bgPath = path.join(__dirname, 'public/assets/church_sermon_bg.png');
+    let bgPath = getDefaultBgPath();
     if (req.files && req.files.bgImage && req.files.bgImage[0]) {
-      const customBgName = `custom_bg_${Date.now()}.png`;
+      const ext = getSafeImageExt(req.files.bgImage[0].originalname);
+      const customBgName = `custom_bg_${Date.now()}${ext}`;
       const customBgPath = path.join(downloadsDir, customBgName);
       fs.writeFileSync(customBgPath, req.files.bgImage[0].buffer);
       bgPath = customBgPath;
@@ -267,7 +287,7 @@ app.post('/api/slides/rebuild', async (req, res) => {
       return res.status(400).json({ error: 'Nenhum slide fornecido para reconstrução.' });
     }
 
-    let bgPath = path.join(__dirname, 'public/assets/church_sermon_bg.png');
+    let bgPath = getDefaultBgPath();
     if (selectedBg && typeof selectedBg === 'string') {
       const sanitizedName = path.basename(selectedBg);
       if (selectedBg.startsWith('/downloads/')) {
@@ -304,14 +324,18 @@ app.post('/api/slides/rebuild', async (req, res) => {
  */
 app.get('/api/slides/templates', (req, res) => {
   const assetsDir = path.join(__dirname, 'public/assets');
+  const defaultUrl = fs.existsSync(path.join(assetsDir, 'church_sermon_bg.jpg'))
+    ? '/assets/church_sermon_bg.jpg'
+    : '/assets/church_sermon_bg.png';
   const templates = [
-    { id: 'church_default', name: '🏛️ Fundo Oficial da Igreja (Full HD)', url: '/assets/church_sermon_bg.png' }
+    { id: 'church_default', name: '📖⚡ Fundo Oficial da Igreja (Full HD)', url: defaultUrl }
   ];
 
+  const ignoredAssets = new Set(['church_sermon_bg.jpg', 'church_sermon_bg.png', 'logo_app_icon.png']);
   if (fs.existsSync(assetsDir)) {
     const files = fs.readdirSync(assetsDir);
     files.forEach(file => {
-      if (file !== 'church_sermon_bg.png' && (file.endsWith('.png') || file.endsWith('.jpg') || file.endsWith('.jpeg'))) {
+      if (!ignoredAssets.has(file) && (file.endsWith('.png') || file.endsWith('.jpg') || file.endsWith('.jpeg') || file.endsWith('.webp'))) {
         templates.push({
           id: path.parse(file).name,
           name: path.parse(file).name.replace(/_/g, ' ').toUpperCase(),
@@ -332,7 +356,7 @@ app.post('/api/slides/upload-bg', upload.single('bgImage'), (req, res) => {
     if (!req.file) {
       return res.status(400).json({ error: 'Nenhuma imagem de fundo enviada.' });
     }
-    const ext = path.extname(req.file.originalname) || '.png';
+    const ext = getSafeImageExt(req.file.originalname);
     const customBgName = `custom_bg_${Date.now()}${ext}`;
     const customBgPath = path.join(downloadsDir, customBgName);
     fs.writeFileSync(customBgPath, req.file.buffer);
@@ -352,23 +376,28 @@ app.post('/api/slides/upload-bg', upload.single('bgImage'), (req, res) => {
 // ==========================================
 app.post('/api/telemetry/error', (req, res) => {
   try {
-    const { errors, sessionId, timestamp } = req.body;
+    const body = req.body && typeof req.body === 'object' ? req.body : {};
+    const { errors, sessionId, timestamp } = body;
     if (Array.isArray(errors)) {
-      errors.forEach(errItem => {
-        logSystemError(`frontend_${errItem.type || 'error'}`, new Error(errItem.message || 'Erro de interface'), {
-          sessionId,
-          clientTime: timestamp,
-          source: errItem.source,
-          lineno: errItem.lineno,
-          colno: errItem.colno,
-          url: errItem.url,
-          userAgent: errItem.userAgent,
-          stack: errItem.stack,
-          context: errItem.context
+      errors.slice(0, 20).forEach(errItem => {
+        if (!errItem || typeof errItem !== 'object') return;
+        const rawType = String(errItem.type || 'error').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 40) || 'error';
+        logSystemError(`frontend_${rawType}`, new Error(String(errItem.message || 'Erro de interface').slice(0, 500)), {
+          sessionId: String(sessionId || '').slice(0, 80),
+          clientTime: String(timestamp || '').slice(0, 40),
+          source: String(errItem.source || '').slice(0, 300),
+          lineno: Number(errItem.lineno) || 0,
+          colno: Number(errItem.colno) || 0,
+          url: String(errItem.url || '').slice(0, 300),
+          userAgent: String(errItem.userAgent || '').slice(0, 200),
+          stack: errItem.stack ? String(errItem.stack).slice(0, 1500) : null,
+          context: errItem.context && typeof errItem.context === 'object' ? errItem.context : undefined
         });
       });
-    } else if (req.body && req.body.message) {
-      logSystemError('frontend_single_error', new Error(req.body.message), req.body);
+    } else if (body && body.message) {
+      logSystemError('frontend_single_error', new Error(String(body.message).slice(0, 500)), {
+        sessionId: String(sessionId || '').slice(0, 80)
+      });
     }
     res.json({ status: 'ok', received: true });
   } catch (err) {
@@ -432,9 +461,9 @@ app.listen(PORT, () => {
     console.log(`📱 No Celular (mesmo Wi-Fi): http://${localIp}:${PORT}`);
   }
   console.log('   • ⚡ Módulo 1: Slide Killer (PPTX 16:9 Full HD)');
-  console.log('   • 📄 Módulo 2: PDF ➔ PPTX Direto (1 Pág = 1 Slide 100% Fiel)');
+  console.log('   • 📄 Módulo 2: PDF ⇄ PPTX / ZIP / Novo PDF');
   console.log('   • 🖼️ Módulo 3: Imagens / ZIP ➔ PPTX');
-  console.log('   • 🎨 Módulo 4: DeckCraft Studio');
+  console.log('   • ✨ Editor Interativo & Melhoria com IA integrado');
   console.log('   • 📌 Tarefas Sincronizadas (Celular ⇄ PC ativado)');
   console.log('================================================================');
 });

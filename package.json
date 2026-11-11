@@ -1,6 +1,6 @@
 {
   "name": "slidekiller",
-  "version": "2.12.12",
+  "version": "2.12.13",
   "description": "Central Multimídia Church — Plataforma Modular de Mídia, Slides PPTX, DeckCraft Editor e Projeção",
   "main": "server.js",
   "scripts": {
@@ -9,7 +9,7 @@
     "cli": "node gerar_slides_direto.js",
     "hunt": "node scripts/bug_hunter.js",
     "test": "node test_sermon_engine.js",
-    "cap:sync": "npx cap sync android && node -e \"require('fs').rmSync('android/app/src/main/assets/public/deckcraft', {recursive: true, force: true})\"",
+    "cap:sync": "npx cap sync android && node -e \"const fs=require('fs');['android/app/src/main/assets/public/deckcraft','android/app/src/main/assets/public/slidekiller.apk','android/app/src/main/assets/public/assets/church_sermon_bg.png'].forEach(p=>fs.rmSync(p,{recursive:true,force:true}))\"",
     "cap:open": "npx cap open android",
     "cap:build": "cd android && .\\gradlew.bat assembleDebug"
   },

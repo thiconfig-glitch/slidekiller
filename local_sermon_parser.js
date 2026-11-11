@@ -204,7 +204,7 @@ function parseSermonTextOffline(rawText) {
     .split(/\n\s*\n+/)
     .map(p => p.trim())
     .filter(Boolean)
-    .filter(p => !/^[⸻\-_\s]{3,}$/.test(p));
+    .filter(p => !/^[⸻⸺—–\-_\s]{3,}$/.test(p));
 
   // 2. Agrupa em blocos lógicos preservando seções, tópicos e passagens bíblicas completas
   const blocks = [];
@@ -214,7 +214,7 @@ function parseSermonTextOffline(rawText) {
       .split('\n')
       .map(l => l.trim())
       .filter(Boolean)
-      .filter(l => !/^[⸻\-_\s]{3,}$/.test(l));
+      .filter(l => !/^[⸻⸺—–\-_\s]{3,}$/.test(l));
 
     if (pLines.length === 0) continue;
 
@@ -308,6 +308,9 @@ function parseSermonTextOffline(rawText) {
     if (isPureBibleRefLine(lines[0])) {
       const ref = normalizeBibleRefName(isBibleRef(lines[0]));
       const restLines = lines.slice(1);
+      if (restLines.length === 0 || restLines.join(' ').trim().length === 0) {
+        continue;
+      }
       const combined = restLines.join('\n');
       const numberedRegex = /(?:^|\n)\s*(\d{1,3})\s+([A-ZÀ-Ý“"a-z\[])/;
 
@@ -385,12 +388,15 @@ function parseSermonTextOffline(rawText) {
 }
 
 function formatQuotes(text) {
-  let t = text.trim();
-  if (!t.startsWith('“') && !t.startsWith('"')) t = '“' + t;
-  if (!t.endsWith('”') && !t.endsWith('"')) {
-    t = t.replace(/[.]+$/, '') + '”';
+  let t = (text || '').trim();
+  if (!t) return '';
+  t = t.replace(/^[“"']+|[”"']+$/g, '').trim();
+  if (/[;,]$/.test(t)) {
+    t = t.slice(0, -1).trim() + '.';
+  } else if (!/[.!?…]$/.test(t)) {
+    t += '.';
   }
-  return t;
+  return `“${t}”`;
 }
 
 /**

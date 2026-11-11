@@ -40,8 +40,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   initAppSplashAndPrivacy();
 
+  const isCapacitorNative = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
+  const isNoBackendEnvironment = isCapacitorNative
+    || window.location.hostname.includes('github.io')
+    || window.location.protocol === 'file:'
+    || ((window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && !window.location.port);
+
   // Se estiver rodando dentro do aplicativo Android nativo (Capacitor), oculta o botão de download de APK (inclusive em Tablets deitados)
-  if (window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform()) {
+  if (isCapacitorNative) {
     const btnApk = document.getElementById('btn-download-apk-desktop');
     if (btnApk) btnApk.style.setProperty('display', 'none', 'important');
     document.body.classList.add('is-native-app');
@@ -677,7 +683,14 @@ document.addEventListener('DOMContentLoaded', () => {
   let customBgServerUrl = null;
 
   let currentSelectedFont = localStorage.getItem('slidekiller_church_font');
-  if (!currentSelectedFont || currentSelectedFont === 'impact') {
+  if (!localStorage.getItem('slidekiller_font_migrated_v2')) {
+    if (!currentSelectedFont || currentSelectedFont === 'impact') {
+      currentSelectedFont = 'bahnschrift_semibold_condensed';
+      localStorage.setItem('slidekiller_church_font', 'bahnschrift_semibold_condensed');
+    }
+    localStorage.setItem('slidekiller_font_migrated_v2', '1');
+  }
+  if (!currentSelectedFont || !CHURCH_FONTS[currentSelectedFont]) {
     currentSelectedFont = 'bahnschrift_semibold_condensed';
     localStorage.setItem('slidekiller_church_font', 'bahnschrift_semibold_condensed');
   }
@@ -1080,13 +1093,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderVerseImageThumbnails() {
     if (!verseImagesThumbnailsGrid) return;
+    const countLabel = document.getElementById('verse-images-count-label');
     verseImagesThumbnailsGrid.innerHTML = '';
 
     if (sermonImageFiles.length === 0) {
+      if (verseImagesContainer) verseImagesContainer.style.display = 'none';
       verseImagesThumbnailsGrid.style.display = 'none';
+      if (countLabel) countLabel.textContent = '0 foto(s) selecionada(s)';
       return;
     }
 
+    if (verseImagesContainer) verseImagesContainer.style.display = 'block';
+    if (countLabel) {
+      countLabel.textContent = `${sermonImageFiles.length} ${sermonImageFiles.length === 1 ? 'foto selecionada' : 'fotos selecionadas'}`;
+    }
     verseImagesThumbnailsGrid.style.display = 'grid';
 
     sermonImageFiles.forEach((imgObj, idx) => {
@@ -1231,12 +1251,10 @@ Retorne ESTRITAMENTE em formato JSON puro, sem crases ou markdown adicional:
       if (aiOcrProgressStatus) aiOcrProgressStatus.textContent = 'IA Gemini Vision interpretando fotos e versículos...';
 
       const models = [
-        'gemini-3.5-flash',
-        'gemini-3.5-flash-lite',
-        'gemini-3-flash-preview',
-        'gemini-flash-latest',
-        'gemini-flash-lite-latest',
-        'gemini-3.8-flash'
+        'gemini-2.5-flash',
+        'gemini-2.5-flash-lite',
+        'gemini-2.0-flash',
+        'gemini-1.5-flash'
       ];
       let responseJson = null;
       let lastError = null;
@@ -1260,6 +1278,11 @@ Retorne ESTRITAMENTE em formato JSON puro, sem crases ou markdown adicional:
             })
           });
           clearTimeout(timeoutId);
+          if (!res.ok) {
+            const errData = await res.json().catch(() => null);
+            lastError = errData?.error?.message || `HTTP ${res.status}`;
+            continue;
+          }
 
           const data = await res.json();
           if (data.error) {
@@ -1310,18 +1333,24 @@ Retorne ESTRITAMENTE em formato JSON puro, sem crases ou markdown adicional:
 
         // 2. Se a referência ainda estiver vazia ou genérica, identifica o versículo pelo texto com IA rápida
         if ((!ref || ref.toLowerCase() === 'versículo' || ref.toLowerCase() === 'bíblia') && rawText.length > 15) {
+          let idTimeoutId = null;
           try {
             if (aiOcrProgressStatus) aiOcrProgressStatus.textContent = 'Identificando livro e capítulo do versículo...';
-            const idModel = 'gemini-3.5-flash';
+            const idModel = 'gemini-2.5-flash';
             const idPrompt = `Identifique com exatidão o Livro, Capítulo e Versículo canônico deste versículo bíblico em português: "${rawText.substring(0, 180)}". Responda ESTRITAMENTE em JSON puro: {"reference": "NomeDoLivro Cap:Vers"}`;
+            const idController = new AbortController();
+            idTimeoutId = setTimeout(() => idController.abort(), 12000);
             const idRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${idModel}:generateContent?key=${apiKey}`, {
               method: 'POST',
+              signal: idController.signal,
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 contents: [{ parts: [{ text: idPrompt }] }],
                 generationConfig: { temperature: 0.1, responseMimeType: 'application/json' }
               })
             });
+            clearTimeout(idTimeoutId);
+            idTimeoutId = null;
             if (idRes.ok) {
               const idData = await idRes.json();
               const idRaw = idData.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -1333,6 +1362,7 @@ Retorne ESTRITAMENTE em formato JSON puro, sem crases ou markdown adicional:
               }
             }
           } catch (idErr) {
+            if (idTimeoutId) clearTimeout(idTimeoutId);
             console.warn('Fallback de identificação automática:', idErr);
           }
         }
@@ -1374,7 +1404,9 @@ Retorne ESTRITAMENTE em formato JSON puro, sem crases ou markdown adicional:
     } finally {
       if (btnGenerate) {
         btnGenerate.disabled = false;
-        btnGenerate.innerHTML = '<span>⚡</span> Gerar Slides Instantaneamente';
+        btnGenerate.innerHTML = (activeSlideKillerTab === 'tab-images-ocr')
+          ? '<span class="btn-icon">⚡</span> Extrair Versículos e Gerar Slides com IA'
+          : '<span class="btn-icon">⚡</span> Gerar Slides Instantaneamente';
       }
       setTimeout(() => {
         if (aiOcrProgressContainer) aiOcrProgressContainer.style.display = 'none';
@@ -1408,6 +1440,7 @@ Retorne ESTRITAMENTE em formato JSON puro, sem crases ou markdown adicional:
   }
 
   async function uploadCustomBgToServer(file) {
+    if (isNoBackendEnvironment) return;
     try {
       const fd = new FormData();
       fd.append('bgImage', file);
@@ -1532,41 +1565,43 @@ Retorne ESTRITAMENTE em formato JSON puro, sem crases ou markdown adicional:
   }
 
   // Carregar templates oficiais de fundo preservando a opção de anexo
-  fetch('/api/slides/templates')
-    .then(res => res.json())
-    .then(data => {
-      if (data && data.templates && templateSelect) {
-        const currentVal = templateSelect.value;
-        templateSelect.innerHTML = '';
-        data.templates.forEach(t => {
-          const opt = document.createElement('option');
-          opt.value = t.url;
-          opt.textContent = t.name;
-          templateSelect.appendChild(opt);
-        });
+  if (!isNoBackendEnvironment) {
+    fetch('/api/slides/templates')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data && data.templates && templateSelect) {
+          const currentVal = templateSelect.value;
+          templateSelect.innerHTML = '';
+          data.templates.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t.url;
+            opt.textContent = t.name;
+            templateSelect.appendChild(opt);
+          });
 
-        // Se houver imagem customizada ativa, reinserir
-        if (customBgDataUrl && customBgFile) {
-          const customOpt = document.createElement('option');
-          customOpt.setAttribute('data-custom', 'true');
-          customOpt.value = '__custom_active__';
-          customOpt.textContent = `🖼️ Personalizado: ${customBgFile.name.length > 25 ? customBgFile.name.substring(0, 22) + '...' : customBgFile.name}`;
-          templateSelect.appendChild(customOpt);
-          if (currentVal === '__custom_active__') customOpt.selected = true;
+          // Se houver imagem customizada ativa, reinserir
+          if (customBgDataUrl && customBgFile) {
+            const customOpt = document.createElement('option');
+            customOpt.setAttribute('data-custom', 'true');
+            customOpt.value = '__custom_active__';
+            customOpt.textContent = `🖼️ Personalizado: ${customBgFile.name.length > 25 ? customBgFile.name.substring(0, 22) + '...' : customBgFile.name}`;
+            templateSelect.appendChild(customOpt);
+            if (currentVal === '__custom_active__') customOpt.selected = true;
+          }
+
+          // Opção para anexar fundo novo
+          const attachOpt = document.createElement('option');
+          attachOpt.value = '__custom__';
+          attachOpt.textContent = '➕ Anexar Fundo Personalizado...';
+          templateSelect.appendChild(attachOpt);
+
+          if (currentVal && currentVal !== '__custom__' && templateSelect.querySelector(`option[value="${currentVal}"]`)) {
+            templateSelect.value = currentVal;
+          }
         }
-
-        // Opção para anexar fundo novo
-        const attachOpt = document.createElement('option');
-        attachOpt.value = '__custom__';
-        attachOpt.textContent = '➕ Anexar Fundo Personalizado...';
-        templateSelect.appendChild(attachOpt);
-
-        if (currentVal && currentVal !== '__custom__' && templateSelect.querySelector(`option[value="${currentVal}"]`)) {
-          templateSelect.value = currentVal;
-        }
-      }
-    })
-    .catch(() => {});
+      })
+      .catch(() => {});
+  }
 
   // ========================================================
   // INICIALIZAÇÃO RESILIENTE DO MOTOR PDF.JS
@@ -1718,7 +1753,7 @@ Retorne ESTRITAMENTE em formato JSON puro, sem crases ou markdown adicional:
 Sua missão é transformar o texto de um sermão em uma sequência de SLIDES INDIVIDUAIS estruturados em JSON.
 
 REGRA MÁXIMA E OBRIGATÓRIA:
-NíO OMITA, NíO RESUMA E NíO EXCLUA NENHUM PARÁGRAFO OU FRASE!
+NÃO OMITA, NÃO RESUMA E NÃO EXCLUA NENHUM PARÁGRAFO OU FRASE!
 Todo o conteúdo do sermão (introduções pastorais, reflexões, comentários, tópicos e versículos bíblicos) deve ser transformado em slides na íntegra.
 Se houver marcações [HL]...[/HL] no texto, você DEVE preservar esses trechos com "highlight": true.
 
@@ -1752,16 +1787,14 @@ FORMATO DA RESPOSTA (ARRAY JSON):
   }
 ]
 
-TEXTO COMPLETO DO SERMíO:
+TEXTO COMPLETO DO SERMÃO:
 ${sermonText}`;
 
     const models = [
-      'gemini-flash-lite-latest',
-      'gemini-flash-latest',
-      'gemini-3.1-flash-lite',
-      'gemini-3.5-flash-lite',
-      'gemini-3.6-flash',
-      'gemini-3.7-flash'
+      'gemini-2.5-flash',
+      'gemini-2.5-flash-lite',
+      'gemini-2.0-flash',
+      'gemini-1.5-flash'
     ];
 
     let lastError = null;
@@ -1785,6 +1818,11 @@ ${sermonText}`;
           })
         });
         clearTimeout(timeoutId);
+        if (!res.ok) {
+          const errData = await res.json().catch(() => null);
+          lastError = errData?.error?.message || `HTTP ${res.status}`;
+          continue;
+        }
         const data = await res.json();
         if (data.error) {
           lastError = data.error.message;
@@ -1818,7 +1856,7 @@ ${sermonText}`;
     throw new Error(lastError || 'Erro ao processar com IA Gemini');
   }
 
-  // --- MOTOR LOCAL INSTANTNEO DE SERMíO DA IGREJA ---
+  // --- MOTOR LOCAL INSTANTÂNEO DE SERMÃO DA IGREJA ---
   const PREFIXES = "(?:1[ºª°\\.]?|2[ºª°\\.]?|3[ºª°\\.]?|I{1,3}|Primeir[oa]|Segund[oa]|Terceir[oa])";
 
   const BOOK_NAMES = [
@@ -1975,7 +2013,9 @@ ${sermonText}`;
     let t = (text || '').trim();
     if (!t) return '';
     t = t.replace(/^[“"']+|[”"']+$/g, '').trim();
-    if (!/[.!?]$/.test(t)) {
+    if (/[;,]$/.test(t)) {
+      t = t.slice(0, -1).trim() + '.';
+    } else if (!/[.!?…]$/.test(t)) {
       t += '.';
     }
     return `“${t}”`;
@@ -2033,7 +2073,7 @@ ${sermonText}`;
       .split(/\n\s*\n+/)
       .map(p => p.trim())
       .filter(Boolean)
-      .filter(p => !/^[⸻\-_\s]{3,}$/.test(p));
+      .filter(p => !/^[⸻⸺—–\-_\s]{3,}$/.test(p));
 
     // 2. Agrupa em blocos lógicos preservando seções, tópicos e passagens bíblicas completas
     const blocks = [];
@@ -2043,7 +2083,7 @@ ${sermonText}`;
         .split('\n')
         .map(l => l.trim())
         .filter(Boolean)
-        .filter(l => !/^[⸻\-_\s]{3,}$/.test(l));
+        .filter(l => !/^[⸻⸺—–\-_\s]{3,}$/.test(l));
 
       if (pLines.length === 0) continue;
 
@@ -2143,6 +2183,9 @@ ${sermonText}`;
       if (isPureBibleRefLine(lines[0])) {
         const ref = normalizeBibleRefName(isBibleRef(lines[0]));
         const restLines = lines.slice(1);
+        if (restLines.length === 0 || restLines.join(' ').trim().length === 0) {
+          continue;
+        }
         const combined = restLines.join('\n');
         const numberedRegex = /(?:^|\n)\s*(\d{1,3})\s+([A-ZÀ-Ý“"a-z\[])/;
 
@@ -2222,7 +2265,7 @@ ${sermonText}`;
     }];
   }
 
-  // --- MOTOR ESPECIALIZADO DE SERMíO / ROTEIRO DO TEAMS ---
+  // --- MOTOR ESPECIALIZADO DE SERMÃO / ROTEIRO DO TEAMS ---
   function parseTeamsDirectionTextBrowser(rawText, options = { onlyVerses: true }) {
     const onlyVerses = options.onlyVerses !== false;
 
@@ -2315,7 +2358,7 @@ ${sermonText}`;
         }
       }
 
-      // Se NíO for versículo, e a opção "Manter Explicações" estiver selecionada:
+      // Se NÃO for versículo, e a opção "Manter Explicações" estiver selecionada:
       if (!onlyVerses) {
         if (isAdministrativeNoise(p)) {
           continue;
@@ -2414,7 +2457,7 @@ ${sermonText}`;
         return;
       }
 
-      const isClientEnvironment = window.location.hostname.includes('github.io') || window.location.protocol === 'file:' || !window.location.port;
+      const isClientEnvironment = isNoBackendEnvironment;
 
       btnGenerate.disabled = true;
       btnGenerate.innerHTML = '<span>⚡</span> Extraindo slides instantaneamente...';
@@ -2444,7 +2487,7 @@ ${sermonText}`;
             showToast(`⚡ ${currentSlides.length} slides estruturados instantaneamente!`, 'success');
           }
         } else {
-          // MOTOR INSTANTNEO DA IGREJA (5ms)
+          // MOTOR INSTANTÂNEO DA IGREJA (5ms)
           currentSlides = parseSermonOfflineBrowser(extractedText);
           showToast(`⚡ ${currentSlides.length} slides gerados instantaneamente!`, 'success');
         }
@@ -2671,9 +2714,25 @@ ${sermonText}`;
       if (textEdit) {
         textEdit.addEventListener('input', (e) => {
           const val = e.target.value;
-          currentSlides[index].runs = [{ text: val, highlight: false }];
+          const prevHighlights = (currentSlides[index].runs || [])
+            .filter(r => r.highlight && r.text)
+            .map(r => r.text.trim())
+            .filter(Boolean);
+
+          let newRuns;
+          if (val.includes('[HL]')) {
+            newRuns = buildRunsFromText(val);
+          } else if (/\*[^*]+\*/.test(val) || prevHighlights.length > 0) {
+            newRuns = buildRunsFromHighlights(val, prevHighlights);
+          } else {
+            newRuns = [{ text: val, highlight: false }];
+          }
+
+          currentSlides[index].runs = newRuns;
           if (previewText) {
-            previewText.textContent = val;
+            previewText.innerHTML = newRuns.map(r => (
+              r.highlight ? `<span class="highlight">${escapeHtml(r.text)}</span>` : escapeHtml(r.text)
+            )).join('');
             let newFs = '16.5px';
             if (val.length <= 80) newFs = '20px';
             else if (val.length <= 140) newFs = '17.5px';
@@ -2763,6 +2822,13 @@ ${sermonText}`;
         return;
       }
 
+      if (isNoBackendEnvironment) {
+        currentDownloadUrl = null;
+        renderResults();
+        showToast('✅ Edições salvas nos slides! Use Baixar .pptx ou Baixar PDF para exportar.', 'success');
+        return;
+      }
+
       btnRebuild.disabled = true;
       btnRebuild.textContent = 'Salvando...';
 
@@ -2780,15 +2846,19 @@ ${sermonText}`;
             selectedBg: selectedBgVal
           })
         });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
 
-        if (!res.ok || data.error) throw new Error(data.error || 'Erro ao reconstruir.');
+        if (data.error) throw new Error(data.error || 'Erro ao reconstruir.');
 
         currentDownloadUrl = data.downloadUrl;
         showToast('Apresentação atualizada com sucesso!', 'success');
         renderResults();
       } catch (err) {
-        showToast(err.message, 'error');
+        console.warn('Backend local indisponível para rebuild, mantendo edições em memória:', err.message);
+        currentDownloadUrl = null;
+        renderResults();
+        showToast('✅ Edições salvas localmente! Use Baixar .pptx ou Baixar PDF para exportar.', 'success');
       } finally {
         btnRebuild.disabled = false;
         btnRebuild.textContent = '💾 Salvar Edições';
@@ -2824,6 +2894,8 @@ ${sermonText}`;
               const cx = cv.getContext('2d');
               cx.drawImage(bgImg, 0, 0, 1920, 1080);
               bgBase64 = cv.toDataURL('image/jpeg', 0.88);
+              cv.width = 0;
+              cv.height = 0;
             } catch(e) {}
             resolve();
           };
@@ -3139,6 +3211,44 @@ ${sermonText}`;
     return blob;
   }
 
+  function sanitizeFileName(name, fallback = 'Slide') {
+    const cleaned = String(name || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^A-Za-z0-9._-]+/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^[._]+|[._]+$/g, '');
+    return cleaned || fallback;
+  }
+
+  function sanitizeFileNamePreservingExt(fileName, defaultBase = 'Arquivo') {
+    const raw = String(fileName || '').trim();
+    const extMatch = raw.match(/\.([A-Za-z0-9]{1,8})$/);
+    const ext = extMatch ? '.' + extMatch[1].toLowerCase() : '';
+    const stem = ext ? raw.slice(0, -ext.length) : raw;
+    const safeStem = sanitizeFileName(stem, defaultBase).slice(0, 64);
+    return `${safeStem}${ext}`;
+  }
+
+  function getMimeTypeForFileName(fileName) {
+    const ext = String(fileName || '').split('.').pop().toLowerCase();
+    const map = {
+      pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      pdf: 'application/pdf',
+      zip: 'application/zip',
+      png: 'image/png',
+      jpg: 'image/jpeg',
+      jpeg: 'image/jpeg',
+      webp: 'image/webp',
+      gif: 'image/gif',
+      bmp: 'image/bmp',
+      svg: 'image/svg+xml'
+    };
+    return map[ext] || 'application/octet-stream';
+  }
+
+  let isNativeShareActive = false;
+
   // Converter Blob para Base64 puro
   function blobToBase64(blob) {
     return new Promise((resolve, reject) => {
@@ -3155,81 +3265,130 @@ ${sermonText}`;
 
   // Salvar ou Compartilhar Arquivo de forma 100% Nativa (Capacitor Android + Fallback Web)
   async function saveOrShareFileNative(blob, fileName, mode = 'share') {
+    const safeFileName = sanitizeFileNamePreservingExt(fileName, 'Arquivo');
     const isCapacitor = window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform();
 
     if (isCapacitor) {
+      if (isNativeShareActive) {
+        showToast('Aguarde o compartilhamento anterior terminar.', 'info');
+        return false;
+      }
+
+      let savedToDocuments = false;
       try {
         const Plugins = window.Capacitor.Plugins || {};
         const Filesystem = Plugins.Filesystem;
         const Share = Plugins.Share;
 
+        if (!Filesystem) {
+          throw new Error('Plugin Filesystem indisponível neste dispositivo.');
+        }
+
         showToast('Preparando arquivo para ' + (mode === 'share' ? 'compartilhar' : 'salvar') + '...', 'info');
-        const base64Data = await blobToBase64(blob);
+        let base64Data = await blobToBase64(blob);
+        if (!base64Data) {
+          throw new Error('Falha ao codificar arquivo gerado.');
+        }
 
-        let fileUri = null;
+        // 1. Grava uma única vez no CACHE interno com nome ASCII seguro (obrigatório para FileProvider & MimeTypeMap)
+        const cacheRes = await Filesystem.writeFile({
+          path: safeFileName,
+          data: base64Data,
+          directory: 'CACHE',
+          recursive: true
+        });
+        base64Data = null;
+        const fileUri = cacheRes && cacheRes.uri ? cacheRes.uri : null;
 
-        if (Filesystem) {
-          // 1. Sempre escreve na pasta CACHE do aplicativo (acessível pelo FileProvider sem pedir permissão de sistema)
-          const cacheRes = await Filesystem.writeFile({
-            path: fileName,
-            data: base64Data,
-            directory: 'CACHE'
-          });
-          fileUri = cacheRes.uri;
-
-          // 2. Se for modo download, tenta gravar também na pasta de Documentos
-          if (mode === 'download') {
+        // 2. Se for download, copia nativamente no Android (zero tráfego extra na ponte JS/Java)
+        if (mode === 'download' && fileUri) {
+          try {
+            await Filesystem.mkdir({ path: 'SlideKiller', directory: 'DOCUMENTS', recursive: true }).catch(() => {});
+            await Filesystem.deleteFile({ path: 'SlideKiller/' + safeFileName, directory: 'DOCUMENTS' }).catch(() => {});
+            await Filesystem.copy({
+              from: safeFileName,
+              directory: 'CACHE',
+              to: 'SlideKiller/' + safeFileName,
+              toDirectory: 'DOCUMENTS'
+            });
+            savedToDocuments = true;
+          } catch (docErr) {
             try {
-              await Filesystem.writeFile({
-                path: fileName,
-                data: base64Data,
-                directory: 'DOCUMENTS',
-                recursive: true
+              const uniqueName = safeFileName.replace(/(\.[a-z0-9]+)$/i, `_${Date.now()}$1`);
+              await Filesystem.copy({
+                from: safeFileName,
+                directory: 'CACHE',
+                to: 'SlideKiller/' + uniqueName,
+                toDirectory: 'DOCUMENTS'
               });
-            } catch(docErr) {
-              console.warn('[Capacitor] Fallback Documents:', docErr);
+              savedToDocuments = true;
+            } catch (docErr2) {
+              console.warn('[Capacitor] Aviso ao copiar para Documentos:', docErr, docErr2);
             }
           }
         }
 
-        // 3. Aciona a folha nativa do Android (WhatsApp, Drive, Telegram, Office, etc)
+        // 3. Aciona a folha nativa do Android (apenas files + title, sem duplicar url/text)
         if (Share && fileUri) {
-          await Share.share({
-            title: fileName,
-            text: 'Apresentação de slides gerada pela Central Multimídia Church',
-            url: fileUri,
-            files: [fileUri],
-            dialogTitle: (mode === 'share') ? 'Compartilhar Apresentação' : 'Salvar ou Enviar Apresentação'
-          });
-          showToast('🎉 Pronto!', 'success');
-          return true;
+          isNativeShareActive = true;
+          try {
+            await Share.share({
+              title: safeFileName,
+              files: [fileUri],
+              dialogTitle: (mode === 'share') ? 'Compartilhar Arquivo' : 'Salvar ou Enviar Arquivo'
+            });
+            showToast(savedToDocuments ? `🎉 Salvo em Documentos/SlideKiller/${safeFileName}` : '🎉 Pronto!', 'success');
+            return true;
+          } catch (shareErr) {
+            const msg = (shareErr && shareErr.message) ? shareErr.message : String(shareErr || '');
+            if (/cancel|abort/i.test(msg)) {
+              if (savedToDocuments) {
+                showToast(`📁 Salvo em Documentos/SlideKiller/${safeFileName}`, 'success');
+                return true;
+              }
+              showToast('Compartilhamento cancelado.', 'info');
+              return false;
+            }
+            if (savedToDocuments) {
+              showToast(`📁 Salvo em Documentos/SlideKiller/${safeFileName}`, 'success');
+              return true;
+            }
+            throw shareErr;
+          } finally {
+            isNativeShareActive = false;
+          }
         } else if (fileUri) {
-          showToast('🎉 Arquivo salvo no dispositivo!', 'success');
+          showToast(savedToDocuments ? `🎉 Salvo em Documentos/SlideKiller/${safeFileName}` : '🎉 Arquivo salvo no dispositivo!', 'success');
           return true;
         }
+        return false;
       } catch (capErr) {
+        isNativeShareActive = false;
         console.error('[Capacitor] Erro no compartilhamento/download nativo:', capErr);
-        showToast('Erro nativo: ' + capErr.message, 'error');
+        showToast('Erro nativo ao exportar: ' + (capErr.message || String(capErr)), 'error');
+        return false;
       }
     }
 
     // Fallback Web Browser padrão (Desktop / Web)
     if (mode === 'share' && navigator.share && navigator.canShare) {
       try {
-        const file = new File([blob], fileName, {
-          type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
-        });
+        const mimeType = getMimeTypeForFileName(safeFileName);
+        const file = new File([blob], safeFileName, { type: mimeType });
         if (navigator.canShare({ files: [file] })) {
           await navigator.share({
             files: [file],
-            title: 'Slides do Culto',
-            text: 'Apresentação de slides gerada pela Central Multimídia Church'
+            title: safeFileName,
+            text: 'Arquivo gerado pela Central Multimídia Church'
           });
           showToast('🎉 Compartilhado com sucesso!', 'success');
           return true;
         }
       } catch(e) {
-        if (e.name === 'AbortError') return true;
+        if (e && e.name === 'AbortError') {
+          showToast('Compartilhamento cancelado.', 'info');
+          return false;
+        }
       }
     }
 
@@ -3238,7 +3397,7 @@ ${sermonText}`;
       const downloadUrl = URL.createObjectURL(blob);
       const downloadLink = document.createElement('a');
       downloadLink.href = downloadUrl;
-      downloadLink.download = fileName;
+      downloadLink.download = safeFileName;
       document.body.appendChild(downloadLink);
       downloadLink.click();
       document.body.removeChild(downloadLink);
@@ -3252,44 +3411,51 @@ ${sermonText}`;
     }
   }
 
+  async function getSlideKillerPptxData() {
+    if (currentSlides.length === 0) return null;
+    const pptx = await buildSlideKillerPptxInstance();
+    const fileName = 'SLIDES_CULTO_' + Date.now() + '.pptx';
+    const rawBlob = await pptx.write({ outputType: 'blob' });
+    const fontName = (CHURCH_FONTS[currentSelectedFont] || CHURCH_FONTS['bahnschrift_semibold_condensed']).pptxFontFace;
+    const blob = await enrichPptxWithChurchTheme(rawBlob, fontName);
+    return { blob, fileName };
+  }
+
   // Download PPTX no cliente com PptxGenJS (100% fiel ao estilo da igreja)
   async function exportSlideKillerPptx() {
     if (currentSlides.length === 0) {
       showToast('Nenhum slide para exportar.', 'error');
-      return;
+      return false;
     }
 
     showToast('Gerando apresentação em PowerPoint (.pptx)...', 'info');
 
     try {
-      const pptx = await buildSlideKillerPptxInstance();
-      const fileName = 'SLIDES_CULTO_' + Date.now() + '.pptx';
-      const rawBlob = await pptx.write({ outputType: 'blob' });
-      const fontName = (CHURCH_FONTS[currentSelectedFont] || CHURCH_FONTS['bahnschrift_semibold_condensed']).pptxFontFace;
-      const enrichedBlob = await enrichPptxWithChurchTheme(rawBlob, fontName);
-
-      await saveOrShareFileNative(enrichedBlob, fileName, 'download');
+      const data = await getSlideKillerPptxData();
+      if (!data) return false;
+      return await saveOrShareFileNative(data.blob, data.fileName, 'download');
     } catch (err) {
       console.error('Erro ao exportar PPTX:', err);
       showToast('Erro ao exportar PPTX: ' + err.message, 'error');
+      return false;
     }
   }
 
-  // Gerar dados binários (Blob e ArrayBuffer) da apresentação atual
   // Download PDF no cliente com jsPDF - Proporções e tipografia oficiais 16:9 Full HD
   async function exportSlideKillerPdf() {
     if (currentSlides.length === 0) {
       showToast('Nenhum slide para exportar.', 'error');
-      return;
+      return false;
     }
 
     if (typeof window.jspdf === 'undefined' || !window.jspdf.jsPDF) {
       showToast('Biblioteca jsPDF não carregada. Tente novamente em instantes.', 'error');
-      return;
+      return false;
     }
 
     showToast('Gerando documento em PDF (.pdf)...', 'info');
 
+    let canvas = null;
     try {
       if (document.fonts && document.fonts.ready) {
         try {
@@ -3318,7 +3484,7 @@ ${sermonText}`;
         bgImg.src = bgUrl;
       });
 
-      const canvas = document.createElement('canvas');
+      canvas = document.createElement('canvas');
       canvas.width = baseW;
       canvas.height = baseH;
       const ctx = canvas.getContext('2d');
@@ -3498,23 +3664,32 @@ ${sermonText}`;
         doc.addImage(slideImgData, 'JPEG', 0, 0, baseW, baseH, undefined, 'FAST');
       }
 
+      canvas.width = 0;
+      canvas.height = 0;
+      canvas = null;
+
       const fileName = 'SLIDES_CULTO_' + Date.now() + '.pdf';
       const pdfBlob = doc.output('blob');
-      await saveOrShareFileNative(pdfBlob, fileName, 'download');
+      return await saveOrShareFileNative(pdfBlob, fileName, 'download');
     } catch (err) {
       console.error('Erro ao exportar PDF:', err);
       showToast('Erro ao exportar PDF: ' + err.message, 'error');
+      return false;
+    } finally {
+      if (canvas) {
+        canvas.width = 0;
+        canvas.height = 0;
+      }
     }
   }
 
   // Download de Ambos (PPTX + PDF)
   async function exportSlideKillerBoth() {
     showToast('Exportando apresentação em PowerPoint (.pptx)...', 'info');
-    await exportSlideKillerPptx();
-    setTimeout(async () => {
-      showToast('Exportando documento em PDF (.pdf)...', 'info');
-      await exportSlideKillerPdf();
-    }, 800);
+    const pptxOk = await exportSlideKillerPptx();
+    if (!pptxOk) return false;
+    showToast('Exportando documento em PDF (.pdf)...', 'info');
+    return await exportSlideKillerPdf();
   }
 
   // Download PPTX (Gera dinamicamente com tipografia widescreen e referência separada)
@@ -3562,6 +3737,7 @@ ${sermonText}`;
       if (sermonTextInput) sermonTextInput.value = '';
       if (verseImagesInput) verseImagesInput.value = '';
       if (selectedFileInfo) selectedFileInfo.style.display = 'none';
+      if (verseImagesContainer) verseImagesContainer.style.display = 'none';
       if (verseImagesThumbnailsGrid) {
         verseImagesThumbnailsGrid.innerHTML = '';
         verseImagesThumbnailsGrid.style.display = 'none';
@@ -3887,7 +4063,7 @@ ${sermonText}`;
         console.error('Erro na conversão PPTX ➔ ZIP:', err);
       } finally {
         btnPptxToZip.disabled = false;
-        btnPptxToZip.innerHTML = '<span class="btn-icon">📦</span> Converter e Baixar ZIP (Imagens PNG)';
+        btnPptxToZip.innerHTML = '<span class="btn-icon">📦</span> Converter e Baixar ZIP (PNG)';
       }
     });
   }
@@ -3909,7 +4085,7 @@ ${sermonText}`;
         console.error('Erro na conversão PPTX ➔ PDF:', err);
       } finally {
         btnPptxToPdf.disabled = false;
-        btnPptxToPdf.innerHTML = '<span class="btn-icon">📄</span> Converter e Baixar PDF (.pdf)';
+        btnPptxToPdf.innerHTML = '<span class="btn-icon">📄</span> Converter e Baixar PDF';
       }
     });
   }
@@ -3961,6 +4137,7 @@ ${sermonText}`;
     if (sectionDirectResults) sectionDirectResults.style.display = 'none';
     if (sectionDirectInput) sectionDirectInput.style.display = 'flex';
     if (btnDownloadDirectTop) btnDownloadDirectTop.style.display = 'none';
+    if (btnShareDirectMain) btnShareDirectMain.style.display = 'none';
     directGeneratedPptx = null;
     directSlides = [];
   }
@@ -3988,8 +4165,10 @@ ${sermonText}`;
       try {
         const ok = await processPdfIntoSlides(currentDirectFile, false);
         if (ok && directSlides.length > 0) {
-          await generateDirectExport('pptx');
-          showToast('🎉 Conversão direta concluída! Arquivo PPTX baixado com sucesso.', 'success');
+          const exported = await generateDirectExport('pptx');
+          if (exported) {
+            showToast('🎉 Conversão direta concluída! Arquivo PPTX pronto.', 'success');
+          }
         }
       } catch (err) {
         console.error('Erro na conversão direta:', err);
@@ -4078,6 +4257,10 @@ ${sermonText}`;
 
         const imgData = canvas.toDataURL('image/jpeg', 0.90);
         const pageRatio = viewport.width / viewport.height;
+        const pageW = canvas.width;
+        const pageH = canvas.height;
+        canvas.width = 0;
+        canvas.height = 0;
 
         directSlides.push({
           id: 'pdf_' + Date.now() + '_' + pageNum + '_' + Math.random().toString(36).substr(2, 5),
@@ -4087,8 +4270,8 @@ ${sermonText}`;
           pageNum: pageNum,
           imgData: imgData,
           ratio: pageRatio,
-          width: viewport.width,
-          height: viewport.height
+          width: pageW,
+          height: pageH
         });
       }
 
@@ -4107,7 +4290,7 @@ ${sermonText}`;
     } finally {
       if (btnConvertDirect) {
         btnConvertDirect.disabled = false;
-        btnConvertDirect.innerHTML = '<span class="btn-icon">📋</span> Abrir no Organizador';
+        btnConvertDirect.innerHTML = '<span class="btn-icon">📋</span> Abrir no Organizador (PPTX, ZIP ou PDF)';
       }
       if (directProgressContainer) {
         setTimeout(() => {
@@ -4115,6 +4298,19 @@ ${sermonText}`;
         }, 1200);
       }
     }
+  }
+
+  function probeImageDimensions(src) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const w = img.naturalWidth || 1920;
+        const h = img.naturalHeight || 1080;
+        resolve({ width: w, height: h, ratio: h > 0 ? (w / h) : (16 / 9) });
+      };
+      img.onerror = () => resolve({ width: 1920, height: 1080, ratio: 16 / 9 });
+      img.src = src;
+    });
   }
 
   // Upload de Imagens Externas / Fotos / Avisos adicionais no PDF
@@ -4128,13 +4324,16 @@ ${sermonText}`;
         if (!file.type.startsWith('image/')) continue;
         try {
           const dataUrl = await readFileAsDataUrl(file);
+          const dims = await probeImageDimensions(dataUrl);
           directSlides.push({
             id: 'img_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
             title: file.name,
             type: 'image',
             source: 'Imagem Externa',
             imgData: dataUrl,
-            ratio: 16 / 9
+            ratio: dims.ratio,
+            width: dims.width,
+            height: dims.height
           });
           addedCount++;
         } catch (err) {
@@ -4163,7 +4362,171 @@ ${sermonText}`;
       .replace(/&lt;/g, '<')
       .replace(/&gt;/g, '>')
       .replace(/&amp;/g, '&')
-      .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec));
+      .replace(/&#x([0-9a-fA-F]+);/g, (match, hex) => String.fromCharCode(parseInt(hex, 16)))
+      .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(parseInt(dec, 10)));
+  }
+
+  function parseXmlDocSafe(xmlText) {
+    if (!xmlText || typeof DOMParser === 'undefined') return null;
+    try {
+      const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
+      if (!doc || doc.getElementsByTagName('parsererror').length > 0) return null;
+      return doc;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function getXmlLocalName(node) {
+    if (!node) return '';
+    return node.localName || String(node.nodeName || '').split(':').pop();
+  }
+
+  function getXmlEls(root, localName) {
+    if (!root || !root.getElementsByTagName) return [];
+    const out = [];
+    const all = root.getElementsByTagName('*');
+    for (let i = 0; i < all.length; i++) {
+      if (getXmlLocalName(all[i]) === localName) out.push(all[i]);
+    }
+    return out;
+  }
+
+  function getXmlDirectChild(parent, localName) {
+    if (!parent || !parent.children) return null;
+    for (let i = 0; i < parent.children.length; i++) {
+      if (getXmlLocalName(parent.children[i]) === localName) return parent.children[i];
+    }
+    return null;
+  }
+
+  function getXmlAttr(el, attrName) {
+    if (!el || !el.attributes) return null;
+    for (let i = 0; i < el.attributes.length; i++) {
+      const attr = el.attributes[i];
+      const local = attr.localName || String(attr.name || '').split(':').pop();
+      if (attr.name === attrName || local === attrName) return attr.value;
+    }
+    return null;
+  }
+
+  function normalizePptxRelTarget(target, baseFolder = 'ppt') {
+    if (!target) return null;
+    let clean = String(target).trim().replace(/\\/g, '/');
+    if (clean.startsWith('/')) {
+      return clean.replace(/^\/+/, '');
+    }
+    const parts = (baseFolder ? baseFolder.replace(/\/+$/, '').split('/') : []);
+    for (const seg of clean.split('/')) {
+      if (!seg || seg === '.') continue;
+      if (seg === '..') {
+        if (parts.length > 0) parts.pop();
+      } else {
+        parts.push(seg);
+      }
+    }
+    return parts.join('/');
+  }
+
+  function parseSlideRels(relsXml) {
+    const rels = {};
+    if (!relsXml) return rels;
+    const doc = parseXmlDocSafe(relsXml);
+    if (doc) {
+      for (const relEl of getXmlEls(doc, 'Relationship')) {
+        const id = getXmlAttr(relEl, 'Id');
+        const target = getXmlAttr(relEl, 'Target');
+        if (id && target) {
+          rels[id] = normalizePptxRelTarget(target, 'ppt/slides');
+        }
+      }
+      return rels;
+    }
+    const relRegex = /<Relationship\b([^>]+)>/gi;
+    let rm;
+    while ((rm = relRegex.exec(relsXml)) !== null) {
+      const attrs = rm[1];
+      const idM = attrs.match(/\bId="([^"]+)"/i);
+      const tgtM = attrs.match(/\bTarget="([^"]+)"/i);
+      if (idM && tgtM) {
+        rels[idM[1]] = normalizePptxRelTarget(tgtM[1], 'ppt/slides');
+      }
+    }
+    return rels;
+  }
+
+  function parsePptxPresentationMeta(presXml, relsXml) {
+    let presWidth = 12192000;
+    let presHeight = 6858000;
+    const slidePaths = [];
+    const relMap = {};
+
+    if (relsXml) {
+      const relDoc = parseXmlDocSafe(relsXml);
+      if (relDoc) {
+        for (const relEl of getXmlEls(relDoc, 'Relationship')) {
+          const id = getXmlAttr(relEl, 'Id');
+          const type = getXmlAttr(relEl, 'Type') || '';
+          const target = getXmlAttr(relEl, 'Target');
+          if (id && target && /\/slide$/i.test(type)) {
+            relMap[id] = normalizePptxRelTarget(target, 'ppt');
+          }
+        }
+      } else {
+        const tagRe = /<Relationship\b([^>]+)>/gi;
+        let rm;
+        while ((rm = tagRe.exec(relsXml)) !== null) {
+          const attrs = rm[1];
+          const idM = attrs.match(/\bId="([^"]+)"/i);
+          const typeM = attrs.match(/\bType="([^"]*\/slide)"/i);
+          const tgtM = attrs.match(/\bTarget="([^"]+)"/i);
+          if (idM && typeM && tgtM) {
+            relMap[idM[1]] = normalizePptxRelTarget(tgtM[1], 'ppt');
+          }
+        }
+      }
+    }
+
+    if (presXml) {
+      const presDoc = parseXmlDocSafe(presXml);
+      if (presDoc) {
+        const sldSz = getXmlEls(presDoc, 'sldSz')[0];
+        if (sldSz) {
+          const wVal = parseInt(getXmlAttr(sldSz, 'cx'), 10);
+          const hVal = parseInt(getXmlAttr(sldSz, 'cy'), 10);
+          if (wVal > 0 && hVal > 0) {
+            presWidth = wVal;
+            presHeight = hVal;
+          }
+        }
+        for (const sldId of getXmlEls(presDoc, 'sldId')) {
+          const rId = getXmlAttr(sldId, 'id');
+          if (rId && relMap[rId]) slidePaths.push(relMap[rId]);
+        }
+      } else {
+        const sldSzTag = presXml.match(/<p:sldSz\b([^>]+)>/i);
+        if (sldSzTag) {
+          const cxM = sldSzTag[1].match(/\bcx="(\d+)"/i);
+          const cyM = sldSzTag[1].match(/\bcy="(\d+)"/i);
+          if (cxM && cyM) {
+            const wVal = parseInt(cxM[1], 10);
+            const hVal = parseInt(cyM[1], 10);
+            if (wVal > 0 && hVal > 0) {
+              presWidth = wVal;
+              presHeight = hVal;
+            }
+          }
+        }
+        const idRegex = /<p:sldId\b[^>]*r:id="([^"]+)"/gi;
+        let im;
+        while ((im = idRegex.exec(presXml)) !== null) {
+          if (relMap[im[1]]) slidePaths.push(relMap[im[1]]);
+        }
+      }
+    }
+
+    const ratio = (presWidth && presHeight) ? (presWidth / presHeight) : (16 / 9);
+    return { presWidth, presHeight, ratio, slidePaths };
   }
 
   function loadImageAsync(src) {
@@ -4190,48 +4553,16 @@ ${sermonText}`;
       const arrayBuffer = await file.arrayBuffer();
       const zip = await JSZip.loadAsync(arrayBuffer);
 
-      // 1. Dimensões do slide
-      let presWidth = 12192000;
-      let presHeight = 6858000;
+      // 1. Dimensões e ordem oficial dos slides
       const presEntry = zip.file('ppt/presentation.xml');
-      if (presEntry && typeof presEntry.async === 'function') {
-        const presXml = await presEntry.async('text');
-        const m = presXml.match(/<p:sldSz\s+[^>]*cx="(\d+)"[^>]*cy="(\d+)"/i) || presXml.match(/<p:sldSz\s+[^>]*cy="(\d+)"[^>]*cx="(\d+)"/i);
-        if (m) {
-          if (presXml.indexOf('cx="') < presXml.indexOf('cy="')) {
-            presWidth = parseInt(m[1], 10);
-            presHeight = parseInt(m[2], 10);
-          } else {
-            presHeight = parseInt(m[1], 10);
-            presWidth = parseInt(m[2], 10);
-          }
-        }
-      }
-      const ratio = (presWidth && presHeight) ? (presWidth / presHeight) : (16 / 9);
-
-      // 2. Mapeamento e ordem dos slides
-      let slidePaths = [];
       const relsEntry = zip.file('ppt/_rels/presentation.xml.rels');
-      if (relsEntry && typeof relsEntry.async === 'function') {
-        const relsXml = await relsEntry.async('text');
-        const rRegex = /<Relationship[^>]+Id="([^"]+)"[^>]+Type="[^"]*\/slide"[^>]+Target="([^"]+)"/gi;
-        const map = {};
-        let rm;
-        while ((rm = rRegex.exec(relsXml)) !== null) {
-          let target = rm[2].replace(/^\/?ppt\//, '').replace(/^\//, '');
-          if (!target.startsWith('slides/')) target = 'slides/' + target.split('slides/').pop();
-          map[rm[1]] = 'ppt/' + target;
-        }
-
-        if (presEntry && typeof presEntry.async === 'function') {
-          const presXml = await presEntry.async('text');
-          const idRegex = /<p:sldId\s+[^>]*r:id="([^"]+)"/gi;
-          let im;
-          while ((im = idRegex.exec(presXml)) !== null) {
-            if (map[im[1]]) slidePaths.push(map[im[1]]);
-          }
-        }
-      }
+      const presXml = (presEntry && typeof presEntry.async === 'function') ? await presEntry.async('text') : '';
+      const relsXml = (relsEntry && typeof relsEntry.async === 'function') ? await relsEntry.async('text') : '';
+      const meta = parsePptxPresentationMeta(presXml, relsXml);
+      const presWidth = meta.presWidth;
+      const presHeight = meta.presHeight;
+      const ratio = meta.ratio;
+      let slidePaths = meta.slidePaths;
 
       // Fallback: ordenar numericamente slide1.xml, slide2.xml...
       if (slidePaths.length === 0) {
@@ -4265,12 +4596,7 @@ ${sermonText}`;
       for (const mf of mediaFiles) {
         const mEntry = zip.file(mf);
         if (!mEntry || typeof mEntry.async !== 'function') continue;
-        const ext = mf.split('.').pop().toLowerCase();
-        let mime = 'image/png';
-        if (ext === 'jpg' || ext === 'jpeg') mime = 'image/jpeg';
-        else if (ext === 'webp') mime = 'image/webp';
-        else if (ext === 'gif') mime = 'image/gif';
-        else if (ext === 'svg') mime = 'image/svg+xml';
+        const mime = getMimeTypeForFileName(mf);
 
         try {
           const b64 = await mEntry.async('base64');
@@ -4281,9 +4607,12 @@ ${sermonText}`;
       }
 
       if (!isAppend) {
+        directGeneratedPptx = null;
         directSlides = [];
         currentDirectFile = file;
         directPptxFileName = file.name.replace(/\.[^/.]+$/, '') + '_CONVERTIDO.pptx';
+      } else {
+        directGeneratedPptx = null;
       }
 
       const total = slidePaths.length;
@@ -4302,18 +4631,12 @@ ${sermonText}`;
         const xml = await sEntry.async('text');
 
         const relsPath = slidePath.replace('ppt/slides/', 'ppt/slides/_rels/') + '.rels';
-        const rels = {};
+        let rels = {};
         const relEntry = zip.file(relsPath);
         if (relEntry && typeof relEntry.async === 'function') {
           try {
-            const relsXml = await relEntry.async('text');
-            const relRegex = /<Relationship[^>]+Id="([^"]+)"[^>]+Target="([^"]+)"/gi;
-            let rm;
-            while ((rm = relRegex.exec(relsXml)) !== null) {
-              let tgt = rm[2].replace(/^\.\.\//, 'ppt/');
-              if (!tgt.startsWith('ppt/')) tgt = 'ppt/' + tgt;
-              rels[rm[1]] = tgt;
-            }
+            const slideRelsXml = await relEntry.async('text');
+            rels = parseSlideRels(slideRelsXml);
           } catch (relErr) {
             console.warn(`Aviso ao ler rels do slide ${idx + 1}:`, relErr);
           }
@@ -4354,16 +4677,21 @@ ${sermonText}`;
           fbCtx.font = 'bold 36px sans-serif';
           fbCtx.textAlign = 'center';
           fbCtx.fillText(`Slide ${idx + 1}`, fbCanvas.width / 2, fbCanvas.height / 2);
+          const fbW = fbCanvas.width;
+          const fbH = fbCanvas.height;
+          const fbImg = fbCanvas.toDataURL('image/png');
+          fbCanvas.width = 0;
+          fbCanvas.height = 0;
           directSlides.push({
             id: 'pptx_' + Date.now() + '_' + idx + '_' + Math.random().toString(36).substr(2, 5),
             title: `${file.name.replace(/\.[^/.]+$/, '')} - Slide ${idx + 1}`,
             type: 'pptx',
             source: file.name,
             pageNum: idx + 1,
-            imgData: fbCanvas.toDataURL('image/png'),
+            imgData: fbImg,
             ratio: ratio,
-            width: fbCanvas.width,
-            height: fbCanvas.height
+            width: fbW,
+            height: fbH
           });
         }
       }
@@ -4382,6 +4710,56 @@ ${sermonText}`;
     }
   }
 
+  function resolveSchemeColor(val) {
+    if (!val) return null;
+    const sval = String(val).toLowerCase();
+    if (sval === 'tx1' || sval === 'dk1') return '#000000';
+    if (sval === 'bg1' || sval === 'lt1') return '#FFFFFF';
+    if (sval === 'accent1') return '#38bdf8';
+    if (sval === 'accent2') return '#e8b859';
+    return null;
+  }
+
+  function extractRunStyleFromRPr(rPr, fallbackStyle = null) {
+    const base = fallbackStyle || { sz: 4000, bold: false, italic: false, color: '#FFFFFF', typeface: null };
+    if (!rPr) return { ...base };
+    let sz = base.sz;
+    let bold = base.bold;
+    let italic = base.italic;
+    let color = base.color;
+    let typeface = base.typeface;
+
+    const szAttr = getXmlAttr(rPr, 'sz');
+    if (szAttr) {
+      const parsedSz = parseInt(szAttr, 10);
+      if (parsedSz > 0) sz = parsedSz;
+    }
+    const bAttr = getXmlAttr(rPr, 'b');
+    if (bAttr !== null) bold = bAttr === '1' || bAttr === 'true';
+    const iAttr = getXmlAttr(rPr, 'i');
+    if (iAttr !== null) italic = iAttr === '1' || iAttr === 'true';
+
+    const solidFill = getXmlDirectChild(rPr, 'solidFill');
+    if (solidFill) {
+      const srgb = getXmlDirectChild(solidFill, 'srgbClr');
+      const scheme = getXmlDirectChild(solidFill, 'schemeClr');
+      const srgbVal = srgb ? getXmlAttr(srgb, 'val') : null;
+      const schemeVal = scheme ? getXmlAttr(scheme, 'val') : null;
+      if (srgbVal && /^[0-9a-fA-F]{6}$/.test(srgbVal)) {
+        color = '#' + srgbVal;
+      } else if (schemeVal) {
+        const mapped = resolveSchemeColor(schemeVal);
+        if (mapped) color = mapped;
+      }
+    }
+
+    const latin = getXmlDirectChild(rPr, 'latin');
+    const tf = latin ? getXmlAttr(latin, 'typeface') : null;
+    if (tf) typeface = tf;
+
+    return { sz, bold, italic, color, typeface };
+  }
+
   // Renderiza um slide XML em um canvas 1080p preservando a ordem exata das camadas (z-index natural do PowerPoint)
   async function renderPptxSlideToCanvas({ xml, rels, mediaDataUrls, presWidth, presHeight, ratio, slideIndex }) {
     const canvasW = 1920;
@@ -4389,138 +4767,239 @@ ${sermonText}`;
     const scaleX = canvasW / presWidth;
     const scaleY = canvasH / presHeight;
 
-    // 1. Extração dos dados de fundo (Background declarado em <p:bg>)
     let bgBlipTarget = null;
     let bgColor = '#0b0f19';
-    const bgMatch = xml.match(/<p:bg\b[\s\S]*?<\/p:bg>/i);
-    if (bgMatch) {
-      const bgXml = bgMatch[0];
-      const blipM = bgXml.match(/<a:blip[^>]+r:embed="([^"]+)"/i);
-      if (blipM && rels[blipM[1]]) bgBlipTarget = rels[blipM[1]];
-      const clrM = bgXml.match(/<a:srgbClr\s+val="([0-9a-fA-F]{6})"/i);
-      if (clrM) bgColor = '#' + clrM[1];
-    }
-
-    // 2. Extração sequencial dos elementos de spTree (ordem exata do documento = camadas z-index)
-    const spTreeMatch = xml.match(/<p:spTree>([\s\S]*?)<\/p:spTree>/i);
     const elements = [];
     let titleFound = '';
 
-    if (spTreeMatch) {
-      const innerXml = spTreeMatch[1];
-      const tagRegex = /<p:(sp|pic|grpSp|graphicFrame)\b([\s\S]*?)<\/p:\1>/gi;
-      let match;
+    const doc = parseXmlDocSafe(xml);
 
-      while ((match = tagRegex.exec(innerXml)) !== null) {
-        const type = match[1];
-        const rawXml = match[0];
+    if (doc) {
+      // 1. Fundo declarado em <p:bg> via DOMParser
+      const bgEl = getXmlEls(doc, 'bg')[0];
+      if (bgEl) {
+        const blipEl = getXmlEls(bgEl, 'blip')[0];
+        const rId = blipEl ? getXmlAttr(blipEl, 'embed') : null;
+        if (rId && rels[rId]) bgBlipTarget = rels[rId];
+        const srgbEl = getXmlEls(bgEl, 'srgbClr')[0];
+        const clrVal = srgbEl ? getXmlAttr(srgbEl, 'val') : null;
+        if (clrVal && /^[0-9a-fA-F]{6}$/.test(clrVal)) bgColor = '#' + clrVal;
+      }
 
-        // Bounds
-        const offM = rawXml.match(/<a:off\s+x="(-?\d+)"\s+y="(-?\d+)"/i);
-        const extM = rawXml.match(/<a:ext\s+cx="(\d+)"\s+cy="(\d+)"/i);
-        const x = offM ? parseInt(offM[1], 10) : 0;
-        const y = offM ? parseInt(offM[2], 10) : 0;
-        const cx = extM ? parseInt(extM[1], 10) : presWidth;
-        const cy = extM ? parseInt(extM[2], 10) : presHeight;
+      // 2. Caminha por <p:spTree> preservando ordem Z e coordenadas de <p:grpSp>
+      const spTreeEl = getXmlEls(doc, 'spTree')[0];
+      const readBoxCoords = (prEl, defaultX, defaultY, defaultCx, defaultCy) => {
+        const xfrm = prEl ? getXmlDirectChild(prEl, 'xfrm') : null;
+        const off = xfrm ? getXmlDirectChild(xfrm, 'off') : null;
+        const ext = xfrm ? getXmlDirectChild(xfrm, 'ext') : null;
+        const x = off ? (parseInt(getXmlAttr(off, 'x'), 10) || 0) : defaultX;
+        const y = off ? (parseInt(getXmlAttr(off, 'y'), 10) || 0) : defaultY;
+        const cxAttr = ext ? parseInt(getXmlAttr(ext, 'cx'), 10) : NaN;
+        const cyAttr = ext ? parseInt(getXmlAttr(ext, 'cy'), 10) : NaN;
+        const cx = !Number.isNaN(cxAttr) ? cxAttr : defaultCx;
+        const cy = !Number.isNaN(cyAttr) ? cyAttr : defaultCy;
+        return { x, y, cx, cy, xfrm };
+      };
 
-        if (type === 'pic') {
-          const blipM = rawXml.match(/<a:blip[^>]+r:embed="([^"]+)"/i);
-          const rId = blipM ? blipM[1] : null;
-          const target = rId && rels[rId] ? rels[rId] : null;
-          elements.push({
-            type: 'pic',
-            target,
-            x, y, cx, cy
-          });
-        } else if (type === 'sp') {
-          // Fill do formato estritamente delimitado por p:spPr e respeitando a:noFill
-          const spPrM = rawXml.match(/<p:spPr\b[\s\S]*?<\/p:spPr>/i);
-          let shapeFill = null;
-          if (spPrM) {
-            const pr = spPrM[0];
-            if (!pr.includes('<a:noFill')) {
-              const solidM = pr.match(/<a:solidFill>[\s\S]*?<a:srgbClr\s+val="([0-9a-fA-F]{6})"/i);
+      const mapBox = (box, transform) => ({
+        x: transform.offX + (box.x - transform.chOffX) * transform.sx,
+        y: transform.offY + (box.y - transform.chOffY) * transform.sy,
+        cx: box.cx * transform.sx,
+        cy: box.cy * transform.sy
+      });
+
+      const walkSpTreeContainer = (containerEl, transform) => {
+        if (!containerEl || !containerEl.children) return;
+        for (let i = 0; i < containerEl.children.length; i++) {
+          const child = containerEl.children[i];
+          const lname = getXmlLocalName(child);
+
+          if (lname === 'grpSp') {
+            const grpPr = getXmlDirectChild(child, 'grpSpPr');
+            const box = readBoxCoords(grpPr, 0, 0, presWidth, presHeight);
+            const chOffEl = box.xfrm ? getXmlDirectChild(box.xfrm, 'chOff') : null;
+            const chExtEl = box.xfrm ? getXmlDirectChild(box.xfrm, 'chExt') : null;
+            const gx0 = chOffEl ? (parseInt(getXmlAttr(chOffEl, 'x'), 10) || 0) : box.x;
+            const gy0 = chOffEl ? (parseInt(getXmlAttr(chOffEl, 'y'), 10) || 0) : box.y;
+            const gcx = chExtEl ? (parseInt(getXmlAttr(chExtEl, 'cx'), 10) || box.cx) : box.cx;
+            const gcy = chExtEl ? (parseInt(getXmlAttr(chExtEl, 'cy'), 10) || box.cy) : box.cy;
+            const parentMapped = mapBox(box, transform);
+            const childSx = gcx > 0 ? (parentMapped.cx / gcx) : transform.sx;
+            const childSy = gcy > 0 ? (parentMapped.cy / gcy) : transform.sy;
+            walkSpTreeContainer(child, {
+              offX: parentMapped.x,
+              offY: parentMapped.y,
+              chOffX: gx0,
+              chOffY: gy0,
+              sx: childSx,
+              sy: childSy
+            });
+          } else if (lname === 'pic') {
+            const spPr = getXmlDirectChild(child, 'spPr');
+            const box = readBoxCoords(spPr, 0, 0, presWidth, presHeight);
+            const mapped = mapBox(box, transform);
+            const blipEl = getXmlEls(child, 'blip')[0];
+            const rId = blipEl ? getXmlAttr(blipEl, 'embed') : null;
+            const target = rId && rels[rId] ? rels[rId] : null;
+            elements.push({ type: 'pic', target, ...mapped });
+          } else if (lname === 'sp') {
+            const spPr = getXmlDirectChild(child, 'spPr');
+            const box = readBoxCoords(spPr, 0, 0, presWidth, presHeight);
+            const mapped = mapBox(box, transform);
+
+            let shapeFill = null;
+            if (spPr && !getXmlDirectChild(spPr, 'noFill')) {
+              const solidFill = getXmlDirectChild(spPr, 'solidFill');
+              const srgb = solidFill ? getXmlDirectChild(solidFill, 'srgbClr') : null;
+              const clr = srgb ? getXmlAttr(srgb, 'val') : null;
+              if (clr && /^[0-9a-fA-F]{6}$/.test(clr)) shapeFill = '#' + clr;
+            }
+
+            const txBody = getXmlDirectChild(child, 'txBody');
+            const paragraphs = [];
+            let anchor = 't';
+
+            if (txBody) {
+              const bodyPr = getXmlDirectChild(txBody, 'bodyPr');
+              const anchorAttr = bodyPr ? getXmlAttr(bodyPr, 'anchor') : null;
+              if (anchorAttr) anchor = anchorAttr;
+
+              for (let pIdx = 0; pIdx < txBody.children.length; pIdx++) {
+                const pEl = txBody.children[pIdx];
+                if (getXmlLocalName(pEl) !== 'p') continue;
+
+                const pPr = getXmlDirectChild(pEl, 'pPr');
+                const align = (pPr && getXmlAttr(pPr, 'algn')) || 'l';
+                const defRPr = pPr ? getXmlDirectChild(pPr, 'defRPr') : null;
+                const defaultRunStyle = extractRunStyleFromRPr(defRPr, null);
+
+                let currentRuns = [];
+                for (let cIdx = 0; cIdx < pEl.children.length; cIdx++) {
+                  const rEl = pEl.children[cIdx];
+                  const childName = getXmlLocalName(rEl);
+                  if (childName === 'br') {
+                    paragraphs.push({ align, runs: currentRuns.length > 0 ? currentRuns : [{ text: ' ', ...defaultRunStyle }] });
+                    currentRuns = [];
+                  } else if (childName === 'r' || childName === 'fld') {
+                    const tEl = getXmlDirectChild(rEl, 't');
+                    if (!tEl) continue;
+                    const rawText = tEl.textContent || '';
+                    if (!titleFound && rawText.trim().length > 3) {
+                      titleFound = rawText.trim().replace(/^["“'”]+|["“'”]+$/g, '').substring(0, 45);
+                    }
+                    const rPr = getXmlDirectChild(rEl, 'rPr');
+                    const style = extractRunStyleFromRPr(rPr, defaultRunStyle);
+                    currentRuns.push({ text: rawText, ...style });
+                  }
+                }
+                if (currentRuns.length > 0) {
+                  paragraphs.push({ align, runs: currentRuns });
+                }
+              }
+            }
+
+            if (shapeFill || paragraphs.length > 0) {
+              elements.push({
+                type: 'sp',
+                shapeFill,
+                anchor,
+                paragraphs,
+                ...mapped
+              });
+            }
+          }
+        }
+      };
+
+      if (spTreeEl) {
+        walkSpTreeContainer(spTreeEl, { offX: 0, offY: 0, chOffX: 0, chOffY: 0, sx: 1, sy: 1 });
+      }
+    } else {
+      // Fallback regex se DOMParser falhar por XML malformado
+      const bgMatch = xml.match(/<p:bg\b[\s\S]*?<\/p:bg>/i);
+      if (bgMatch) {
+        const bgXml = bgMatch[0];
+        const blipM = bgXml.match(/<a:blip[^>]+r:embed="([^"]+)"/i);
+        if (blipM && rels[blipM[1]]) bgBlipTarget = rels[blipM[1]];
+        const clrM = bgXml.match(/<a:srgbClr\s+val="([0-9a-fA-F]{6})"/i);
+        if (clrM) bgColor = '#' + clrM[1];
+      }
+
+      const spTreeMatch = xml.match(/<p:spTree>([\s\S]*?)<\/p:spTree>/i);
+      if (spTreeMatch) {
+        const innerXml = spTreeMatch[1];
+        const tagRegex = /<p:(sp|pic)\b([\s\S]*?)<\/p:\1>/gi;
+        let match;
+        while ((match = tagRegex.exec(innerXml)) !== null) {
+          const type = match[1];
+          const rawXml = match[0];
+          const offM = rawXml.match(/<a:off\b([^>]+)>/i);
+          const extM = rawXml.match(/<a:ext\b([^>]+)>/i);
+          const offX = offM && offM[1].match(/\bx="(-?\d+)"/i);
+          const offY = offM && offM[1].match(/\by="(-?\d+)"/i);
+          const extCx = extM && extM[1].match(/\bcx="(\d+)"/i);
+          const extCy = extM && extM[1].match(/\bcy="(\d+)"/i);
+          const x = offX ? parseInt(offX[1], 10) : 0;
+          const y = offY ? parseInt(offY[1], 10) : 0;
+          const cx = extCx ? parseInt(extCx[1], 10) : presWidth;
+          const cy = extCy ? parseInt(extCy[1], 10) : presHeight;
+
+          if (type === 'pic') {
+            const blipM = rawXml.match(/<a:blip[^>]+r:embed="([^"]+)"/i);
+            const rId = blipM ? blipM[1] : null;
+            elements.push({ type: 'pic', target: (rId && rels[rId]) ? rels[rId] : null, x, y, cx, cy });
+          } else {
+            const spPrM = rawXml.match(/<p:spPr\b[\s\S]*?<\/p:spPr>/i);
+            let shapeFill = null;
+            if (spPrM && !spPrM[0].includes('<a:noFill')) {
+              const solidM = spPrM[0].match(/<a:solidFill>[\s\S]*?<a:srgbClr\s+val="([0-9a-fA-F]{6})"/i);
               if (solidM) shapeFill = '#' + solidM[1];
             }
-          }
-
-          // Corpo de texto txBody
-          const txBodyM = rawXml.match(/<p:txBody\b[\s\S]*?<\/p:txBody>/i);
-          const paragraphs = [];
-          let anchor = 't';
-
-          if (txBodyM) {
-            const txBody = txBodyM[0];
-            const bodyPrM = txBody.match(/<a:bodyPr\b[^>]*anchor="([a-zA-Z]+)"/i);
-            if (bodyPrM) anchor = bodyPrM[1];
-
-            const pBlocks = txBody.match(/<a:p\b[\s\S]*?<\/a:p>/gi) || [];
-            for (const pb of pBlocks) {
-              const alignM = pb.match(/<a:pPr\b[^>]*algn="([a-zA-Z]+)"/i);
-              const align = alignM ? alignM[1] : 'l';
-
-              const rBlocks = pb.match(/<a:r\b[\s\S]*?<\/a:r>/gi) || [];
-              const runs = [];
-              for (const rb of rBlocks) {
-                const tMatch = rb.match(/<a:t>([^<]*)<\/a:t>/i);
-                if (!tMatch) continue;
-                const rawText = decodeXmlEntities(tMatch[1]);
-                if (!titleFound && rawText.trim().length > 3) {
-                  titleFound = rawText.trim().replace(/^["“'”]+|["“'”]+$/g, '').substring(0, 45);
-                }
-
-                const rPrM = rb.match(/<a:rPr\b[\s\S]*?<\/a:rPr>/i);
-                let sz = 4000;
-                let bold = false;
-                let italic = false;
-                let color = '#FFFFFF';
-                let typeface = null;
-
-                if (rPrM) {
-                  const rPr = rPrM[0];
-                  const szM = rPr.match(/sz="(\d+)"/i);
-                  if (szM) sz = parseInt(szM[1], 10);
-                  bold = /b="1"/i.test(rPr);
-                  italic = /i="1"/i.test(rPr);
-
-                  // Isola estritamente a cor do texto de a:solidFill dentro de a:rPr
-                  const solidFillM = rPr.match(/<a:solidFill>([\s\S]*?)<\/a:solidFill>/i);
-                  if (solidFillM) {
-                    const sf = solidFillM[1];
-                    const srgb = sf.match(/<a:srgbClr\s+val="([0-9a-fA-F]{6})"/i);
-                    const scheme = sf.match(/<a:schemeClr\s+val="([^"]+)"/i);
-                    if (srgb) {
-                      color = '#' + srgb[1];
-                    } else if (scheme) {
-                      const sval = scheme[1].toLowerCase();
-                      if (sval === 'tx1') color = '#000000';
-                      else if (sval === 'bg1') color = '#FFFFFF';
-                      else if (sval === 'accent1') color = '#38bdf8';
-                      else if (sval === 'accent2') color = '#e8b859';
-                    }
+            const txBodyM = rawXml.match(/<p:txBody\b[\s\S]*?<\/p:txBody>/i);
+            const paragraphs = [];
+            let anchor = 't';
+            if (txBodyM) {
+              const bodyPrM = txBodyM[0].match(/<a:bodyPr\b[^>]*anchor="([a-zA-Z]+)"/i);
+              if (bodyPrM) anchor = bodyPrM[1];
+              const pBlocks = txBodyM[0].match(/<a:p\b[\s\S]*?<\/a:p>/gi) || [];
+              for (const pb of pBlocks) {
+                const alignM = pb.match(/<a:pPr\b[^>]*algn="([a-zA-Z]+)"/i);
+                const align = alignM ? alignM[1] : 'l';
+                const rBlocks = pb.match(/<a:(?:r|fld)\b[\s\S]*?<\/a:(?:r|fld)>/gi) || [];
+                const runs = [];
+                for (const rb of rBlocks) {
+                  const tMatch = rb.match(/<a:t[^>]*>([\s\S]*?)<\/a:t>/i);
+                  if (!tMatch) continue;
+                  const rawText = decodeXmlEntities(tMatch[1]);
+                  if (!titleFound && rawText.trim().length > 3) {
+                    titleFound = rawText.trim().replace(/^["“'”]+|["“'”]+$/g, '').substring(0, 45);
                   }
-
-                  const latinM = rPr.match(/<a:latin\s+[^>]*typeface="([^"]+)"/i);
-                  if (latinM) typeface = latinM[1];
+                  const rPrM = rb.match(/<a:rPr\b[\s\S]*?(?:<\/a:rPr>|\/>)/i);
+                  let sz = 4000, bold = false, italic = false, color = '#FFFFFF', typeface = null;
+                  if (rPrM) {
+                    const rPr = rPrM[0];
+                    const szM = rPr.match(/sz="(\d+)"/i);
+                    if (szM) sz = parseInt(szM[1], 10);
+                    bold = /b="1"/i.test(rPr);
+                    italic = /i="1"/i.test(rPr);
+                    const sfM = rPr.match(/<a:solidFill>([\s\S]*?)<\/a:solidFill>/i);
+                    if (sfM) {
+                      const srgb = sfM[1].match(/<a:srgbClr\s+val="([0-9a-fA-F]{6})"/i);
+                      const scheme = sfM[1].match(/<a:schemeClr\s+val="([^"]+)"/i);
+                      if (srgb) color = '#' + srgb[1];
+                      else if (scheme) color = resolveSchemeColor(scheme[1]) || color;
+                    }
+                    const latinM = rPr.match(/<a:latin\s+[^>]*typeface="([^"]+)"/i);
+                    if (latinM) typeface = latinM[1];
+                  }
+                  runs.push({ text: rawText, sz, bold, italic, color, typeface });
                 }
-
-                runs.push({ text: rawText, sz, bold, italic, color, typeface });
-              }
-
-              if (runs.length > 0) {
-                paragraphs.push({ align, runs });
+                if (runs.length > 0) paragraphs.push({ align, runs });
               }
             }
-          }
-
-          if (shapeFill || paragraphs.length > 0) {
-            elements.push({
-              type: 'sp',
-              shapeFill,
-              anchor,
-              paragraphs,
-              x, y, cx, cy
-            });
+            if (shapeFill || paragraphs.length > 0) {
+              elements.push({ type: 'sp', shapeFill, anchor, paragraphs, x, y, cx, cy });
+            }
           }
         }
       }
@@ -4559,53 +5038,58 @@ ${sermonText}`;
     canvas.height = canvasH;
     const ctx = canvas.getContext('2d');
 
-    // Fundo da apresentação
-    ctx.fillStyle = bgColor;
-    ctx.fillRect(0, 0, canvasW, canvasH);
+    try {
+      // Fundo da apresentação
+      ctx.fillStyle = bgColor;
+      ctx.fillRect(0, 0, canvasW, canvasH);
 
-    // Imagem de fundo se declarada em <p:bg>
-    if (bgBlipTarget && mediaDataUrls[bgBlipTarget]) {
-      const bgImg = await loadImageAsync(mediaDataUrls[bgBlipTarget]);
-      if (bgImg) ctx.drawImage(bgImg, 0, 0, canvasW, canvasH);
-    }
+      // Imagem de fundo se declarada em <p:bg>
+      if (bgBlipTarget && mediaDataUrls[bgBlipTarget]) {
+        const bgImg = await loadImageAsync(mediaDataUrls[bgBlipTarget]);
+        if (bgImg) ctx.drawImage(bgImg, 0, 0, canvasW, canvasH);
+      }
 
-    // Renderização sequencial na ordem EXATA das camadas (z-index natural do PowerPoint)
-    for (const el of elements) {
-      if (el.type === 'pic') {
-        const picUrl = el.target ? mediaDataUrls[el.target] : null;
-        if (picUrl) {
-          const img = await loadImageAsync(picUrl);
-          if (img) {
-            const px = Math.round(el.x * scaleX);
-            const py = Math.round(el.y * scaleY);
-            const pw = Math.round(el.cx * scaleX);
-            const ph = Math.round(el.cy * scaleY);
-            ctx.drawImage(img, px, py, pw, ph);
+      // Renderização sequencial na ordem EXATA das camadas (z-index natural do PowerPoint)
+      for (const el of elements) {
+        if (el.type === 'pic') {
+          const picUrl = el.target ? mediaDataUrls[el.target] : null;
+          if (picUrl) {
+            const img = await loadImageAsync(picUrl);
+            if (img) {
+              const px = Math.round(el.x * scaleX);
+              const py = Math.round(el.y * scaleY);
+              const pw = Math.round(el.cx * scaleX);
+              const ph = Math.round(el.cy * scaleY);
+              ctx.drawImage(img, px, py, pw, ph);
+            }
+          }
+        } else if (el.type === 'sp') {
+          const sx = Math.round(el.x * scaleX);
+          const sy = Math.round(el.y * scaleY);
+          const sw = Math.round(el.cx * scaleX);
+          const sh = Math.round(el.cy * scaleY);
+
+          if (el.shapeFill) {
+            ctx.fillStyle = el.shapeFill;
+            ctx.fillRect(sx, sy, sw, sh);
+          }
+
+          if (el.paragraphs && el.paragraphs.length > 0) {
+            renderPptxShapeText(ctx, el, sx, sy, sw, sh, canvasH);
           }
         }
-      } else if (el.type === 'sp') {
-        const sx = Math.round(el.x * scaleX);
-        const sy = Math.round(el.y * scaleY);
-        const sw = Math.round(el.cx * scaleX);
-        const sh = Math.round(el.cy * scaleY);
-
-        if (el.shapeFill) {
-          ctx.fillStyle = el.shapeFill;
-          ctx.fillRect(sx, sy, sw, sh);
-        }
-
-        if (el.paragraphs && el.paragraphs.length > 0) {
-          renderPptxShapeText(ctx, el, sx, sy, sw, sh, canvasH);
-        }
       }
-    }
 
-    return {
-      dataUrl: canvas.toDataURL('image/jpeg', 0.94),
-      title: titleFound || `Slide ${slideIndex}`,
-      width: canvasW,
-      height: canvasH
-    };
+      return {
+        dataUrl: canvas.toDataURL('image/jpeg', 0.94),
+        title: titleFound || `Slide ${slideIndex}`,
+        width: canvasW,
+        height: canvasH
+      };
+    } finally {
+      canvas.width = 0;
+      canvas.height = 0;
+    }
   }
 
   // Renderiza texto de uma forma (sp) com quebra de linhas inteligente, auto-fit e alinhamento
@@ -4756,30 +5240,37 @@ ${sermonText}`;
     try {
       const arrayBuffer = await file.arrayBuffer();
       const zip = await JSZip.loadAsync(arrayBuffer);
-      let presWidth = 12192000, presHeight = 6858000;
       const presEntry = zip.file('ppt/presentation.xml');
-      if (presEntry && typeof presEntry.async === 'function') {
-        const presXml = await presEntry.async('text');
-        const m = presXml.match(/<p:sldSz\s+[^>]*cx="(\d+)"[^>]*cy="(\d+)"/i) || presXml.match(/<p:sldSz\s+[^>]*cy="(\d+)"[^>]*cx="(\d+)"/i);
-        if (m) {
-          presWidth = parseInt(m[1], 10);
-          presHeight = parseInt(m[2], 10);
-        }
-      }
-      const ratio = (presWidth && presHeight) ? (presWidth / presHeight) : (16 / 9);
+      const relsEntry = zip.file('ppt/_rels/presentation.xml.rels');
+      const presXml = (presEntry && typeof presEntry.async === 'function') ? await presEntry.async('text') : '';
+      const relsXml = (relsEntry && typeof relsEntry.async === 'function') ? await relsEntry.async('text') : '';
+      const meta = parsePptxPresentationMeta(presXml, relsXml);
+      const presWidth = meta.presWidth;
+      const presHeight = meta.presHeight;
+      const ratio = meta.ratio;
+      let slidePaths = meta.slidePaths;
 
-      let slidePaths = Object.keys(zip.files).filter(k => /^ppt\/slides\/slide\d+\.xml$/i.test(k) && !zip.files[k].dir && zip.file(k));
-      slidePaths.sort((a, b) => {
-        const ma = a.match(/slide(\d+)\.xml/i);
-        const mb = b.match(/slide(\d+)\.xml/i);
-        const na = ma ? parseInt(ma[1], 10) : 0;
-        const nb = mb ? parseInt(mb[1], 10) : 0;
-        return na - nb;
-      });
+      if (slidePaths.length === 0) {
+        slidePaths = Object.keys(zip.files).filter(k => /^ppt\/slides\/slide\d+\.xml$/i.test(k) && !zip.files[k].dir && zip.file(k));
+        slidePaths.sort((a, b) => {
+          const ma = a.match(/slide(\d+)\.xml/i);
+          const mb = b.match(/slide(\d+)\.xml/i);
+          const na = ma ? parseInt(ma[1], 10) : 0;
+          const nb = mb ? parseInt(mb[1], 10) : 0;
+          return na - nb;
+        });
+      } else {
+        slidePaths = slidePaths.filter(p => {
+          const entry = zip.file(p);
+          return entry && !zip.files[p]?.dir && typeof entry.async === 'function';
+        });
+      }
+
       if (slidePaths.length === 0) {
         showToast('Nenhum slide encontrado no PowerPoint.', 'error');
         return;
       }
+
       const mediaFiles = Object.keys(zip.files).filter(k => {
         return k.startsWith('ppt/media/') && !zip.files[k].dir && zip.file(k);
       });
@@ -4787,12 +5278,7 @@ ${sermonText}`;
       for (const mf of mediaFiles) {
         const mEntry = zip.file(mf);
         if (!mEntry || typeof mEntry.async !== 'function') continue;
-        const ext = mf.split('.').pop().toLowerCase();
-        let mime = 'image/png';
-        if (ext === 'jpg' || ext === 'jpeg') mime = 'image/jpeg';
-        else if (ext === 'webp') mime = 'image/webp';
-        else if (ext === 'gif') mime = 'image/gif';
-        else if (ext === 'svg') mime = 'image/svg+xml';
+        const mime = getMimeTypeForFileName(mf);
 
         try {
           const b64 = await mEntry.async('base64');
@@ -4801,25 +5287,21 @@ ${sermonText}`;
           console.warn(`Aviso: falha ao extrair mídia ${mf}:`, mediaErr);
         }
       }
+
+      let addedCount = 0;
       for (let idx = 0; idx < slidePaths.length; idx++) {
         const sf = slidePaths[idx];
         const sEntry = zip.file(sf);
         if (!sEntry || typeof sEntry.async !== 'function') continue;
         const xml = await sEntry.async('text');
         const relsPath = sf.replace('ppt/slides/', 'ppt/slides/_rels/') + '.rels';
-        const rels = {};
+        let rels = {};
         const relEntry = zip.file(relsPath);
         if (relEntry && typeof relEntry.async === 'function') {
           try {
-            const relsXml = await relEntry.async('text');
-            const relRegex = /<Relationship[^>]+Id="([^"]+)"[^>]+Target="([^"]+)"/gi;
-            let rm;
-            while ((rm = relRegex.exec(relsXml)) !== null) {
-              let tgt = rm[2].replace(/^\.\.\//, 'ppt/');
-              if (!tgt.startsWith('ppt/')) tgt = 'ppt/' + tgt;
-              rels[rm[1]] = tgt;
-            }
-          } catch(relErr) {
+            const slideRelsXml = await relEntry.async('text');
+            rels = parseSlideRels(slideRelsXml);
+          } catch (relErr) {
             console.warn(`Aviso ao ler rels de ${sf}:`, relErr);
           }
         }
@@ -4828,17 +5310,26 @@ ${sermonText}`;
             xml, rels, mediaDataUrls, presWidth, presHeight, ratio, slideIndex: idx + 1
           });
           imageSlides.push({
-            id: 'img_pptx_' + Date.now() + '_' + idx,
+            id: 'img_pptx_' + Date.now() + '_' + idx + '_' + Math.random().toString(36).substr(2, 4),
             name: slideResult.title || `Slide ${idx + 1}`,
             dataUrl: slideResult.dataUrl,
-            ratio: ratio
+            ratio: ratio,
+            width: slideResult.width,
+            height: slideResult.height
           });
+          addedCount++;
         } catch (sErr) {
           console.warn(`Aviso ao renderizar slide ${idx + 1}:`, sErr);
         }
       }
+
+      imagesGeneratedPptx = null;
       renderImagesOrganizer();
-      showToast(`🎉 ${slidePaths.length} slide(s) do PowerPoint adicionado(s) ao organizador!`, 'success');
+      if (addedCount > 0) {
+        showToast(`🎉 ${addedCount} slide(s) do PowerPoint adicionado(s) ao organizador!`, 'success');
+      } else {
+        showToast('Nenhum slide válido pôde ser renderizado.', 'error');
+      }
     } catch (err) {
       console.error('Erro ao extrair PPTX para Módulo 3:', err);
       showToast('Erro ao processar PPTX: ' + err.message, 'error');
@@ -4893,6 +5384,10 @@ ${sermonText}`;
 
             const imgData = canvas.toDataURL('image/jpeg', 0.90);
             const pageRatio = viewport.width / viewport.height;
+            const pageW = canvas.width;
+            const pageH = canvas.height;
+            canvas.width = 0;
+            canvas.height = 0;
             const pageTitle = `${file.name.replace(/\.[^/.]+$/, '')} - Pág ${pageNum}`;
 
             if (targetModule === 'direct') {
@@ -4904,14 +5399,17 @@ ${sermonText}`;
                 pageNum: pageNum,
                 imgData: imgData,
                 ratio: pageRatio,
-                width: canvas.width,
-                height: canvas.height
+                width: pageW,
+                height: pageH
               });
             } else {
               newSlides.push({
                 id: 'pdf_' + Date.now() + '_' + pageNum + '_' + Math.random().toString(36).substr(2, 5),
                 name: pageTitle,
-                dataUrl: imgData
+                dataUrl: imgData,
+                ratio: pageRatio,
+                width: pageW,
+                height: pageH
               });
             }
           }
@@ -4945,10 +5443,10 @@ ${sermonText}`;
 
           for (const entry of entries) {
             if (!entry || typeof entry.async !== 'function') continue;
-            const ext = entry.name.split('.').pop().toLowerCase();
-            const mime = ext === 'png' ? 'image/png' : (ext === 'webp' ? 'image/webp' : 'image/jpeg');
+            const mime = getMimeTypeForFileName(entry.name);
             const base64Data = await entry.async('base64');
             const dataUrl = `data:${mime};base64,${base64Data}`;
+            const dims = await probeImageDimensions(dataUrl);
             const entryName = entry.name.split('/').pop();
 
             if (targetModule === 'direct') {
@@ -4958,13 +5456,18 @@ ${sermonText}`;
                 type: 'image',
                 source: file.name,
                 imgData: dataUrl,
-                ratio: 16 / 9
+                ratio: dims.ratio,
+                width: dims.width,
+                height: dims.height
               });
             } else {
               newSlides.push({
                 id: 'img_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
                 name: entryName,
-                dataUrl: dataUrl
+                dataUrl: dataUrl,
+                ratio: dims.ratio,
+                width: dims.width,
+                height: dims.height
               });
             }
           }
@@ -4977,42 +5480,26 @@ ${sermonText}`;
       else if (validImageExtensions.some(ext => fileNameLower.endsWith(ext)) || file.type.startsWith('image/')) {
         try {
           const dataUrl = await readFileAsDataUrl(file);
+          const dims = await probeImageDimensions(dataUrl);
           if (targetModule === 'direct') {
-            await new Promise((resolve) => {
-              const img = new Image();
-              img.onload = () => {
-                const w = img.naturalWidth || 1920;
-                const h = img.naturalHeight || 1080;
-                newSlides.push({
-                  id: 'img_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
-                  title: file.name,
-                  type: 'image',
-                  source: 'Imagem Adicionada',
-                  imgData: dataUrl,
-                  ratio: w / h,
-                  width: w,
-                  height: h
-                });
-                resolve();
-              };
-              img.onerror = () => {
-                newSlides.push({
-                  id: 'img_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
-                  title: file.name,
-                  type: 'image',
-                  source: 'Imagem Adicionada',
-                  imgData: dataUrl,
-                  ratio: 16 / 9
-                });
-                resolve();
-              };
-              img.src = dataUrl;
+            newSlides.push({
+              id: 'img_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+              title: file.name,
+              type: 'image',
+              source: 'Imagem Adicionada',
+              imgData: dataUrl,
+              ratio: dims.ratio,
+              width: dims.width,
+              height: dims.height
             });
           } else {
             newSlides.push({
               id: 'img_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
               name: file.name,
-              dataUrl: dataUrl
+              dataUrl: dataUrl,
+              ratio: dims.ratio,
+              width: dims.width,
+              height: dims.height
             });
           }
         } catch (err) {
@@ -5032,6 +5519,8 @@ ${sermonText}`;
       sectionDirectInput.style.display = 'flex';
       sectionDirectResults.style.display = 'none';
       if (btnDownloadDirectTop) btnDownloadDirectTop.style.display = 'none';
+      if (btnShareDirectMain) btnShareDirectMain.style.display = 'none';
+      directGeneratedPptx = null;
       if (directSlidesGrid) directSlidesGrid.innerHTML = '';
       if (typeof updateSelectionFloatingBar === 'function') updateSelectionFloatingBar();
       return;
@@ -5072,6 +5561,8 @@ ${sermonText}`;
       }
 
       const isSelected = selectedDirectSlideIds.has(slide.id);
+      const safeTitle = escapeHtml(slide.title || `Slide ${index + 1}`);
+      const safeId = escapeHtml(slide.id);
       const card = document.createElement('div');
       card.className = 'image-slide-card' + (isSelected ? ' card-selected' : '');
       card.draggable = true;
@@ -5089,14 +5580,14 @@ ${sermonText}`;
       card.innerHTML = `
         <div class="image-slide-preview">
           <label class="slide-select-label" title="Selecionar para apagar em lote" onclick="event.stopPropagation()">
-            <input type="checkbox" class="slide-select-checkbox" data-id="${slide.id}" ${isSelected ? 'checked' : ''}>
+            <input type="checkbox" class="slide-select-checkbox" data-id="${safeId}" ${isSelected ? 'checked' : ''}>
           </label>
           <span class="image-order-badge">#${index + 1}</span>
           ${typeBadgeHtml}
           <img src="${slide.imgData}" alt="Slide ${index + 1}" loading="lazy">
         </div>
         <div class="image-slide-info">
-          <div class="image-slide-name" title="${slide.title}">${slide.title}</div>
+          <div class="image-slide-name" title="${safeTitle}">${safeTitle}</div>
           <div class="image-slide-actions">
             <div class="image-reorder-buttons">
               <button type="button" class="btn-card-reorder" data-action="prev" title="Mover para trás" ${index === 0 ? 'disabled' : ''}>
@@ -5113,30 +5604,6 @@ ${sermonText}`;
                 <button type="button" class="btn-card-more" data-action="more" title="Mais opções">
                   ⋮
                 </button>
-                <div class="card-dropdown-menu">
-                  <button type="button" class="card-dropdown-item" data-action="toggle-select">
-                    <span>${isSelected ? '◻️' : '☑️'}</span> ${isSelected ? 'Desmarcar seleção' : 'Selecionar slide'}
-                  </button>
-                  ${selectedDirectSlideIds.size > 0 ? `
-                    <button type="button" class="card-dropdown-item" data-action="delete-selected" style="color: #f87171;">
-                      <span>🗑️</span> Apagar selecionados (${selectedDirectSlideIds.size})
-                    </button>
-                  ` : ''}
-                  <div class="card-dropdown-divider"></div>
-                  <button type="button" class="card-dropdown-item" data-action="replace-slide">
-                    <span>🔄</span> Substituir
-                  </button>
-                  <button type="button" class="card-dropdown-item" data-action="insert-after">
-                    <span>➕</span> Adicionar depois (Fotos/PDF/ZIP)
-                  </button>
-                  <div class="card-dropdown-divider"></div>
-                  <button type="button" class="card-dropdown-item" data-action="download-png-screen">
-                    <span>🖼️</span> Baixar como PNG (Telão)
-                  </button>
-                  <button type="button" class="card-dropdown-item" data-action="download-png-orig">
-                    <span>📐</span> Baixar como PNG (Original)
-                  </button>
-                </div>
               </div>
               <button type="button" class="btn-card-delete" data-action="delete" title="Excluir este slide">
                 🗑️
@@ -5151,13 +5618,6 @@ ${sermonText}`;
       const btnNext = card.querySelector('[data-action="next"]');
       const btnDel  = card.querySelector('[data-action="delete"]');
       const btnMore = card.querySelector('[data-action="more"]');
-      const cardDropdown = card.querySelector('.card-dropdown-menu');
-      const btnDlScreen = card.querySelector('[data-action="download-png-screen"]');
-      const btnDlOrig = card.querySelector('[data-action="download-png-orig"]');
-      const btnReplace = card.querySelector('[data-action="replace-slide"]');
-      const btnInsertAfter = card.querySelector('[data-action="insert-after"]');
-      const btnToggleSelect = card.querySelector('[data-action="toggle-select"]');
-      const btnDeleteSelected = card.querySelector('[data-action="delete-selected"]');
       const inputReplace = card.querySelector('.card-replace-input');
       const inputInsertAfter = card.querySelector('.card-insert-after-input');
       const selectCheckbox = card.querySelector('.slide-select-checkbox');
@@ -5172,31 +5632,6 @@ ${sermonText}`;
             selectedDirectSlideIds.delete(slide.id);
           }
           renderDirectOrganizer();
-        });
-      }
-
-      if (btnToggleSelect) {
-        btnToggleSelect.addEventListener('click', (e) => {
-          e.stopPropagation();
-          if (cardDropdown) cardDropdown.classList.remove('show');
-          if (btnMore) btnMore.classList.remove('active');
-          card.classList.remove('menu-open');
-          if (selectedDirectSlideIds.has(slide.id)) {
-            selectedDirectSlideIds.delete(slide.id);
-          } else {
-            selectedDirectSlideIds.add(slide.id);
-          }
-          renderDirectOrganizer();
-        });
-      }
-
-      if (btnDeleteSelected) {
-        btnDeleteSelected.addEventListener('click', (e) => {
-          e.stopPropagation();
-          if (cardDropdown) cardDropdown.classList.remove('show');
-          if (btnMore) btnMore.classList.remove('active');
-          card.classList.remove('menu-open');
-          deleteSelectedDirectSlides();
         });
       }
 
@@ -5256,6 +5691,7 @@ ${sermonText}`;
               if (confirm(`Deseja excluir o slide #${index + 1}?`)) {
                 directSlides.splice(index, 1);
                 selectedDirectSlideIds.delete(slide.id);
+                directGeneratedPptx = null;
                 renderDirectOrganizer();
               }
             }
@@ -5263,17 +5699,8 @@ ${sermonText}`;
         });
       }
 
-      // Substituir slide no PDF
-      if (btnReplace && inputReplace) {
-        btnReplace.addEventListener('click', (e) => {
-          e.stopPropagation();
-          if (cardDropdown) cardDropdown.classList.remove('show');
-          if (btnMore) btnMore.classList.remove('active');
-          card.classList.remove('menu-open');
-          inputReplace.value = '';
-          inputReplace.click();
-        });
-
+      // Substituir slide no organizador
+      if (inputReplace) {
         inputReplace.addEventListener('change', async (e) => {
           const file = e.target.files && e.target.files[0];
           if (!file) return;
@@ -5283,53 +5710,29 @@ ${sermonText}`;
           }
           try {
             const dataUrl = await readFileAsDataUrl(file);
-            const img = new Image();
-            img.onload = () => {
-              const w = img.naturalWidth || 1920;
-              const h = img.naturalHeight || 1080;
-              directSlides[index] = {
-                ...directSlides[index],
-                title: file.name,
-                type: 'image',
-                source: 'Imagem Substituída',
-                imgData: dataUrl,
-                ratio: w / h,
-                width: w,
-                height: h
-              };
-              renderDirectOrganizer();
-              showToast(`Slide #${index + 1} substituído com sucesso!`, 'success');
+            const dims = await probeImageDimensions(dataUrl);
+            directSlides[index] = {
+              ...directSlides[index],
+              title: file.name,
+              type: 'image',
+              source: 'Imagem Substituída',
+              imgData: dataUrl,
+              ratio: dims.ratio,
+              width: dims.width,
+              height: dims.height
             };
-            img.onerror = () => {
-              directSlides[index] = {
-                ...directSlides[index],
-                title: file.name,
-                type: 'image',
-                source: 'Imagem Substituída',
-                imgData: dataUrl
-              };
-              renderDirectOrganizer();
-              showToast(`Slide #${index + 1} substituído com sucesso!`, 'success');
-            };
-            img.src = dataUrl;
+            directGeneratedPptx = null;
+            renderDirectOrganizer();
+            showToast(`Slide #${index + 1} substituído com sucesso!`, 'success');
           } catch (err) {
-            console.error('Erro ao substituir slide no PDF:', err);
+            console.error('Erro ao substituir slide no organizador:', err);
             showToast('Erro ao processar imagem: ' + err.message, 'error');
           }
         });
       }
 
-      // Adicionar slide(s) depois no PDF (suporta Fotos, PDF completo e ZIP)
-      if (btnInsertAfter && inputInsertAfter) {
-        btnInsertAfter.addEventListener('click', (e) => {
-          e.stopPropagation();
-          if (cardDropdown) cardDropdown.classList.remove('show');
-          if (btnMore) btnMore.classList.remove('active');
-          card.classList.remove('menu-open');
-          inputInsertAfter.value = '';
-          inputInsertAfter.click();
-        });
-
+      // Adicionar slide(s) depois no organizador (suporta Fotos, PDF completo e ZIP)
+      if (inputInsertAfter) {
         inputInsertAfter.addEventListener('change', async (e) => {
           const files = Array.from(e.target.files || []);
           if (files.length === 0) return;
@@ -5338,6 +5741,7 @@ ${sermonText}`;
             const newSlides = await extractSlidesFromMixedFiles(files, 'direct');
             if (newSlides.length > 0) {
               directSlides.splice(index + 1, 0, ...newSlides);
+              directGeneratedPptx = null;
               renderDirectOrganizer();
               showToast(
                 newSlides.length === 1
@@ -5349,34 +5753,9 @@ ${sermonText}`;
               showToast('Nenhum slide pôde ser extraído dos arquivos selecionados.', 'error');
             }
           } catch (err) {
-            console.error('Erro ao adicionar slides depois no PDF:', err);
+            console.error('Erro ao adicionar slides depois no organizador:', err);
             showToast('Erro ao processar arquivos: ' + err.message, 'error');
           }
-        });
-      }
-
-      if (btnDlScreen) {
-        btnDlScreen.addEventListener('click', (e) => {
-          e.stopPropagation();
-          if (cardDropdown) cardDropdown.classList.remove('show');
-          if (btnMore) btnMore.classList.remove('active');
-          card.classList.remove('menu-open');
-
-          const aspect = directAspectSelect ? directAspectSelect.value : '16x9';
-          const fit = directFitSelect ? directFitSelect.value : 'contain';
-          const bg = directBgSelect ? directBgSelect.value : '000000';
-          downloadSingleSlidePng(slide, index, 'screen', aspect, fit, bg);
-        });
-      }
-
-      if (btnDlOrig) {
-        btnDlOrig.addEventListener('click', (e) => {
-          e.stopPropagation();
-          if (cardDropdown) cardDropdown.classList.remove('show');
-          if (btnMore) btnMore.classList.remove('active');
-          card.classList.remove('menu-open');
-
-          downloadSingleSlidePng(slide, index, 'orig');
         });
       }
 
@@ -5427,6 +5806,7 @@ ${sermonText}`;
     if (fromIndex < 0 || fromIndex >= directSlides.length || toIndex < 0 || toIndex >= directSlides.length) return;
     const item = directSlides.splice(fromIndex, 1)[0];
     directSlides.splice(toIndex, 0, item);
+    directGeneratedPptx = null;
     renderDirectOrganizer();
   }
 
@@ -5440,6 +5820,7 @@ ${sermonText}`;
     if (confirm(`Deseja realmente apagar os ${count} slide(s) selecionado(s)?`)) {
       directSlides = directSlides.filter(s => !selectedDirectSlideIds.has(s.id));
       selectedDirectSlideIds.clear();
+      directGeneratedPptx = null;
       renderDirectOrganizer();
       showToast(`${count} slide(s) apagado(s) com sucesso!`, 'success');
     }
@@ -5466,7 +5847,9 @@ ${sermonText}`;
   // Deletar um slide específico
   function deleteDirectSlide(index) {
     if (index < 0 || index >= directSlides.length) return;
-    directSlides.splice(index, 1);
+    const removed = directSlides.splice(index, 1)[0];
+    if (removed && removed.id) selectedDirectSlideIds.delete(removed.id);
+    directGeneratedPptx = null;
     renderDirectOrganizer();
     showToast('Slide removido.', 'info');
   }
@@ -5476,6 +5859,7 @@ ${sermonText}`;
     btnReverseDirect.addEventListener('click', () => {
       if (directSlides.length === 0) return;
       directSlides.reverse();
+      directGeneratedPptx = null;
       renderDirectOrganizer();
       showToast('Ordem dos slides invertida!', 'info');
     });
@@ -5488,6 +5872,7 @@ ${sermonText}`;
       if (confirm('Deseja remover todos os slides do organizador?')) {
         directSlides = [];
         selectedDirectSlideIds.clear();
+        directGeneratedPptx = null;
         renderDirectOrganizer();
         showToast('Todos os slides foram removidos.', 'info');
       }
@@ -5567,10 +5952,15 @@ ${sermonText}`;
 
       const imgFormat = rawImg.startsWith('data:image/png') ? 'PNG' : 'JPEG';
       doc.addImage(rawImg, imgFormat, x, y, drawW, drawH, undefined, 'FAST');
+
+      if ((i + 1) % 5 === 0) {
+        await new Promise(res => setTimeout(res, 0));
+      }
     }
 
     const pdfBlob = doc.output('blob');
-    await saveOrShareFileNative(pdfBlob, fileName, 'download');
+    const safePdfName = sanitizeFileNamePreservingExt(fileName, 'Apresentacao.pdf');
+    return await saveOrShareFileNative(pdfBlob, safePdfName, 'download');
   }
 
   // Renderiza um slide (de directSlides ou imageSlides) em imagem PNG de alta resolução
@@ -5584,6 +5974,7 @@ ${sermonText}`;
       const img = new Image();
       img.crossOrigin = 'anonymous';
       img.onload = () => {
+        const canvas = document.createElement('canvas');
         try {
           const natW = img.naturalWidth || img.width || 1920;
           const natH = img.naturalHeight || img.height || 1080;
@@ -5593,8 +5984,15 @@ ${sermonText}`;
           let canvasH = 1080;
 
           if (aspectChoice === 'original') {
-            canvasW = natW;
-            canvasH = natH;
+            const maxEdge = 2560;
+            if (natW > maxEdge || natH > maxEdge) {
+              const s = maxEdge / Math.max(natW, natH);
+              canvasW = Math.max(1, Math.round(natW * s));
+              canvasH = Math.max(1, Math.round(natH * s));
+            } else {
+              canvasW = natW;
+              canvasH = natH;
+            }
           } else if (aspectChoice === '4x3') {
             canvasW = 1920;
             canvasH = 1440;
@@ -5603,11 +6001,14 @@ ${sermonText}`;
             canvasH = 1080;
           }
 
-          const canvas = document.createElement('canvas');
           canvas.width = canvasW;
           canvas.height = canvasH;
           const ctx = canvas.getContext('2d');
-          if (!ctx) return reject(new Error('Não foi possível obter contexto 2D.'));
+          if (!ctx) {
+            canvas.width = 0;
+            canvas.height = 0;
+            return reject(new Error('Não foi possível obter contexto 2D.'));
+          }
 
           if (aspectChoice === 'original') {
             ctx.drawImage(img, 0, 0, canvasW, canvasH);
@@ -5638,6 +6039,8 @@ ${sermonText}`;
           }
 
           canvas.toBlob((blob) => {
+            canvas.width = 0;
+            canvas.height = 0;
             if (blob) {
               resolve(blob);
             } else {
@@ -5645,6 +6048,8 @@ ${sermonText}`;
             }
           }, 'image/png');
         } catch (err) {
+          canvas.width = 0;
+          canvas.height = 0;
           reject(err);
         }
       };
@@ -5653,9 +6058,9 @@ ${sermonText}`;
     });
   }
 
-  // Dispara o download de um Blob no navegador
+  // Dispara o download de um Blob no navegador ou dispositivo nativo
   async function downloadBlobFile(blob, fileName) {
-    await saveOrShareFileNative(blob, fileName, 'download');
+    return await saveOrShareFileNative(blob, fileName, 'download');
   }
 
   // Download individual de um slide em PNG
@@ -5667,17 +6072,14 @@ ${sermonText}`;
 
       const num = String(index + 1).padStart(2, '0');
       const rawTitle = slide.title || slide.name || `Slide_${num}`;
-      const safeTitle = rawTitle
-        .replace(/[/\\?%*:|"<>]/g, '_')
-        .replace(/\s+/g, '_')
-        .trim();
+      const safeTitle = sanitizeFileName(rawTitle, `Slide_${num}`).slice(0, 50);
       const fileName = `Slide_${num}_${safeTitle}.png`;
 
-      downloadBlobFile(pngBlob, fileName);
-      showToast(`🖼️ Slide #${index + 1} baixado em PNG!`, 'success');
+      return await downloadBlobFile(pngBlob, fileName);
     } catch (err) {
       console.error('Erro ao baixar slide individual em PNG:', err);
       showToast('Erro ao exportar PNG: ' + err.message, 'error');
+      return false;
     }
   }
 
@@ -5696,6 +6098,7 @@ ${sermonText}`;
 
     const zip = new JSZip();
     const total = slides.length;
+    const usedNames = new Set();
 
     for (let i = 0; i < total; i++) {
       const slide = slides[i];
@@ -5706,30 +6109,35 @@ ${sermonText}`;
       const pngBlob = await renderSlideToPngBlob(slide, aspectChoice, fitChoice, bgChoice);
       const num = String(i + 1).padStart(2, '0');
       const rawTitle = slide.title || slide.name || `Slide_${num}`;
-      const safeTitle = rawTitle
-        .replace(/[/\\?%*:|"<>]/g, '_')
-        .replace(/\s+/g, '_')
-        .trim();
-      const filename = `Slide_${num}_${safeTitle}.png`;
+      const safeTitle = sanitizeFileName(rawTitle, `Slide_${num}`).slice(0, 50);
+      let filename = `Slide_${num}_${safeTitle}.png`;
+      if (usedNames.has(filename)) {
+        filename = `Slide_${num}_${i + 1}_${safeTitle}.png`;
+      }
+      usedNames.add(filename);
 
       zip.file(filename, pngBlob);
+
+      if ((i + 1) % 3 === 0) {
+        await new Promise(resolve => setTimeout(resolve, 0));
+      }
     }
 
     if (progressCallback) {
-      progressCallback(total, total, 'Compactando arquivo ZIP...');
+      progressCallback(total, total, 'Empacotando arquivo ZIP...');
     }
 
     const zipBlob = await zip.generateAsync({
       type: 'blob',
-      compression: 'DEFLATE',
-      compressionOptions: { level: 6 }
+      compression: 'STORE'
     }, (metadata) => {
       if (progressCallback) {
-        progressCallback(total, total, `Compactando ZIP: ${Math.round(metadata.percent)}%...`);
+        progressCallback(total, total, `Empacotando ZIP: ${Math.round(metadata.percent)}%...`);
       }
     });
 
-    downloadBlobFile(zipBlob, zipFileName);
+    const safeZipName = sanitizeFileNamePreservingExt(zipFileName, 'Slides_PNG.zip');
+    return await downloadBlobFile(zipBlob, safeZipName);
   }
 
   function updateDirectExportBtnLabel() {
@@ -5770,7 +6178,7 @@ ${sermonText}`;
   async function generateDirectExport(requestedFormat) {
     if (directSlides.length === 0) {
       showToast('Adicione pelo menos uma página ou imagem para gerar a apresentação.', 'error');
-      return;
+      return false;
     }
 
     const formatChoice = requestedFormat || (directFormatSelect ? directFormatSelect.value : 'pptx');
@@ -5778,7 +6186,8 @@ ${sermonText}`;
     const fitChoice = directFitSelect ? directFitSelect.value : 'contain';
     const bgChoice = directBgSelect ? directBgSelect.value : '000000';
 
-    const baseName = (currentDirectFile ? currentDirectFile.name.replace(/\.[^/.]+$/, '') : 'Apresentacao') + '_PAGINAS';
+    const baseStem = sanitizeFileName(currentDirectFile ? currentDirectFile.name.replace(/\.[^/.]+$/, '') : 'Apresentacao', 'Apresentacao').slice(0, 50);
+    const baseName = `${baseStem}_PAGINAS`;
     const pptxFileName = baseName + '.pptx';
     const pdfFileName = baseName + '.pdf';
     const zipFileName = baseName + '_PNG.zip';
@@ -5786,15 +6195,19 @@ ${sermonText}`;
     if (btnDownloadDirectMain) {
       btnDownloadDirectMain.disabled = true;
     }
+    if (directMainBtnIcon) directMainBtnIcon.textContent = '⏳';
+    if (directMainBtnLabel) directMainBtnLabel.textContent = 'Exportando...';
     if (directExportProgressContainer) {
       directExportProgressContainer.style.display = 'block';
-      directExportProgressBar.style.width = '10%';
-      directExportProgressPercent.textContent = '10%';
-      directExportProgressStatus.textContent = 'Iniciando preparação dos arquivos...';
+      if (directExportProgressBar) directExportProgressBar.style.width = '10%';
+      if (directExportProgressPercent) directExportProgressPercent.textContent = '10%';
+      if (directExportProgressStatus) directExportProgressStatus.textContent = 'Iniciando preparação dos arquivos...';
     }
 
     try {
       const total = directSlides.length;
+      let allOk = true;
+      let pptxOk = false;
 
       // 1. Exportar PPTX se solicitado
       if (formatChoice === 'pptx' || formatChoice === 'both') {
@@ -5834,14 +6247,15 @@ ${sermonText}`;
         directGeneratedPptx = pptx;
         directPptxFileName = pptxFileName;
         const blob = await pptx.write({ outputType: 'blob' });
-        await saveOrShareFileNative(blob, pptxFileName, 'download');
+        pptxOk = await saveOrShareFileNative(blob, pptxFileName, 'download');
+        allOk = allOk && pptxOk;
       }
 
       // 2. Exportar PDF se solicitado
       if (formatChoice === 'pdf' || formatChoice === 'both') {
         if (directExportProgressStatus) directExportProgressStatus.textContent = 'Gerando documento em PDF (.pdf)...';
 
-        await generateSlidesPdfDoc({
+        const pdfOk = await generateSlidesPdfDoc({
           slides: directSlides,
           aspectChoice,
           fitChoice,
@@ -5856,13 +6270,14 @@ ${sermonText}`;
             if (directExportProgressStatus) directExportProgressStatus.textContent = `PDF: página ${cur} de ${tot}...`;
           }
         });
+        allOk = allOk && pdfOk;
       }
 
       // 3. Exportar Pacote ZIP com imagens PNG se solicitado
       if (formatChoice === 'zip') {
         if (directExportProgressStatus) directExportProgressStatus.textContent = 'Gerando pacote ZIP com imagens PNG...';
 
-        await generateSlidesZip({
+        const zipOk = await generateSlidesZip({
           slides: directSlides,
           aspectChoice,
           fitChoice,
@@ -5875,27 +6290,34 @@ ${sermonText}`;
             if (directExportProgressStatus) directExportProgressStatus.textContent = statusText || `PNG: slide ${cur} de ${tot}...`;
           }
         });
+        allOk = allOk && zipOk;
       }
 
-      if (directExportProgressBar) directExportProgressBar.style.width = '100%';
-      if (directExportProgressPercent) directExportProgressPercent.textContent = '100%';
-      if (directExportProgressStatus) directExportProgressStatus.textContent = 'Concluído!';
+      if (directExportProgressBar) directExportProgressBar.style.width = allOk ? '100%' : '0%';
+      if (directExportProgressPercent) directExportProgressPercent.textContent = allOk ? '100%' : '0%';
+      if (directExportProgressStatus) directExportProgressStatus.textContent = allOk ? 'Concluído!' : 'Exportação não concluída.';
 
-      if (formatChoice === 'both') {
-        showToast(`🎉 Apresentação baixada em PPTX e PDF (${total} slides cada)!`, 'success');
-      } else if (formatChoice === 'pdf') {
-        showToast(`🎉 Documento PDF baixado com sucesso (${total} páginas)!`, 'success');
-      } else if (formatChoice === 'zip') {
-        showToast(`🎉 Pacote ZIP baixado com sucesso (${total} imagens PNG)!`, 'success');
-      } else {
-        showToast(`🎉 Apresentação PPTX baixada com sucesso (${total} slides)!`, 'success');
-        if (btnShareImagesMain) btnShareImagesMain.style.display = 'inline-flex';
-        if (btnShareDirectMain) btnShareDirectMain.style.display = 'inline-flex';
+      if (pptxOk && btnShareDirectMain) {
+        btnShareDirectMain.style.display = 'inline-flex';
       }
+
+      if (allOk) {
+        if (formatChoice === 'both') {
+          showToast(`🎉 Apresentação exportada em PPTX e PDF (${total} slides cada)!`, 'success');
+        } else if (formatChoice === 'pdf') {
+          showToast(`🎉 Documento PDF exportado com sucesso (${total} páginas)!`, 'success');
+        } else if (formatChoice === 'zip') {
+          showToast(`🎉 Pacote ZIP exportado com sucesso (${total} imagens PNG)!`, 'success');
+        } else {
+          showToast(`🎉 Apresentação PPTX exportada com sucesso (${total} slides)!`, 'success');
+        }
+      }
+      return allOk;
 
     } catch (err) {
       console.error('Erro na exportação:', err);
       showToast('Erro ao exportar: ' + err.message, 'error');
+      return false;
     } finally {
       if (btnDownloadDirectMain) {
         btnDownloadDirectMain.disabled = false;
@@ -6098,15 +6520,18 @@ ${sermonText}`;
 
           for (const entry of entries) {
             if (!entry || typeof entry.async !== 'function') continue;
-            const ext = entry.name.split('.').pop().toLowerCase();
-            const mime = ext === 'png' ? 'image/png' : (ext === 'webp' ? 'image/webp' : 'image/jpeg');
+            const mime = getMimeTypeForFileName(entry.name);
             const base64Data = await entry.async('base64');
             const dataUrl = `data:${mime};base64,${base64Data}`;
+            const dims = await probeImageDimensions(dataUrl);
 
             imageSlides.push({
               id: 'img_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
               name: entry.name.split('/').pop(),
-              dataUrl: dataUrl
+              dataUrl: dataUrl,
+              ratio: dims.ratio,
+              width: dims.width,
+              height: dims.height
             });
             addedCount++;
           }
@@ -6119,10 +6544,14 @@ ${sermonText}`;
       else if (validImageExtensions.some(ext => fileNameLower.endsWith(ext)) || file.type.startsWith('image/')) {
         try {
           const dataUrl = await readFileAsDataUrl(file);
+          const dims = await probeImageDimensions(dataUrl);
           imageSlides.push({
             id: 'img_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
             name: file.name,
-            dataUrl: dataUrl
+            dataUrl: dataUrl,
+            ratio: dims.ratio,
+            width: dims.width,
+            height: dims.height
           });
           addedCount++;
         } catch (err) {
@@ -6132,20 +6561,12 @@ ${sermonText}`;
     }
 
     if (addedCount > 0) {
+      imagesGeneratedPptx = null;
       showToast(`${addedCount} imagem(ns) adicionada(s) com sucesso!`, 'success');
       renderImagesOrganizer();
     } else {
       showToast('Nenhuma imagem válida encontrada nos arquivos.', 'error');
     }
-  }
-
-  function readFileAsDataUrl(file) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
   }
 
   // Renderiza a grade de cards do organizador de slides
@@ -6156,6 +6577,8 @@ ${sermonText}`;
       sectionImagesInput.style.display = 'flex';
       sectionImagesOrganizer.style.display = 'none';
       if (btnDownloadImagesTop) btnDownloadImagesTop.style.display = 'none';
+      if (btnShareImagesMain) btnShareImagesMain.style.display = 'none';
+      imagesGeneratedPptx = null;
       if (imagesReorderGrid) imagesReorderGrid.innerHTML = '';
       if (typeof updateSelectionFloatingBar === 'function') updateSelectionFloatingBar();
       return;
@@ -6197,6 +6620,8 @@ ${sermonText}`;
       }
 
       const isSelected = selectedImageSlideIds.has(slide.id);
+      const safeName = escapeHtml(slide.name || `Slide ${index + 1}`);
+      const safeId = escapeHtml(slide.id);
       const card = document.createElement('div');
       card.className = 'image-slide-card' + (isSelected ? ' card-selected' : '');
       card.draggable = true;
@@ -6206,13 +6631,13 @@ ${sermonText}`;
       card.innerHTML = `
         <div class="image-slide-preview">
           <label class="slide-select-label" title="Selecionar para apagar em lote" onclick="event.stopPropagation()">
-            <input type="checkbox" class="slide-select-checkbox" data-id="${slide.id}" ${isSelected ? 'checked' : ''}>
+            <input type="checkbox" class="slide-select-checkbox" data-id="${safeId}" ${isSelected ? 'checked' : ''}>
           </label>
           <span class="image-order-badge">#${index + 1}</span>
           <img src="${slide.dataUrl}" alt="Slide ${index + 1}" loading="lazy">
         </div>
         <div class="image-slide-info">
-          <div class="image-slide-name" title="${slide.name}">${slide.name}</div>
+          <div class="image-slide-name" title="${safeName}">${safeName}</div>
           <div class="image-slide-actions">
             <div class="image-reorder-buttons">
               <button type="button" class="btn-card-reorder" data-action="prev" title="Mover para trás" ${index === 0 ? 'disabled' : ''}>
@@ -6229,30 +6654,6 @@ ${sermonText}`;
                 <button type="button" class="btn-card-more" data-action="more" title="Mais opções">
                   ⋮
                 </button>
-                <div class="card-dropdown-menu">
-                  <button type="button" class="card-dropdown-item" data-action="toggle-select">
-                    <span>${isSelected ? '◻️' : '☑️'}</span> ${isSelected ? 'Desmarcar seleção' : 'Selecionar slide'}
-                  </button>
-                  ${selectedImageSlideIds.size > 0 ? `
-                    <button type="button" class="card-dropdown-item" data-action="delete-selected" style="color: #f87171;">
-                      <span>🗑️</span> Apagar selecionados (${selectedImageSlideIds.size})
-                    </button>
-                  ` : ''}
-                  <div class="card-dropdown-divider"></div>
-                  <button type="button" class="card-dropdown-item" data-action="replace-slide">
-                    <span>🔄</span> Substituir
-                  </button>
-                  <button type="button" class="card-dropdown-item" data-action="insert-after">
-                    <span>➕</span> Adicionar depois (Fotos/PDF/ZIP)
-                  </button>
-                  <div class="card-dropdown-divider"></div>
-                  <button type="button" class="card-dropdown-item" data-action="download-png-screen">
-                    <span>🖼️</span> Baixar como PNG (Telão)
-                  </button>
-                  <button type="button" class="card-dropdown-item" data-action="download-png-orig">
-                    <span>📐</span> Baixar como PNG (Original)
-                  </button>
-                </div>
               </div>
               <button type="button" class="btn-card-delete" data-action="delete" title="Excluir este slide">
                 🗑️
@@ -6267,13 +6668,6 @@ ${sermonText}`;
       const btnNext = card.querySelector('[data-action="next"]');
       const btnDel  = card.querySelector('[data-action="delete"]');
       const btnMore = card.querySelector('[data-action="more"]');
-      const cardDropdown = card.querySelector('.card-dropdown-menu');
-      const btnDlScreen = card.querySelector('[data-action="download-png-screen"]');
-      const btnDlOrig = card.querySelector('[data-action="download-png-orig"]');
-      const btnReplace = card.querySelector('[data-action="replace-slide"]');
-      const btnInsertAfter = card.querySelector('[data-action="insert-after"]');
-      const btnToggleSelect = card.querySelector('[data-action="toggle-select"]');
-      const btnDeleteSelected = card.querySelector('[data-action="delete-selected"]');
       const inputReplace = card.querySelector('.card-replace-input');
       const inputInsertAfter = card.querySelector('.card-insert-after-input');
       const selectCheckbox = card.querySelector('.slide-select-checkbox');
@@ -6288,31 +6682,6 @@ ${sermonText}`;
             selectedImageSlideIds.delete(slide.id);
           }
           renderImagesOrganizer();
-        });
-      }
-
-      if (btnToggleSelect) {
-        btnToggleSelect.addEventListener('click', (e) => {
-          e.stopPropagation();
-          if (cardDropdown) cardDropdown.classList.remove('show');
-          if (btnMore) btnMore.classList.remove('active');
-          card.classList.remove('menu-open');
-          if (selectedImageSlideIds.has(slide.id)) {
-            selectedImageSlideIds.delete(slide.id);
-          } else {
-            selectedImageSlideIds.add(slide.id);
-          }
-          renderImagesOrganizer();
-        });
-      }
-
-      if (btnDeleteSelected) {
-        btnDeleteSelected.addEventListener('click', (e) => {
-          e.stopPropagation();
-          if (cardDropdown) cardDropdown.classList.remove('show');
-          if (btnMore) btnMore.classList.remove('active');
-          card.classList.remove('menu-open');
-          deleteSelectedImageSlides();
         });
       }
 
@@ -6372,6 +6741,7 @@ ${sermonText}`;
               if (confirm(`Deseja excluir o slide #${index + 1}?`)) {
                 imageSlides.splice(index, 1);
                 selectedImageSlideIds.delete(slide.id);
+                imagesGeneratedPptx = null;
                 renderImagesOrganizer();
               }
             }
@@ -6380,16 +6750,7 @@ ${sermonText}`;
       }
 
       // Substituir slide de imagem
-      if (btnReplace && inputReplace) {
-        btnReplace.addEventListener('click', (e) => {
-          e.stopPropagation();
-          if (cardDropdown) cardDropdown.classList.remove('show');
-          if (btnMore) btnMore.classList.remove('active');
-          card.classList.remove('menu-open');
-          inputReplace.value = '';
-          inputReplace.click();
-        });
-
+      if (inputReplace) {
         inputReplace.addEventListener('change', async (e) => {
           const file = e.target.files && e.target.files[0];
           if (!file) return;
@@ -6399,11 +6760,16 @@ ${sermonText}`;
           }
           try {
             const dataUrl = await readFileAsDataUrl(file);
+            const dims = await probeImageDimensions(dataUrl);
             imageSlides[index] = {
               ...imageSlides[index],
               name: file.name,
-              dataUrl: dataUrl
+              dataUrl: dataUrl,
+              ratio: dims.ratio,
+              width: dims.width,
+              height: dims.height
             };
+            imagesGeneratedPptx = null;
             renderImagesOrganizer();
             showToast(`Slide #${index + 1} substituído com sucesso!`, 'success');
           } catch (err) {
@@ -6414,16 +6780,7 @@ ${sermonText}`;
       }
 
       // Adicionar slide(s) depois no lote de imagens (suporta Fotos, PDF completo e ZIP)
-      if (btnInsertAfter && inputInsertAfter) {
-        btnInsertAfter.addEventListener('click', (e) => {
-          e.stopPropagation();
-          if (cardDropdown) cardDropdown.classList.remove('show');
-          if (btnMore) btnMore.classList.remove('active');
-          card.classList.remove('menu-open');
-          inputInsertAfter.value = '';
-          inputInsertAfter.click();
-        });
-
+      if (inputInsertAfter) {
         inputInsertAfter.addEventListener('change', async (e) => {
           const files = Array.from(e.target.files || []);
           if (files.length === 0) return;
@@ -6432,6 +6789,7 @@ ${sermonText}`;
             const newSlides = await extractSlidesFromMixedFiles(files, 'images');
             if (newSlides.length > 0) {
               imageSlides.splice(index + 1, 0, ...newSlides);
+              imagesGeneratedPptx = null;
               renderImagesOrganizer();
               showToast(
                 newSlides.length === 1
@@ -6446,31 +6804,6 @@ ${sermonText}`;
             console.error('Erro ao adicionar imagens depois:', err);
             showToast('Erro ao processar imagens: ' + err.message, 'error');
           }
-        });
-      }
-
-      if (btnDlScreen) {
-        btnDlScreen.addEventListener('click', (e) => {
-          e.stopPropagation();
-          if (cardDropdown) cardDropdown.classList.remove('show');
-          if (btnMore) btnMore.classList.remove('active');
-          card.classList.remove('menu-open');
-
-          const aspect = imagesAspectSelect ? imagesAspectSelect.value : '16x9';
-          const fit = imagesFitSelect ? imagesFitSelect.value : 'contain';
-          const bg = imagesBgSelect ? imagesBgSelect.value : '000000';
-          downloadSingleSlidePng(slide, index, 'screen', aspect, fit, bg);
-        });
-      }
-
-      if (btnDlOrig) {
-        btnDlOrig.addEventListener('click', (e) => {
-          e.stopPropagation();
-          if (cardDropdown) cardDropdown.classList.remove('show');
-          if (btnMore) btnMore.classList.remove('active');
-          card.classList.remove('menu-open');
-
-          downloadSingleSlidePng(slide, index, 'orig');
         });
       }
 
@@ -6521,6 +6854,7 @@ ${sermonText}`;
     if (fromIndex < 0 || fromIndex >= imageSlides.length || toIndex < 0 || toIndex >= imageSlides.length) return;
     const item = imageSlides.splice(fromIndex, 1)[0];
     imageSlides.splice(toIndex, 0, item);
+    imagesGeneratedPptx = null;
     renderImagesOrganizer();
   }
 
@@ -6534,6 +6868,7 @@ ${sermonText}`;
     if (confirm(`Deseja realmente apagar as ${count} imagem(ns) selecionada(s)?`)) {
       imageSlides = imageSlides.filter(s => !selectedImageSlideIds.has(s.id));
       selectedImageSlideIds.clear();
+      imagesGeneratedPptx = null;
       renderImagesOrganizer();
       showToast(`${count} imagem(ns) apagada(s) com sucesso!`, 'success');
     }
@@ -6560,7 +6895,9 @@ ${sermonText}`;
   // Deletar um slide específico
   function deleteImageSlide(index) {
     if (index < 0 || index >= imageSlides.length) return;
-    imageSlides.splice(index, 1);
+    const removed = imageSlides.splice(index, 1)[0];
+    if (removed && removed.id) selectedImageSlideIds.delete(removed.id);
+    imagesGeneratedPptx = null;
     renderImagesOrganizer();
     showToast('Slide removido.', 'info');
   }
@@ -6570,6 +6907,7 @@ ${sermonText}`;
     btnSortImagesAz.addEventListener('click', () => {
       if (imageSlides.length === 0) return;
       imageSlides.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+      imagesGeneratedPptx = null;
       renderImagesOrganizer();
       showToast('Slides ordenados de A a Z por nome de arquivo.', 'success');
     });
@@ -6580,6 +6918,7 @@ ${sermonText}`;
     btnReverseImages.addEventListener('click', () => {
       if (imageSlides.length === 0) return;
       imageSlides.reverse();
+      imagesGeneratedPptx = null;
       renderImagesOrganizer();
       showToast('Ordem dos slides invertida!', 'info');
     });
@@ -6587,11 +6926,13 @@ ${sermonText}`;
 
   function resetImagesOrganizer() {
     imageSlides = [];
+    imagesGeneratedPptx = null;
     if (selectedImageSlideIds) selectedImageSlideIds.clear();
     if (imagesFilesInput) imagesFilesInput.value = '';
     if (zipFilesInput) zipFilesInput.value = '';
     if (imagesPptxInput) imagesPptxInput.value = '';
     if (imagesProgressContainer) imagesProgressContainer.style.display = 'none';
+    if (btnShareImagesMain) btnShareImagesMain.style.display = 'none';
     if (typeof updateSelectionFloatingBar === 'function') updateSelectionFloatingBar();
     renderImagesOrganizer();
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -6657,7 +6998,7 @@ ${sermonText}`;
   async function generateImagesExport(requestedFormat) {
     if (imageSlides.length === 0) {
       showToast('Adicione pelo menos uma imagem para gerar a apresentação.', 'error');
-      return;
+      return false;
     }
 
     const formatChoice = requestedFormat || (imagesFormatSelect ? imagesFormatSelect.value : 'pptx');
@@ -6665,24 +7006,29 @@ ${sermonText}`;
     const fitChoice = imagesFitSelect ? imagesFitSelect.value : 'contain';
     const bgColor = imagesBgSelect ? imagesBgSelect.value : '000000';
 
-    const timestamp = new Date().toISOString().slice(0, 10);
+    const now = new Date();
+    const pad2 = n => String(n).padStart(2, '0');
+    const timestamp = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}_${pad2(now.getHours())}-${pad2(now.getMinutes())}-${pad2(now.getSeconds())}`;
     const pptxFileName = `Apresentacao_Imagens_${timestamp}.pptx`;
     const pdfFileName = `Apresentacao_Imagens_${timestamp}.pdf`;
     const zipFileName = `Apresentacao_Imagens_${timestamp}_PNG.zip`;
 
     if (btnGenerateImagesPptx) {
       btnGenerateImagesPptx.disabled = true;
-      btnGenerateImagesPptx.innerHTML = '<span>⏳</span> Exportando Slides...';
     }
+    if (imagesMainBtnIcon) imagesMainBtnIcon.textContent = '⏳';
+    if (imagesMainBtnLabel) imagesMainBtnLabel.textContent = 'Exportando Slides...';
     if (imagesProgressContainer) {
       imagesProgressContainer.style.display = 'block';
-      imagesProgressBar.style.width = '10%';
-      imagesProgressPercent.textContent = '10%';
-      imagesProgressStatus.textContent = 'Preparando exportação...';
+      if (imagesProgressBar) imagesProgressBar.style.width = '10%';
+      if (imagesProgressPercent) imagesProgressPercent.textContent = '10%';
+      if (imagesProgressStatus) imagesProgressStatus.textContent = 'Preparando exportação...';
     }
 
     try {
       const total = imageSlides.length;
+      let allOk = true;
+      let pptxOk = false;
 
       // 1. Exportar PPTX se solicitado
       if (formatChoice === 'pptx' || formatChoice === 'both') {
@@ -6691,7 +7037,11 @@ ${sermonText}`;
         }
 
         const pptx = new PptxGenJS();
-        if (aspectChoice === '4x3') {
+        if (aspectChoice === 'original' && imageSlides[0] && imageSlides[0].ratio) {
+          const firstRatio = imageSlides[0].ratio || (16 / 9);
+          pptx.defineLayout({ name: 'CUSTOM_IMG', width: 10, height: 10 / firstRatio });
+          pptx.layout = 'CUSTOM_IMG';
+        } else if (aspectChoice === '4x3') {
           pptx.layout = 'LAYOUT_4x3';
         } else {
           pptx.layout = 'LAYOUT_16x9';
@@ -6700,9 +7050,9 @@ ${sermonText}`;
         for (let i = 0; i < total; i++) {
           const slideData = imageSlides[i];
           const pct = Math.round(10 + ((i + 1) / total) * (formatChoice === 'both' ? 40 : 80));
-          imagesProgressBar.style.width = `${pct}%`;
-          imagesProgressPercent.textContent = `${pct}%`;
-          imagesProgressStatus.textContent = `PowerPoint: slide ${i + 1} de ${total}...`;
+          if (imagesProgressBar) imagesProgressBar.style.width = `${pct}%`;
+          if (imagesProgressPercent) imagesProgressPercent.textContent = `${pct}%`;
+          if (imagesProgressStatus) imagesProgressStatus.textContent = `PowerPoint: slide ${i + 1} de ${total}...`;
 
           const slide = pptx.addSlide();
           slide.background = { color: bgColor };
@@ -6717,14 +7067,15 @@ ${sermonText}`;
         imagesGeneratedPptx = pptx;
         imagesPptxFileName = pptxFileName;
         const blob = await pptx.write({ outputType: 'blob' });
-        await saveOrShareFileNative(blob, pptxFileName, 'download');
+        pptxOk = await saveOrShareFileNative(blob, pptxFileName, 'download');
+        allOk = allOk && pptxOk;
       }
 
       // 2. Exportar PDF se solicitado
       if (formatChoice === 'pdf' || formatChoice === 'both') {
-        imagesProgressStatus.textContent = 'Gerando documento em PDF (.pdf)...';
+        if (imagesProgressStatus) imagesProgressStatus.textContent = 'Gerando documento em PDF (.pdf)...';
 
-        await generateSlidesPdfDoc({
+        const pdfOk = await generateSlidesPdfDoc({
           slides: imageSlides,
           aspectChoice,
           fitChoice,
@@ -6734,18 +7085,19 @@ ${sermonText}`;
             const startPct = formatChoice === 'both' ? 55 : 10;
             const range = formatChoice === 'both' ? 40 : 85;
             const pct = Math.round(startPct + (cur / tot) * range);
-            imagesProgressBar.style.width = `${pct}%`;
-            imagesProgressPercent.textContent = `${pct}%`;
-            imagesProgressStatus.textContent = `PDF: página ${cur} de ${tot}...`;
+            if (imagesProgressBar) imagesProgressBar.style.width = `${pct}%`;
+            if (imagesProgressPercent) imagesProgressPercent.textContent = `${pct}%`;
+            if (imagesProgressStatus) imagesProgressStatus.textContent = `PDF: página ${cur} de ${tot}...`;
           }
         });
+        allOk = allOk && pdfOk;
       }
 
       // 3. Exportar Pacote ZIP com imagens PNG se solicitado
       if (formatChoice === 'zip') {
-        imagesProgressStatus.textContent = 'Gerando pacote ZIP com imagens PNG...';
+        if (imagesProgressStatus) imagesProgressStatus.textContent = 'Gerando pacote ZIP com imagens PNG...';
 
-        await generateSlidesZip({
+        const zipOk = await generateSlidesZip({
           slides: imageSlides,
           aspectChoice,
           fitChoice,
@@ -6753,30 +7105,39 @@ ${sermonText}`;
           zipFileName,
           progressCallback: (cur, tot, statusText) => {
             const pct = Math.round((cur / tot) * 95);
-            imagesProgressBar.style.width = `${pct}%`;
-            imagesProgressPercent.textContent = `${pct}%`;
-            imagesProgressStatus.textContent = statusText || `PNG: slide ${cur} de ${tot}...`;
+            if (imagesProgressBar) imagesProgressBar.style.width = `${pct}%`;
+            if (imagesProgressPercent) imagesProgressPercent.textContent = `${pct}%`;
+            if (imagesProgressStatus) imagesProgressStatus.textContent = statusText || `PNG: slide ${cur} de ${tot}...`;
           }
         });
+        allOk = allOk && zipOk;
       }
 
-      imagesProgressStatus.textContent = 'Concluído!';
-      imagesProgressBar.style.width = '100%';
-      imagesProgressPercent.textContent = '100%';
+      if (imagesProgressStatus) imagesProgressStatus.textContent = allOk ? 'Concluído!' : 'Exportação não concluída.';
+      if (imagesProgressBar) imagesProgressBar.style.width = allOk ? '100%' : '0%';
+      if (imagesProgressPercent) imagesProgressPercent.textContent = allOk ? '100%' : '0%';
 
-      if (formatChoice === 'both') {
-        showToast(`🎉 Apresentação baixada em PPTX e PDF (${total} slides cada)!`, 'success');
-      } else if (formatChoice === 'pdf') {
-        showToast(`🎉 Documento PDF baixado com sucesso (${total} páginas)!`, 'success');
-      } else if (formatChoice === 'zip') {
-        showToast(`🎉 Pacote ZIP baixado com sucesso (${total} imagens PNG)!`, 'success');
-      } else {
-        showToast(`🎉 Apresentação PPTX baixada com sucesso (${total} slides)!`, 'success');
+      if (pptxOk && btnShareImagesMain) {
+        btnShareImagesMain.style.display = 'inline-flex';
       }
+
+      if (allOk) {
+        if (formatChoice === 'both') {
+          showToast(`🎉 Apresentação exportada em PPTX e PDF (${total} slides cada)!`, 'success');
+        } else if (formatChoice === 'pdf') {
+          showToast(`🎉 Documento PDF exportado com sucesso (${total} páginas)!`, 'success');
+        } else if (formatChoice === 'zip') {
+          showToast(`🎉 Pacote ZIP exportado com sucesso (${total} imagens PNG)!`, 'success');
+        } else {
+          showToast(`🎉 Apresentação PPTX exportada com sucesso (${total} slides)!`, 'success');
+        }
+      }
+      return allOk;
 
     } catch (err) {
       console.error('Erro na exportação de imagens:', err);
       showToast('Erro ao exportar: ' + err.message, 'error');
+      return false;
     } finally {
       if (btnGenerateImagesPptx) {
         btnGenerateImagesPptx.disabled = false;
@@ -6827,17 +7188,8 @@ ${sermonText}`;
     btnExportImagesPngZip.addEventListener('click', () => generateImagesExport('zip'));
   }
 
-  // Fechar menus de 3 pontinhos ao clicar fora de qualquer card
-  document.addEventListener('click', (e) => {
-    if (!e.target.closest('.card-more-wrapper')) {
-      document.querySelectorAll('.card-dropdown-menu.show').forEach(m => m.classList.remove('show'));
-      document.querySelectorAll('.btn-card-more.active').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.image-slide-card.menu-open').forEach(c => c.classList.remove('menu-open'));
-    }
-  });
-
   // ==========================================
-  // INSERÇíO RÁPIDA DE VERSÍCULOS BÍBLICOS
+  // INSERÇÃO RÁPIDA DE VERSÍCULOS BÍBLICOS
   // ==========================================
   const modalVerse = document.getElementById('modalVerse');
   const btnOpenVerseModal = document.getElementById('btn-open-verse-modal');
@@ -6920,7 +7272,7 @@ ${sermonText}`;
       btnSearchVerse.disabled = true;
       btnSearchVerse.innerHTML = '⏳ Buscando...';
     }
-    if (verseSearchStatus) verseSearchStatus.innerText = `Consultando versão ${version}...`;
+    if (verseSearchStatus) verseSearchStatus.innerText = `Consultando passagem online (${version})...`;
 
     try {
       let foundText = null;
@@ -6943,7 +7295,11 @@ ${sermonText}`;
         if (!foundText.startsWith('“') && !foundText.startsWith('"')) foundText = `“${foundText}”`;
         verseTextInput.value = foundText;
         verseRefInput.value = `${finalRef} (${version})`;
-        if (verseSearchStatus) verseSearchStatus.innerText = `✅ Versículo carregado na versão ${version}!`;
+        if (verseSearchStatus) {
+          verseSearchStatus.innerText = version === 'Almeida'
+            ? '✅ Texto bíblico carregado (Almeida online)!'
+            : `✅ Texto carregado (Almeida online) • Rótulo marcado como ${version}.`;
+        }
       } else {
         if (verseSearchStatus) verseSearchStatus.innerText = `Digite ou cole o texto do versículo diretamente na caixa de texto.`;
       }
@@ -7096,18 +7452,21 @@ ${sermonText}`;
       }
 
       currentSlides = generatedSlides;
+      currentDownloadUrl = null;
       
       // Ocultar section de inputs
-      const inputSection = document.getElementById('input-section');
-      const resultsSection = document.getElementById('results-section');
+      const inputSectionEl = document.getElementById('input-section');
+      const resultsSectionEl = document.getElementById('results-section');
       
-      if (inputSection) inputSection.style.display = 'none';
-      if (resultsSection) resultsSection.style.display = 'block';
+      if (inputSectionEl) inputSectionEl.style.display = 'none';
+      if (resultsSectionEl) resultsSectionEl.style.display = 'block';
       
       // Limpar o dropzone original se houver
       currentFile = null;
-      if (document.getElementById('selected-file-info')) document.getElementById('selected-file-info').style.display = 'none';
-      if (document.getElementById('dropzone-text')) document.getElementById('dropzone-text').style.display = 'block';
+      const selFileInfo = document.getElementById('selected-file-info');
+      if (selFileInfo) selFileInfo.style.display = 'none';
+      const dzText = document.querySelector('#dropzone .dropzone-text');
+      if (dzText) dzText.style.display = 'block';
 
       renderResults();
       showToast('Slides gerados a partir do parágrafo!', 'success');
@@ -7123,15 +7482,10 @@ ${sermonText}`;
   const enhanceSlideInfoBadge = document.getElementById('enhance-slide-info-badge');
   const enhanceAiLoading = document.getElementById('enhance-ai-loading');
   const enhanceAiLoadingText = document.getElementById('enhance-ai-loading-text');
-  const enhanceSlidePreviewDom = document.getElementById('enhance-slide-preview-dom');
   const enhanceLivePreviewImg = document.getElementById('enhance-live-preview-img');
-  const enhancePreviewDomText = document.getElementById('enhance-preview-dom-text');
-  const enhancePreviewDomRef = document.getElementById('enhance-preview-dom-ref');
-  const enhancePreviewDomRefBox = document.getElementById('enhance-preview-dom-ref-box');
   const enhancePreviewCanvas = document.getElementById('enhance-preview-canvas');
   const btnEnhanceReanalyze = document.getElementById('btn-enhance-reanalyze');
   const enhanceSlideType = document.getElementById('enhance-slide-type');
-  const enhanceBgTheme = document.getElementById('enhance-bg-theme');
   const enhanceRefBox = document.getElementById('enhance-ref-box');
   const enhanceRefInput = document.getElementById('enhance-ref-input');
   const btnEnhanceFetchVerse = document.getElementById('btn-enhance-fetch-verse');
@@ -7149,6 +7503,8 @@ ${sermonText}`;
 
   let activeEnhanceTarget = null; // { slide, index, organizerType: 'direct'|'images' }
   let enhanceManualFontSizeDelta = 0; // Ajuste estilo PowerPoint (A▲ / A▼)
+  let enhanceRenderDebounceTimer = null;
+  let enhanceRenderSeq = 0;
 
   let defaultChurchBgImage = null;
   function loadDefaultChurchBgImage() {
@@ -7175,12 +7531,50 @@ ${sermonText}`;
     });
   }
 
+  async function loadActiveEnhanceBgImage() {
+    const activeUrl = (typeof getActiveBackgroundUrl === 'function') ? getActiveBackgroundUrl() : 'assets/church_sermon_bg.jpg';
+    if (activeUrl && activeUrl !== 'assets/church_sermon_bg.jpg') {
+      const customOrTemplateImg = await new Promise((resolve) => {
+        const img = new Image();
+        if (/^https?:\/\//i.test(activeUrl)) {
+          img.crossOrigin = 'anonymous';
+        }
+        img.onload = () => resolve(img);
+        img.onerror = () => resolve(null);
+        img.src = activeUrl;
+      });
+      if (customOrTemplateImg && customOrTemplateImg.complete && customOrTemplateImg.naturalWidth > 0) {
+        return customOrTemplateImg;
+      }
+    }
+    return loadDefaultChurchBgImage();
+  }
+
   // Pré-carrega a imagem oficial da Bíblia na memória
   loadDefaultChurchBgImage();
 
+  function scheduleEnhanceCanvasPreview() {
+    if (enhanceRenderDebounceTimer) {
+      clearTimeout(enhanceRenderDebounceTimer);
+    }
+    enhanceRenderDebounceTimer = setTimeout(() => {
+      enhanceRenderDebounceTimer = null;
+      renderEnhanceCanvasPreview();
+    }, 120);
+  }
+
   function closeEnhanceModal() {
+    if (enhanceRenderDebounceTimer) {
+      clearTimeout(enhanceRenderDebounceTimer);
+      enhanceRenderDebounceTimer = null;
+    }
+    enhanceRenderSeq++;
     if (modalEnhanceAi) {
       modalEnhanceAi.style.display = 'none';
+    }
+    if (enhancePreviewCanvas) {
+      enhancePreviewCanvas.width = 0;
+      enhancePreviewCanvas.height = 0;
     }
     activeEnhanceTarget = null;
   }
@@ -7199,7 +7593,7 @@ ${sermonText}`;
     }
 
     if (enhanceSlideType) enhanceSlideType.value = 'verse';
-    if (enhanceTextAlign) enhanceTextAlign.value = 'left';
+    if (enhanceTextAlign) enhanceTextAlign.value = (typeof currentSelectedAlign === 'string' && currentSelectedAlign) ? currentSelectedAlign : 'left';
     enhanceManualFontSizeDelta = 0;
     if (enhanceTextInput) enhanceTextInput.value = 'Carregando análise da IA...';
     if (enhanceRefInput) enhanceRefInput.value = '';
@@ -7216,28 +7610,45 @@ ${sermonText}`;
     return new Promise((resolve) => {
       if (!imgSrc) return resolve(null);
       const img = new Image();
-      img.crossOrigin = 'anonymous';
+      if (/^https?:\/\//i.test(imgSrc)) {
+        img.crossOrigin = 'anonymous';
+      }
       img.onload = () => {
-        let maxW = 1280;
-        let maxH = 720;
-        let w = img.width;
-        let h = img.height;
-        if (w > maxW || h > maxH) {
-          const ratio = Math.min(maxW / w, maxH / h);
-          w = Math.round(w * ratio);
-          h = Math.round(h * ratio);
-        }
         const cv = document.createElement('canvas');
-        cv.width = w;
-        cv.height = h;
-        const ctx = cv.getContext('2d');
-        ctx.drawImage(img, 0, 0, w, h);
-        const dataUrl = cv.toDataURL('image/jpeg', 0.85);
-        const parts = dataUrl.split(',');
-        resolve({
-          mimeType: 'image/jpeg',
-          base64: parts[1] || ''
-        });
+        try {
+          const maxW = 1280;
+          const maxH = 720;
+          let w = img.naturalWidth || img.width;
+          let h = img.naturalHeight || img.height;
+          if (!w || !h) {
+            resolve(null);
+            return;
+          }
+          if (w > maxW || h > maxH) {
+            const ratio = Math.min(maxW / w, maxH / h);
+            w = Math.max(1, Math.round(w * ratio));
+            h = Math.max(1, Math.round(h * ratio));
+          }
+          cv.width = w;
+          cv.height = h;
+          const ctx = cv.getContext('2d');
+          if (!ctx) {
+            resolve(null);
+            return;
+          }
+          ctx.drawImage(img, 0, 0, w, h);
+          const dataUrl = cv.toDataURL('image/jpeg', 0.85);
+          const parts = dataUrl.split(',');
+          resolve({
+            mimeType: 'image/jpeg',
+            base64: parts[1] || ''
+          });
+        } catch (err) {
+          resolve(null);
+        } finally {
+          cv.width = 0;
+          cv.height = 0;
+        }
       };
       img.onerror = () => {
         // Fallback: se já for dataURL puro
@@ -7307,22 +7718,22 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
 
       const models = [
         'gemini-2.5-flash',
-        'gemini-1.5-flash',
+        'gemini-2.5-flash-lite',
         'gemini-2.0-flash',
-        'gemini-3.5-flash',
-        'gemini-3.5-flash-lite',
-        'gemini-flash-latest'
+        'gemini-1.5-flash'
       ];
 
       let jsonResult = null;
+      let lastError = null;
 
       for (const model of models) {
+        let timeoutId = null;
         try {
           if (enhanceAiLoadingText) {
             enhanceAiLoadingText.textContent = `Consultando modelo de IA (${model})...`;
           }
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 20000);
+          timeoutId = setTimeout(() => controller.abort(), 20000);
 
           const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
             method: 'POST',
@@ -7336,7 +7747,11 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
               }
             })
           });
-          clearTimeout(timeoutId);
+          if (!res.ok) {
+            const errData = await res.json().catch(() => null);
+            lastError = errData?.error?.message || `HTTP ${res.status}`;
+            continue;
+          }
 
           const data = await res.json();
           if (data && data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) {
@@ -7345,8 +7760,11 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
             jsonResult = JSON.parse(cleaned);
             if (jsonResult) break;
           }
-        } catch(e) {
-          console.warn(`Tentativa com ${model} falhou:`, e.message);
+        } catch (e) {
+          lastError = e.message || String(e);
+          console.warn(`Tentativa com ${model} falhou:`, lastError);
+        } finally {
+          if (timeoutId) clearTimeout(timeoutId);
         }
       }
 
@@ -7354,14 +7772,14 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
         applyAiResultToModal(jsonResult);
         showToast('✨ Slide interpretado pela IA com sucesso!', 'success');
       } else {
-        throw new Error('A IA não conseguiu interpretar a imagem.');
+        throw new Error('A IA não conseguiu interpretar a imagem' + (lastError ? `: ${lastError}` : '.'));
       }
-    } catch(err) {
+    } catch (err) {
       console.warn('Falha no reconhecimento com IA:', err);
       if (enhanceRefInput && !enhanceRefInput.value) {
         enhanceRefInput.value = (slide.title && slide.title.length < 35) ? slide.title : 'Versículo / Tópico';
       }
-      if (enhanceTextInput && !enhanceTextInput.value) {
+      if (enhanceTextInput && (!enhanceTextInput.value || enhanceTextInput.value === 'Carregando análise da IA...')) {
         enhanceTextInput.value = 'Digite o texto do versículo ou frase aqui.';
       }
       renderEnhanceCanvasPreview();
@@ -7413,20 +7831,13 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
   // ==========================================
   // RENDERIZAÇÃO DO PREVIEW OFICIAL (CANVAS FULL HD & PREVIEW EM TEMPO REAL)
   // ==========================================
-  function updateEnhanceDomPreview(rawText, refText, align, type) {
-    if (enhancePreviewDomText) {
-      let previewHtml = escapeHtml(rawText).replace(/\[HL\](.*?)\[\/HL\]/gi, '<span class="highlight">$1</span>');
-      enhancePreviewDomText.innerHTML = previewHtml;
-    }
-    if (enhancePreviewDomRef) {
-      enhancePreviewDomRef.textContent = (refText || '').toUpperCase();
-    }
-    if (enhancePreviewDomRefBox) {
-      enhancePreviewDomRefBox.style.display = refText ? 'block' : 'none';
-    }
-  }
-
   async function renderEnhanceCanvasPreview() {
+    if (enhanceRenderDebounceTimer) {
+      clearTimeout(enhanceRenderDebounceTimer);
+      enhanceRenderDebounceTimer = null;
+    }
+    const mySeq = ++enhanceRenderSeq;
+
     const rawText = enhanceTextInput ? enhanceTextInput.value.trim() : '';
     const refText = enhanceRefInput ? enhanceRefInput.value.trim() : '';
     const align = enhanceTextAlign ? enhanceTextAlign.value : 'left';
@@ -7441,16 +7852,19 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
     if (!ctx) return;
 
     if (document.fonts && document.fonts.ready) {
-      try { await document.fonts.ready; } catch(e) {}
+      try { await document.fonts.ready; } catch (e) {}
     }
+    if (mySeq !== enhanceRenderSeq) return;
+
+    // Fundo ativo sincronizado com o tema do Módulo 1 (fallback para fundo oficial)
+    const bgImg = await loadActiveEnhanceBgImage();
+    if (mySeq !== enhanceRenderSeq) return;
 
     const w = 1920;
     const h = 1080;
     enhancePreviewCanvas.width = w;
     enhancePreviewCanvas.height = h;
 
-    // Fundo oficial da Bíblia sagrada da igreja
-    const bgImg = await loadDefaultChurchBgImage();
     if (bgImg && bgImg.complete && bgImg.naturalWidth > 0) {
       ctx.drawImage(bgImg, 0, 0, w, h);
     } else {
@@ -7488,7 +7902,7 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
     });
 
     const totalChars = rawText.replace(/\[\/?HL\]/gi, '').length;
-    
+
     // Proporção cinematográfica oficial 1080p fiel ao PowerPoint (96 DPI / Módulo 1)
     let baseFontSize = 84;
     if (type === 'topic') {
@@ -7505,8 +7919,12 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
 
     let fontSize = Math.max(34, Math.min(150, baseFontSize + enhanceManualFontSizeDelta));
 
-    const fontCss = '"Bahnschrift SemiBold Condensed", "Bahnschrift", "Roboto Condensed", "Arial Narrow", sans-serif';
-    ctx.font = `bold ${fontSize}px ${fontCss}`;
+    const activeFontCfg = (typeof CHURCH_FONTS !== 'undefined' && CHURCH_FONTS[currentSelectedFont])
+      ? CHURCH_FONTS[currentSelectedFont]
+      : (typeof CHURCH_FONTS !== 'undefined' ? CHURCH_FONTS['bahnschrift_semibold_condensed'] : null);
+    const fontCss = activeFontCfg ? activeFontCfg.cssFamily : '"Bahnschrift SemiBold Condensed", "Bahnschrift", "Roboto Condensed", "Arial Narrow", sans-serif';
+    const fontWeight = (activeFontCfg && activeFontCfg.fontWeight) ? activeFontCfg.fontWeight : 'bold';
+    ctx.font = `${fontWeight} ${fontSize}px ${fontCss}`;
     let lineHeight = fontSize * 1.25;
 
     // Margens simétricas oficiais (0.9" = 130px de cada lado em 1920x1080)
@@ -7516,7 +7934,7 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
     const availableHeight = 650; // Área útil livre acima da referência (y=880)
 
     function buildLines(fSize) {
-      ctx.font = `bold ${fSize}px ${fontCss}`;
+      ctx.font = `${fontWeight} ${fSize}px ${fontCss}`;
       const resLines = [];
       let curL = [];
       let curW = 0;
@@ -7612,7 +8030,7 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
       ctx.save();
       const refY = 880;
       const refFontSize = 52;
-      ctx.font = `bold ${refFontSize}px ${fontCss}`;
+      ctx.font = `${fontWeight} ${refFontSize}px ${fontCss}`;
       ctx.fillStyle = '#E8B859';
       ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
       ctx.shadowBlur = 6;
@@ -7637,14 +8055,14 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
       if (enhanceLivePreviewImg) {
         enhanceLivePreviewImg.src = previewDataUrl;
       }
-    } catch(err) {
+    } catch (err) {
       console.warn('Erro ao atualizar imagem de preview do modal:', err);
     }
   }
 
-  // Listeners de Redesenho em Tempo Real
-  if (enhanceTextInput) enhanceTextInput.addEventListener('input', renderEnhanceCanvasPreview);
-  if (enhanceRefInput) enhanceRefInput.addEventListener('input', renderEnhanceCanvasPreview);
+  // Listeners de Redesenho em Tempo Real (com debounce em digitação para evitar lag/uso excessivo de CPU)
+  if (enhanceTextInput) enhanceTextInput.addEventListener('input', scheduleEnhanceCanvasPreview);
+  if (enhanceRefInput) enhanceRefInput.addEventListener('input', scheduleEnhanceCanvasPreview);
   if (enhanceSlideType) enhanceSlideType.addEventListener('change', renderEnhanceCanvasPreview);
   if (enhanceTextAlign) enhanceTextAlign.addEventListener('change', renderEnhanceCanvasPreview);
 
@@ -7719,7 +8137,8 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
   if (btnEnhanceFetchVerse) {
     btnEnhanceFetchVerse.addEventListener('click', async () => {
       if (!enhanceRefInput) return;
-      const query = enhanceRefInput.value.trim();
+      const rawQuery = enhanceRefInput.value.trim();
+      const query = rawQuery.replace(/\s*\([^)]+\)\s*$/, '').trim();
       if (!query) {
         showToast('Digite a referência do versículo (ex: Lucas 6:24, João 3:16).', 'error');
         return;
@@ -7728,9 +8147,14 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
       btnEnhanceFetchVerse.disabled = true;
       btnEnhanceFetchVerse.innerHTML = '⏳...';
 
+      let timeoutId = null;
       try {
+        const controller = new AbortController();
+        timeoutId = setTimeout(() => controller.abort(), 10000);
         const cleanQuery = query.replace(/\s+/g, '+').replace(/salmo\b/i, 'salmos').replace(/cântico\b/i, 'cantares');
-        const res = await fetch(`https://bible-api.com/${encodeURIComponent(cleanQuery)}?translation=almeida`);
+        const res = await fetch(`https://bible-api.com/${encodeURIComponent(cleanQuery)}?translation=almeida`, {
+          signal: controller.signal
+        });
         if (res.ok) {
           const d = await res.json();
           if (d && d.text) {
@@ -7746,9 +8170,10 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
         } else {
           showToast('Passagem não localizada automaticamente.', 'warning');
         }
-      } catch(e) {
+      } catch (e) {
         showToast('Erro ao consultar versículo online.', 'warning');
       } finally {
+        if (timeoutId) clearTimeout(timeoutId);
         btnEnhanceFetchVerse.disabled = false;
         btnEnhanceFetchVerse.innerHTML = '🔍 Buscar';
       }
@@ -7798,7 +8223,7 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
           activeEnhanceTarget.slide.enhanced = true;
         }
 
-        // 4. Atualiza no array específico do organizador e redesenha a tela
+        // 4. Atualiza no array específico do organizador, invalida cache PPTX e redesenha a tela
         if (orgType === 'direct') {
           if (directSlides[targetIndex]) {
             Object.assign(directSlides[targetIndex], {
@@ -7812,6 +8237,7 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
               enhanced: true
             });
           }
+          directGeneratedPptx = null;
           renderDirectOrganizer();
         } else {
           if (imageSlides[targetIndex]) {
@@ -7826,6 +8252,7 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
               enhanced: true
             });
           }
+          imagesGeneratedPptx = null;
           renderImagesOrganizer();
         }
 
@@ -7860,6 +8287,9 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
       try {
         await renderEnhanceCanvasPreview();
         const newImgData = enhancePreviewCanvas.toDataURL('image/jpeg', 0.95);
+        if (!newImgData || newImgData === 'data:,') {
+          throw new Error('Falha ao gerar imagem do canvas.');
+        }
         const newTitle = enhanceRefInput && enhanceRefInput.value.trim() ? enhanceRefInput.value.trim() : 'Slide Bíblico';
 
         const newSlide = {
@@ -7877,9 +8307,11 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
 
         if (activeEnhanceTarget.organizerType === 'direct') {
           directSlides.splice(activeEnhanceTarget.index + 1, 0, newSlide);
+          directGeneratedPptx = null;
           renderDirectOrganizer();
         } else {
           imageSlides.splice(activeEnhanceTarget.index + 1, 0, newSlide);
+          imagesGeneratedPptx = null;
           renderImagesOrganizer();
         }
 
@@ -7896,4 +8328,3 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
   }
 
 });
-``

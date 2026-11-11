@@ -43,7 +43,9 @@ async function main() {
   const slides = parseSermonTextOffline(text);
   console.log(`✅ ${slides.length} slides estruturados com sucesso!`);
 
-  const bgPath = path.join(__dirname, 'public/assets/church_sermon_bg.png');
+  const jpgBgPath = path.join(__dirname, 'public/assets/church_sermon_bg.jpg');
+  const pngBgPath = path.join(__dirname, 'public/assets/church_sermon_bg.png');
+  const bgPath = fs.existsSync(jpgBgPath) ? jpgBgPath : pngBgPath;
   const baseName = path.basename(pdfPath, path.extname(pdfPath));
   const outName = `SLIDES_${baseName}_${Date.now()}.pptx`;
   const downloadsDir = path.join(__dirname, 'downloads');

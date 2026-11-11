@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <script src="error_tracker.js"></script>
+    <script src="error_tracker.js?v=2.12.13"></script>
     <title>Central Multimídia Church — Hub de Mídia & Culto (v2.0.0)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/libs/jszip.min.js"></script>
@@ -1074,7 +1074,7 @@
             const apiKey = localStorage.getItem('GEMINI_API_KEY') || DEFAULT_GEMINI_KEY;
             if (apiKey && (!foundText || version !== 'ACF')) {
                 try {
-                    const models = ['gemini-flash-lite-latest', 'gemini-flash-latest', 'gemini-3.1-flash-lite', 'gemini-3.5-flash-lite', 'gemini-3.6-flash', 'gemini-3.7-flash'];
+                    const models = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash', 'gemini-1.5-flash'];
                     const prompt = `Retorne o texto exato de "${ref}" na versão "${version}" da Bíblia Sagrada em português. Mantenha a pontuação bíblica fiel. Responda exclusivamente um objeto JSON: {"reference": "${ref}", "version": "${version}", "text": "texto completo aqui"}`;
 
                     for (const model of models) {
@@ -1448,7 +1448,6 @@
     setupMiniToolbarListeners();
 
     // --- Gemini AI Validation Engine ---
-    const DEFAULT_GEMINI_KEY = atob('QVEuQWI4Uk42Si1lTWMtdVdvWVlpMWpsVGw4WXVvZ3RTajhuTXE2VzdSdVl1Zk8zbi1LcXc=');
 
     function openAiModal() {
         const modal = document.getElementById('modalAiKey');
@@ -1513,12 +1512,10 @@ TEXTO DO SERMÃO:
 ${rawExtractedSermonText || slides.map(s => s.elements.map(e => e.content).join(' ')).join('\n')}`;
 
         const models = [
-            'gemini-flash-lite-latest',
-            'gemini-flash-latest',
-            'gemini-3.1-flash-lite',
-            'gemini-3.5-flash-lite',
-            'gemini-3.6-flash',
-            'gemini-3.7-flash'
+            'gemini-2.5-flash',
+            'gemini-2.5-flash-lite',
+            'gemini-2.0-flash',
+            'gemini-1.5-flash'
         ];
         let success = false;
         let lastErr = null;
@@ -1642,7 +1639,14 @@ ${rawExtractedSermonText || slides.map(s => s.elements.map(e => e.content).join(
             .replace(/^1[ºª°]\s*/i, '1 ').replace(/^2[ºª°]\s*/i, '2 ').replace(/^3[ºª°]\s*/i, '3 ')
             .replace(/^Primeir[oa]\s+/i, '1 ').replace(/^Segund[oa]\s+/i, '2 ').replace(/^Terceir[oa]\s+/i, '3 ');
     }
-    function fmtQuote(t) { let x=t.trim(); if(!x.startsWith('“')&&!x.startsWith('"')) x='“'+x; if(!x.endsWith('”')&&!x.endsWith('"')) x=x.replace(/[.]+$/,'')+'”'; return x; }
+    function fmtQuote(t) {
+        let x = (t || '').trim();
+        if (!x) return '';
+        x = x.replace(/^[“"']+|[”"']+$/g, '').trim();
+        if (/[;,]$/.test(x)) x = x.slice(0, -1).trim() + '.';
+        else if (!/[.!?…]$/.test(x)) x += '.';
+        return `“${x}”`;
+    }
     function genId() { return 'el_' + Math.random().toString(36).substr(2,9); }
 
     function newSlide(type) { return { id:'s_'+genId(), bgImage:globalBgData || 'assets/church_sermon_bg.jpg', bgColor:'#000000', type:type, elements:[] }; }
