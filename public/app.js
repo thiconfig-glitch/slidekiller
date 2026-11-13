@@ -3308,17 +3308,6 @@ ${sermonText}`;
         }
       }
     }
-            fontFace: isCinzel ? 'Cinzel' : pptxFontFace,
-            fontSize: isCinzel ? 28 : 34,
-            color: refColor,
-            bold: true,
-            margin: 0,
-            wrap: false,
-            shadow: shadowConfig
-          });
-        }
-      }
-    }
 
     return pptx;
   }
