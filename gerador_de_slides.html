@@ -2,13 +2,29 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <script src="error_tracker.js?v=2.13.0"></script>
+    <script src="error_tracker.js?v=2.14.0"></script>
     <title>Central Multimídia Church — Hub de Mídia & Culto (v2.0.0)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/libs/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/dist/pptxgen.min.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600&family=Oswald:wght@500&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Cinzel:wght@400;600;700;800;900&family=Cinzel+Decorative:wght@700;900&family=Inter:wght@400;500;600&family=Oswald:wght@500&display=swap');
+
+        @font-face {
+            font-family: 'Cinzel';
+            src: url('assets/fonts/Cinzel-Regular.otf') format('opentype');
+            font-weight: 400;
+        }
+        @font-face {
+            font-family: 'Cinzel';
+            src: url('assets/fonts/Cinzel-Bold.otf') format('opentype');
+            font-weight: 700;
+        }
+        @font-face {
+            font-family: 'Cinzel';
+            src: url('assets/fonts/Cinzel-Black.otf') format('opentype');
+            font-weight: 900;
+        }
         
         :root { 
             --bg-base: #18181b; /* Zinc 900 */
@@ -374,6 +390,7 @@
             <select id="globalThemeSelect" class="prop-input" style="flex:1;">
                 <option value="assets/church_sermon_bg.jpg" selected>📖 Fundo Bíblia (Padrão)</option>
                 <option value="assets/ts_theme_bg.png">✨ Fundo TS (Oficial 4K)</option>
+                <option value="assets/cinzel_theme_bg.png">🏛️ Tema Nobre Cinzel (4K)</option>
             </select>
         </div>
         <label style="font-size:11px; font-weight:500; color:var(--text-dim); display:block; margin-bottom:4px;">Ou anexe um fundo personalizado:</label>
@@ -454,6 +471,7 @@
                             <option value="">(Manter atual)</option>
                             <option value="assets/church_sermon_bg.jpg">📖 Fundo Bíblia (Padrão)</option>
                             <option value="assets/ts_theme_bg.png">✨ Fundo TS (Oficial 4K)</option>
+                            <option value="assets/cinzel_theme_bg.png">🏛️ Tema Nobre Cinzel (4K)</option>
                         </select>
                     </div>
                     <div class="prop-grid">
@@ -506,6 +524,7 @@
                             <div style="display:flex; gap:4px; align-items:center; margin-bottom:6px;">
                                 <select class="prop-input" id="elFont" style="flex:1;" onchange="updateElProp('fontFace', this.value)">
                                     <option value="Bahnschrift SemiBold Condensed">Bahnschrift</option>
+                                    <option value="Cinzel">🏛️ Cinzel Nobre</option>
                                     <option value="Bebas Neue">Bebas Neue</option>
                                     <option value="Oswald">Oswald</option>
                                     <option value="Arial">Arial</option>
@@ -731,6 +750,7 @@
         <div class="mini-group mini-text-only">
             <select id="miniFont" class="mini-select" title="Fonte">
                 <option value="Bahnschrift SemiBold Condensed">Bahnschrift</option>
+                <option value="Cinzel">Cinzel</option>
                 <option value="Bebas Neue">Bebas Neue</option>
                 <option value="Oswald">Oswald</option>
                 <option value="Arial">Arial</option>
@@ -800,15 +820,25 @@
     if (globalThemeSelect) {
         globalThemeSelect.addEventListener('change', e => {
             currentGlobalTheme = e.target.value;
+            const isCinzel = currentGlobalTheme.includes('cinzel') || currentGlobalTheme.includes('nobre');
             slides.forEach(s => {
-                if (!s.bgImage || s.bgImage.includes('church_sermon_bg') || s.bgImage.includes('ts_theme_bg')) {
+                if (!s.bgImage || s.bgImage.includes('church_sermon_bg') || s.bgImage.includes('ts_theme_bg') || s.bgImage.includes('cinzel')) {
                     s.bgImage = currentGlobalTheme;
+                }
+                if (isCinzel) {
+                    s.elements.forEach(el => {
+                        if (el.type === 'text') {
+                            el.fontFace = 'Cinzel';
+                            el.color = '#E1D3C1';
+                            el.align = 'center';
+                        }
+                    });
                 }
             });
             renderCanvas();
             renderFilmstrip();
             const statusMsg = document.getElementById('statusMsg');
-            if (statusMsg) statusMsg.innerText = "Tema oficial alterado para todos os slides!";
+            if (statusMsg) statusMsg.innerText = isCinzel ? "Tema Nobre Cinzel ativado para todos os slides!" : "Tema oficial alterado para todos os slides!";
         });
     }
     document.getElementById('globalBg').addEventListener('change', e => {
@@ -1682,17 +1712,18 @@ ${rawExtractedSermonText || slides.map(s => s.elements.map(e => e.content).join(
 
     function newSlide(type) { return { id:'s_'+genId(), bgImage:globalBgData || currentGlobalTheme || 'assets/church_sermon_bg.jpg', bgColor:'#000000', type:type, elements:[] }; }
     function newTextEl(txt, isR, type) {
-        let fz=44, ff='Bahnschrift SemiBold Condensed', col='#ffffff', al='left', y=76, h=345, sh='dark', strk='none';
-        if(isR) { fz=42; ff='Bebas Neue'; col='#E8B859'; y=441; h=76; }
-        else if(type==='topic') { fz=64; ff='Bebas Neue'; col='#ffffff'; al='center'; y=180; h=180; }
-        else if(type==='reflection') { fz=56; ff='Bebas Neue'; col='#ffffff'; al='center'; y=150; }
-        else if(type==='question_short') { fz=90; ff='Bebas Neue'; col='#ffffff'; al='center'; y=150; }
-        else { if(txt.length<70) fz=52; else if(txt.length>160) fz=38; }
+        const isCinzel = currentGlobalTheme && (currentGlobalTheme.includes('cinzel') || currentGlobalTheme.includes('nobre'));
+        let fz=44, ff=isCinzel ? 'Cinzel' : 'Bahnschrift SemiBold Condensed', col=isCinzel ? '#E1D3C1' : '#ffffff', al=isCinzel ? 'center' : 'left', y=76, h=345, sh='dark', strk='none';
+        if(isR) { fz=isCinzel ? 36 : 42; ff=isCinzel ? 'Cinzel' : 'Bebas Neue'; col=isCinzel ? '#E1D3C1' : '#E8B859'; al=isCinzel ? 'center' : 'left'; y=441; h=76; }
+        else if(type==='topic') { fz=isCinzel ? 56 : 64; ff=isCinzel ? 'Cinzel' : 'Bebas Neue'; col=isCinzel ? '#E1D3C1' : '#ffffff'; al='center'; y=180; h=180; }
+        else if(type==='reflection') { fz=isCinzel ? 48 : 56; ff=isCinzel ? 'Cinzel' : 'Bebas Neue'; col=isCinzel ? '#E1D3C1' : '#ffffff'; al='center'; y=150; }
+        else if(type==='question_short') { fz=isCinzel ? 72 : 90; ff=isCinzel ? 'Cinzel' : 'Bebas Neue'; col=isCinzel ? '#E1D3C1' : '#ffffff'; al='center'; y=150; }
+        else { if(txt.length<70) fz=isCinzel ? 48 : 52; else if(txt.length>160) fz=isCinzel ? 36 : 38; }
         return {
             id: genId(), type: 'text', name: isR ? 'Referência Bíblica' : (type==='topic' ? 'Título do Tópico' : 'Texto Principal'), content: txt,
             x:48, y:y, w:864, h:h, rotation:0, opacity:1, locked:false, hidden:false,
             fontFace:ff, fontSize:fz, color:col, align:al, shadow:sh, stroke:strk, isRef:isR,
-            bold:false, italic:false
+            bold:isCinzel ? true : false, italic:false
         };
     }
 
@@ -1911,7 +1942,7 @@ ${rawExtractedSermonText || slides.map(s => s.elements.map(e => e.content).join(
         if(curSlideIdx < 0) return; const s = slides[curSlideIdx];
         document.getElementById('slType').value = s.type; document.getElementById('slBgColor').value = s.bgColor;
         const slThemeBg = document.getElementById('slThemeBg');
-        if (slThemeBg) slThemeBg.value = (s.bgImage && (s.bgImage.includes('ts_theme_bg') || s.bgImage.includes('church_sermon_bg'))) ? (s.bgImage.includes('ts_theme_bg') ? 'assets/ts_theme_bg.png' : 'assets/church_sermon_bg.jpg') : '';
+        if (slThemeBg) slThemeBg.value = (s.bgImage && (s.bgImage.includes('cinzel') || s.bgImage.includes('ts_theme_bg') || s.bgImage.includes('church_sermon_bg'))) ? (s.bgImage.includes('cinzel') ? 'assets/cinzel_theme_bg.png' : (s.bgImage.includes('ts_theme_bg') ? 'assets/ts_theme_bg.png' : 'assets/church_sermon_bg.jpg')) : '';
         if(!selElId) {
             document.getElementById('panel-element').style.display = 'none';
         } else {
@@ -1944,7 +1975,20 @@ ${rawExtractedSermonText || slides.map(s => s.elements.map(e => e.content).join(
         const el = slides[curSlideIdx].elements.find(x=>x.id===selElId);
         if(el) { el[p] = (p==='x'||p==='y'||p==='w'||p==='h'||p==='fontSize') ? Number(v) : v; renderCanvas(); updateSelection(); renderFilmstrip(); }
     };
-    window.handleSlideThemeChange = (val) => { if(!val || curSlideIdx < 0) return; slides[curSlideIdx].bgImage = val; renderCanvas(); renderFilmstrip(); };
+    window.handleSlideThemeChange = (val) => {
+        if(!val || curSlideIdx < 0) return;
+        slides[curSlideIdx].bgImage = val;
+        if (val.includes('cinzel') || val.includes('nobre')) {
+            slides[curSlideIdx].elements.forEach(el => {
+                if (el.type === 'text') {
+                    el.fontFace = 'Cinzel';
+                    el.color = '#E1D3C1';
+                    el.align = 'center';
+                }
+            });
+        }
+        renderCanvas(); renderFilmstrip(); renderProps();
+    };
     window.handleSlideBgUpload = (inp) => { const f = inp.files[0]; if(f) { const r = new FileReader(); r.onload=ev=>{ slides[curSlideIdx].bgImage = ev.target.result; renderCanvas(); renderFilmstrip(); }; r.readAsDataURL(f); } };
     window.handleElImageUpload = (inp) => {
         const f = inp.files[0]; if(!f || curSlideIdx<0) return;

@@ -36,6 +36,12 @@ function getDefaultBgPath() {
 
 function getThemeBgPath(themeOrPath) {
   if (themeOrPath && typeof themeOrPath === 'string') {
+    if (themeOrPath.includes('cinzel') || themeOrPath.includes('nobre') || themeOrPath === 'theme_cinzel' || themeOrPath === 'cinzel') {
+      const cinzelPath = path.join(__dirname, 'public/assets/cinzel_theme_bg.png');
+      if (fs.existsSync(cinzelPath)) return cinzelPath;
+      const rootCinzel = path.join(__dirname, 'assets/cinzel_theme_bg.png');
+      if (fs.existsSync(rootCinzel)) return rootCinzel;
+    }
     if (themeOrPath.includes('ts_theme_bg') || themeOrPath === 'theme_ts' || themeOrPath === 'ts') {
       const tsPath = path.join(__dirname, 'public/assets/ts_theme_bg.png');
       if (fs.existsSync(tsPath)) return tsPath;
@@ -141,7 +147,7 @@ app.get('/api/health', (req, res) => {
   res.json({
     status: 'online',
     service: 'Central Multimídia Church',
-    version: '2.13.0',
+    version: '2.14.0',
     modules: ['slidekiller', 'pdf-to-pptx', 'images-to-pptx'],
     timestamp: new Date().toISOString()
   });
@@ -348,7 +354,12 @@ app.get('/api/slides/templates', (req, res) => {
     templates.push({ id: 'theme_ts', name: '✨ Fundo TS (Oficial 4K)', url: '/assets/ts_theme_bg.png' });
   }
 
-  const ignoredAssets = new Set(['church_sermon_bg.jpg', 'church_sermon_bg.png', 'ts_theme_bg.png', 'logo_app_icon.png']);
+  const cinzelPath = path.join(assetsDir, 'cinzel_theme_bg.png');
+  if (fs.existsSync(cinzelPath) || fs.existsSync(path.join(__dirname, 'assets/cinzel_theme_bg.png'))) {
+    templates.push({ id: 'theme_cinzel', name: '🏛️ Tema Nobre Cinzel (4K)', url: '/assets/cinzel_theme_bg.png' });
+  }
+
+  const ignoredAssets = new Set(['church_sermon_bg.jpg', 'church_sermon_bg.png', 'ts_theme_bg.png', 'cinzel_theme_bg.png', 'logo_app_icon.png']);
   if (fs.existsSync(assetsDir)) {
     const files = fs.readdirSync(assetsDir);
     files.forEach(file => {

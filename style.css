@@ -1,3 +1,43 @@
+/* ================================================= */
+/* FONTES LOCAIS OFICIAIS (FALLBACK OFFLINE 100%)    */
+/* ================================================= */
+@font-face {
+  font-family: 'Cinzel';
+  src: url('assets/fonts/Cinzel-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Cinzel';
+  src: url('assets/fonts/Cinzel-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Cinzel';
+  src: url('assets/fonts/Cinzel-Black.otf') format('opentype');
+  font-weight: 900;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Cinzel Decorative';
+  src: url('assets/fonts/CinzelDecorative-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Cinzel Decorative';
+  src: url('assets/fonts/CinzelDecorative-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Cinzel Decorative';
+  src: url('assets/fonts/CinzelDecorative-Black.otf') format('opentype');
+  font-weight: 900;
+  font-style: normal;
+}
+
 :root {
   --bg-dark: #090d16;
   --bg-card: #131b2e;
@@ -1215,6 +1255,39 @@ textarea:focus {
   letter-spacing: 0.8px;
   text-transform: uppercase;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.95);
+}
+
+/* Estilo do Tema Nobre Cinzel (Estrutura Centrada, Cores Marfim & Ouro Nobre) */
+.slide-preview-container.theme-cinzel .slide-preview-verse-box {
+  align-items: center;
+  text-align: center;
+}
+
+.slide-preview-container.theme-cinzel .slide-preview-text {
+  font-family: 'Cinzel', 'Times New Roman', Georgia, serif;
+  font-weight: 700;
+  color: #E1D3C1;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.9);
+}
+
+.slide-preview-container.theme-cinzel .slide-preview-text .highlight {
+  font-family: 'Cinzel', 'Times New Roman', Georgia, serif;
+  color: #E6C486;
+  font-weight: 900;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.9), 0 0 10px rgba(230, 196, 134, 0.35);
+}
+
+.slide-preview-container.theme-cinzel .slide-preview-ref-box {
+  text-align: center;
+}
+
+.slide-preview-container.theme-cinzel .slide-preview-ref {
+  font-family: 'Cinzel', 'Times New Roman', Georgia, serif;
+  color: #E1D3C1;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9);
 }
 
 .results-font-picker-pill {

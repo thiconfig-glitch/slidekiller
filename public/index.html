@@ -11,8 +11,8 @@
   <link rel="apple-touch-icon" href="assets/logo_app_icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:wght@600;700;800&family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&family=Montserrat:wght@700;800;900&family=Oswald:wght@600;700&family=Roboto+Condensed:wght@600;700;800;900&display=swap" rel="stylesheet">
-  <script src="error_tracker.js?v=2.13.0"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:wght@600;700;800&family=Bebas+Neue&family=Cinzel:wght@400;600;700;800;900&family=Cinzel+Decorative:wght@700;900&family=Inter:wght@400;500;600;700;800&family=Montserrat:wght@700;800;900&family=Oswald:wght@600;700&family=Roboto+Condensed:wght@600;700;800;900&display=swap" rel="stylesheet">
+  <script src="error_tracker.js?v=2.14.0"></script>
   <script src="pdf.min.js" onerror="this.onerror=null;this.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js';"></script>
   <script src="jszip.min.js" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/libs/jszip.min.js';"></script>
   <script src="pptxgen.min.js" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/dist/pptxgen.min.js';"></script>
@@ -21,7 +21,7 @@
 
 
 
-  <link rel="stylesheet" href="style.css?v=2.13.0">
+  <link rel="stylesheet" href="style.css?v=2.14.0">
   <script>
     // Submode switcher acessível globalmente de imediato
     window.switchConverterSubmode = function(mode) {
@@ -277,7 +277,7 @@
         <div>
           <div style="display: flex; align-items: center; gap: 8px;">
             <h1 class="brand-title">Central Multimídia Church</h1>
-            <span class="version-tag">v2.13.0</span>
+            <span class="version-tag">v2.14.0</span>
           </div>
           <span class="brand-subtitle">Plataforma Unificada de Mídia & Culto</span>
         </div>
@@ -311,11 +311,11 @@
 
     <div class="header-right">
       <!-- Botão Download APK (Visível exclusivamente no Computador / Desktop) -->
-      <a href="slidekiller.apk?v=2.13.0" download="slidekiller.apk" class="btn-download-apk-desktop" id="btn-download-apk-desktop" title="Baixar aplicativo SlideKiller v2.13.0 para celular Android (.apk)">
+      <a href="slidekiller.apk?v=2.14.0" download="slidekiller.apk" class="btn-download-apk-desktop" id="btn-download-apk-desktop" title="Baixar aplicativo SlideKiller v2.14.0 para celular Android (.apk)">
         <span class="apk-icon">📱</span>
         <span class="apk-text">
           <strong>Baixar App Android</strong>
-          <small>Versão Celular (.apk • v2.13.0)</small>
+          <small>Versão Celular (.apk • v2.14.0)</small>
         </span>
       </a>
 
@@ -492,6 +492,7 @@ texto exemplo ii eii
                 <select id="template-select" class="form-select">
                   <option value="assets/church_sermon_bg.jpg" selected>📖 Fundo Bíblia (Padrão)</option>
                   <option value="assets/ts_theme_bg.png">✨ Fundo TS (Oficial 4K)</option>
+                  <option value="assets/cinzel_theme_bg.png">🏛️ Tema Nobre Cinzel (4K)</option>
                   <option value="__custom__">➕ Anexar Fundo Personalizado...</option>
                 </select>
                 <button type="button" class="btn btn-secondary btn-sm" id="btn-attach-custom-bg" title="Anexar imagem de fundo personalizada">
@@ -521,6 +522,7 @@ texto exemplo ii eii
               <label for="font-select">Fonte dos Slides:</label>
               <select id="font-select" class="form-select font-picker-select">
                 <option value="bahnschrift_semibold_condensed" selected>⭐ Bahnschrift SemiBold Condensed (Padrão Oficial Igreja)</option>
+                <option value="cinzel">🏛️ Cinzel Nobre (Clássico Romano Imperial)</option>
                 <option value="impact">🔥 Impact / Anton (Forte & Marcante)</option>
                 <option value="oswald">✨ Oswald (Elegante Hillsong / Bethel)</option>
                 <option value="bebas">⚡ Bebas Neue (Display Caixa Alta)</option>
@@ -575,6 +577,7 @@ texto exemplo ii eii
               <span class="pill-label">Fonte:</span>
               <select id="results-font-select" class="form-select form-select-sm font-picker-select">
                 <option value="bahnschrift_semibold_condensed" selected>⭐ Bahnschrift SemiBold Condensed (Padrão Oficial)</option>
+                <option value="cinzel">🏛️ Cinzel Nobre (Clássico Romano)</option>
                 <option value="impact">🔥 Impact / Anton</option>
                 <option value="oswald">✨ Oswald (Elegante)</option>
                 <option value="bebas">⚡ Bebas Neue (Display)</option>
@@ -783,6 +786,7 @@ texto exemplo ii eii
                 <option value="FFFFFF">Branco (#FFFFFF)</option>
                 <option value="theme_bible">📖 Fundo Bíblia (Oficial)</option>
                 <option value="theme_ts">✨ Fundo TS (Oficial 4K)</option>
+                <option value="theme_cinzel">🏛️ Tema Nobre Cinzel (4K)</option>
               </select>
             </div>
           </div>
@@ -922,6 +926,7 @@ texto exemplo ii eii
                 <option value="FFFFFF">Branco (#FFFFFF)</option>
                 <option value="theme_bible">📖 Fundo Bíblia (Oficial)</option>
                 <option value="theme_ts">✨ Fundo TS (Oficial 4K)</option>
+                <option value="theme_cinzel">🏛️ Tema Nobre Cinzel (4K)</option>
               </select>
             </div>
           </div>
@@ -1109,6 +1114,7 @@ texto exemplo ii eii
                 <select id="enhance-bg-theme" class="form-select" style="width:100%; height:34px; font-size:12px;">
                   <option value="assets/church_sermon_bg.jpg" selected>📖 Fundo Bíblia</option>
                   <option value="assets/ts_theme_bg.png">✨ Fundo TS (4K)</option>
+                  <option value="assets/cinzel_theme_bg.png">🏛️ Fundo Nobre (4K)</option>
                 </select>
               </div>
               <div>
@@ -1291,6 +1297,6 @@ texto exemplo ii eii
     </button>
   </nav>
 
-  <script src="app.js?v=2.13.0"></script>
+  <script src="app.js?v=2.14.0"></script>
 </body>
 </html>
