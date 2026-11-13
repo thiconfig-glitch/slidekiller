@@ -490,7 +490,8 @@ texto exemplo ii eii
               <label for="template-select">Plano de Fundo:</label>
               <div class="bg-selector-wrapper">
                 <select id="template-select" class="form-select">
-                  <option value="assets/church_sermon_bg.jpg">📖⚡ Fundo Oficial (Padrão)</option>
+                  <option value="assets/church_sermon_bg.jpg" selected>📖 Fundo Bíblia (Padrão)</option>
+                  <option value="assets/ts_theme_bg.png">✨ Fundo TS (Oficial 4K)</option>
                   <option value="__custom__">➕ Anexar Fundo Personalizado...</option>
                 </select>
                 <button type="button" class="btn btn-secondary btn-sm" id="btn-attach-custom-bg" title="Anexar imagem de fundo personalizada">
@@ -775,11 +776,13 @@ texto exemplo ii eii
               </select>
             </div>
             <div class="option-item">
-              <label for="direct-bg-select">Cor de Fundo:</label>
+              <label for="direct-bg-select">Cor / Tema de Fundo:</label>
               <select id="direct-bg-select" class="form-select">
                 <option value="000000">Preto Puro (#000000)</option>
                 <option value="0b0f19">Escuro Church (#0b0f19)</option>
                 <option value="FFFFFF">Branco (#FFFFFF)</option>
+                <option value="theme_bible">📖 Fundo Bíblia (Oficial)</option>
+                <option value="theme_ts">✨ Fundo TS (Oficial 4K)</option>
               </select>
             </div>
           </div>
@@ -912,11 +915,13 @@ texto exemplo ii eii
               </select>
             </div>
             <div class="option-item">
-              <label for="images-bg-select">Cor de Fundo:</label>
+              <label for="images-bg-select">Cor / Tema de Fundo:</label>
               <select id="images-bg-select" class="form-select">
                 <option value="000000">Preto Puro (#000000)</option>
                 <option value="0b0f19">Escuro Church (#0b0f19)</option>
                 <option value="FFFFFF">Branco (#FFFFFF)</option>
+                <option value="theme_bible">📖 Fundo Bíblia (Oficial)</option>
+                <option value="theme_ts">✨ Fundo TS (Oficial 4K)</option>
               </select>
             </div>
           </div>
@@ -1068,7 +1073,7 @@ texto exemplo ii eii
           <div style="display:flex; flex-direction:column; gap:8px;">
             <div style="display:flex; justify-content:space-between; align-items:center;">
               <span style="font-size:12px; font-weight:700; color:#E8B859; text-transform:uppercase; letter-spacing:0.5px;">Pré-visualização Oficial</span>
-              <span style="font-size:10px; background:rgba(232, 184, 89, 0.15); border:1px solid rgba(232,184,89,0.3); padding:2px 7px; border-radius:4px; color:#E8B859; font-weight:600;">📖 Padrão Oficial Igreja (16:9)</span>
+              <span id="enhance-theme-badge" style="font-size:10px; background:rgba(232, 184, 89, 0.15); border:1px solid rgba(232,184,89,0.3); padding:2px 7px; border-radius:4px; color:#E8B859; font-weight:600;">📖 Fundo Bíblia (16:9)</span>
             </div>
 
             <!-- Preview Oficial 100% fiel ao slide gerado em Full HD -->
@@ -1080,7 +1085,7 @@ texto exemplo ii eii
             <canvas id="enhance-preview-canvas" width="1920" height="1080" style="position:absolute; left:-9999px; top:-9999px; width:1920px; height:1080px; visibility:hidden; pointer-events:none;"></canvas>
 
             <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; color:#718096; margin-top:2px;">
-              <span>💡 Formatação e fundo idênticos ao Módulo 1</span>
+              <span>💡 Formatação e fundo idênticos aos temas oficiais (1080p)</span>
               <button type="button" class="btn btn-secondary btn-sm" id="btn-enhance-reanalyze" style="padding:4px 8px; font-size:11px;">
                 🔄 Reanalisar com IA
               </button>
@@ -1090,8 +1095,8 @@ texto exemplo ii eii
           <!-- Coluna Direita: Controles e Edição Livre -->
           <div style="display:flex; flex-direction:column; gap:10px;">
             
-            <!-- Tipo de Conteúdo e Alinhamento -->
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+            <!-- Tipo de Conteúdo, Tema de Fundo e Alinhamento -->
+            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:8px;">
               <div>
                 <label style="font-size:11px; font-weight:600; color:#A0AEC0; display:block; margin-bottom:4px;">Tipo de Slide:</label>
                 <select id="enhance-slide-type" class="form-select" style="width:100%; height:34px; font-size:12px;">
@@ -1100,9 +1105,16 @@ texto exemplo ii eii
                 </select>
               </div>
               <div>
+                <label style="font-size:11px; font-weight:600; color:#A0AEC0; display:block; margin-bottom:4px;">Tema de Fundo:</label>
+                <select id="enhance-bg-theme" class="form-select" style="width:100%; height:34px; font-size:12px;">
+                  <option value="assets/church_sermon_bg.jpg" selected>📖 Fundo Bíblia</option>
+                  <option value="assets/ts_theme_bg.png">✨ Fundo TS (4K)</option>
+                </select>
+              </div>
+              <div>
                 <label style="font-size:11px; font-weight:600; color:#A0AEC0; display:block; margin-bottom:4px;">Alinhamento:</label>
                 <select id="enhance-text-align" class="form-select" style="width:100%; height:34px; font-size:12px;">
-                  <option value="left" selected>Alinhado à Esquerda (Padrão)</option>
+                  <option value="left" selected>À Esquerda (Padrão)</option>
                   <option value="center">Centralizado</option>
                 </select>
               </div>

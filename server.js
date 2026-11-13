@@ -34,6 +34,19 @@ function getDefaultBgPath() {
   return path.join(__dirname, 'public/assets/church_sermon_bg.png');
 }
 
+function getThemeBgPath(themeOrPath) {
+  if (themeOrPath && typeof themeOrPath === 'string') {
+    if (themeOrPath.includes('ts_theme_bg') || themeOrPath === 'theme_ts' || themeOrPath === 'ts') {
+      const tsPath = path.join(__dirname, 'public/assets/ts_theme_bg.png');
+      if (fs.existsSync(tsPath)) return tsPath;
+    }
+    const sanitized = path.basename(themeOrPath);
+    const candidatePublic = path.join(__dirname, 'public/assets', sanitized);
+    if (fs.existsSync(candidatePublic)) return candidatePublic;
+  }
+  return getDefaultBgPath();
+}
+
 function getSafeImageExt(originalname) {
   const ext = path.extname(String(originalname || '')).toLowerCase();
   return ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp'].includes(ext) ? ext : '.png';
@@ -225,8 +238,8 @@ app.post('/api/slides/upload-pdf', upload.fields([
       return res.status(400).json({ error: 'Nenhum texto ou arquivo PDF foi fornecido.' });
     }
 
-    // Plano de fundo customizado ou padrão
-    let bgPath = getDefaultBgPath();
+    // Plano de fundo customizado ou padrão (Bíblia ou TS)
+    let bgPath = getThemeBgPath(req.body.selectedBg);
     if (req.files && req.files.bgImage && req.files.bgImage[0]) {
       const ext = getSafeImageExt(req.files.bgImage[0].originalname);
       const customBgName = `custom_bg_${Date.now()}${ext}`;
@@ -294,8 +307,7 @@ app.post('/api/slides/rebuild', async (req, res) => {
         const potentialPath = path.join(downloadsDir, sanitizedName);
         if (fs.existsSync(potentialPath)) bgPath = potentialPath;
       } else {
-        const potentialPath = path.join(__dirname, 'public/assets', sanitizedName);
-        if (fs.existsSync(potentialPath)) bgPath = potentialPath;
+        bgPath = getThemeBgPath(selectedBg);
       }
     }
 
@@ -328,10 +340,15 @@ app.get('/api/slides/templates', (req, res) => {
     ? '/assets/church_sermon_bg.jpg'
     : '/assets/church_sermon_bg.png';
   const templates = [
-    { id: 'church_default', name: '📖⚡ Fundo Oficial da Igreja (Full HD)', url: defaultUrl }
+    { id: 'church_default', name: '📖 Fundo Bíblia (Padrão)', url: defaultUrl }
   ];
 
-  const ignoredAssets = new Set(['church_sermon_bg.jpg', 'church_sermon_bg.png', 'logo_app_icon.png']);
+  const tsPath = path.join(assetsDir, 'ts_theme_bg.png');
+  if (fs.existsSync(tsPath)) {
+    templates.push({ id: 'theme_ts', name: '✨ Fundo TS (Oficial 4K)', url: '/assets/ts_theme_bg.png' });
+  }
+
+  const ignoredAssets = new Set(['church_sermon_bg.jpg', 'church_sermon_bg.png', 'ts_theme_bg.png', 'logo_app_icon.png']);
   if (fs.existsSync(assetsDir)) {
     const files = fs.readdirSync(assetsDir);
     files.forEach(file => {

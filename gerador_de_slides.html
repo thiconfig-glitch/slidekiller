@@ -369,7 +369,14 @@
     <p style="color:var(--text-dim); font-size:13px; margin-bottom:24px;">Transforme seus sermões em apresentações incríveis com ferramentas profissionais.</p>
     
     <div style="background:var(--bg-base); padding:20px; border-radius:12px; text-align:left; border:1px solid var(--border);">
-        <label style="font-size:12px; font-weight:500; color:var(--text-dim); display:block; margin-bottom:8px;">1. Fundo Padrão (Opcional)</label>
+        <label style="font-size:12px; font-weight:500; color:var(--text-dim); display:block; margin-bottom:8px;">1. Tema de Fundo Padrão</label>
+        <div style="display:flex; gap:10px; margin-bottom:10px;">
+            <select id="globalThemeSelect" class="prop-input" style="flex:1;">
+                <option value="assets/church_sermon_bg.jpg" selected>📖 Fundo Bíblia (Padrão)</option>
+                <option value="assets/ts_theme_bg.png">✨ Fundo TS (Oficial 4K)</option>
+            </select>
+        </div>
+        <label style="font-size:11px; font-weight:500; color:var(--text-dim); display:block; margin-bottom:4px;">Ou anexe um fundo personalizado:</label>
         <input type="file" id="globalBg" accept="image/*" class="prop-input" />
     </div>
     
@@ -439,6 +446,14 @@
                             <option value="verse">Versículo Bíblico</option>
                             <option value="reflection">Reflexão / Texto Livre</option>
                             <option value="topic">Tópico de Reunião</option>
+                        </select>
+                    </div>
+                    <div class="prop-group" style="margin-bottom:8px;">
+                        <label>Tema Oficial</label>
+                        <select class="prop-input" id="slThemeBg" onchange="handleSlideThemeChange(this.value)">
+                            <option value="">(Manter atual)</option>
+                            <option value="assets/church_sermon_bg.jpg">📖 Fundo Bíblia (Padrão)</option>
+                            <option value="assets/ts_theme_bg.png">✨ Fundo TS (Oficial 4K)</option>
                         </select>
                     </div>
                     <div class="prop-grid">
@@ -664,6 +679,7 @@
     const PT_TO_PX = 1.333;
 
     let globalBgData = null;
+    let currentGlobalTheme = 'assets/church_sermon_bg.jpg';
     let slides = [];
     let curSlideIdx = -1;
     let selElId = null;
@@ -780,6 +796,21 @@
     const snapH = document.getElementById('snap-h');
 
     // Setup Listeners
+    const globalThemeSelect = document.getElementById('globalThemeSelect');
+    if (globalThemeSelect) {
+        globalThemeSelect.addEventListener('change', e => {
+            currentGlobalTheme = e.target.value;
+            slides.forEach(s => {
+                if (!s.bgImage || s.bgImage.includes('church_sermon_bg') || s.bgImage.includes('ts_theme_bg')) {
+                    s.bgImage = currentGlobalTheme;
+                }
+            });
+            renderCanvas();
+            renderFilmstrip();
+            const statusMsg = document.getElementById('statusMsg');
+            if (statusMsg) statusMsg.innerText = "Tema oficial alterado para todos os slides!";
+        });
+    }
     document.getElementById('globalBg').addEventListener('change', e => {
         const f = e.target.files[0]; if(f) { const r = new FileReader(); r.onload = ev => { globalBgData = ev.target.result; document.getElementById('statusMsg').innerText="Fundo padrão salvo!"; }; r.readAsDataURL(f); }
     });
@@ -1649,7 +1680,7 @@ ${rawExtractedSermonText || slides.map(s => s.elements.map(e => e.content).join(
     }
     function genId() { return 'el_' + Math.random().toString(36).substr(2,9); }
 
-    function newSlide(type) { return { id:'s_'+genId(), bgImage:globalBgData || 'assets/church_sermon_bg.jpg', bgColor:'#000000', type:type, elements:[] }; }
+    function newSlide(type) { return { id:'s_'+genId(), bgImage:globalBgData || currentGlobalTheme || 'assets/church_sermon_bg.jpg', bgColor:'#000000', type:type, elements:[] }; }
     function newTextEl(txt, isR, type) {
         let fz=44, ff='Bahnschrift SemiBold Condensed', col='#ffffff', al='left', y=76, h=345, sh='dark', strk='none';
         if(isR) { fz=42; ff='Bebas Neue'; col='#E8B859'; y=441; h=76; }
@@ -1879,6 +1910,8 @@ ${rawExtractedSermonText || slides.map(s => s.elements.map(e => e.content).join(
     function renderProps() {
         if(curSlideIdx < 0) return; const s = slides[curSlideIdx];
         document.getElementById('slType').value = s.type; document.getElementById('slBgColor').value = s.bgColor;
+        const slThemeBg = document.getElementById('slThemeBg');
+        if (slThemeBg) slThemeBg.value = (s.bgImage && (s.bgImage.includes('ts_theme_bg') || s.bgImage.includes('church_sermon_bg'))) ? (s.bgImage.includes('ts_theme_bg') ? 'assets/ts_theme_bg.png' : 'assets/church_sermon_bg.jpg') : '';
         if(!selElId) {
             document.getElementById('panel-element').style.display = 'none';
         } else {
@@ -1911,6 +1944,7 @@ ${rawExtractedSermonText || slides.map(s => s.elements.map(e => e.content).join(
         const el = slides[curSlideIdx].elements.find(x=>x.id===selElId);
         if(el) { el[p] = (p==='x'||p==='y'||p==='w'||p==='h'||p==='fontSize') ? Number(v) : v; renderCanvas(); updateSelection(); renderFilmstrip(); }
     };
+    window.handleSlideThemeChange = (val) => { if(!val || curSlideIdx < 0) return; slides[curSlideIdx].bgImage = val; renderCanvas(); renderFilmstrip(); };
     window.handleSlideBgUpload = (inp) => { const f = inp.files[0]; if(f) { const r = new FileReader(); r.onload=ev=>{ slides[curSlideIdx].bgImage = ev.target.result; renderCanvas(); renderFilmstrip(); }; r.readAsDataURL(f); } };
     window.handleElImageUpload = (inp) => {
         const f = inp.files[0]; if(!f || curSlideIdx<0) return;

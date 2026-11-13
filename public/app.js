@@ -2518,6 +2518,9 @@ ${sermonText}`;
       formData.append('useAi', checkUseAi.checked);
       formData.append('textMode', activeTextMode);
       formData.append('teamsOption', activeTeamsOption);
+      if (templateSelect && templateSelect.value) {
+        formData.append('selectedBg', templateSelect.value);
+      }
       if (customBgFile && templateSelect && templateSelect.value === '__custom_active__') {
         formData.append('bgImage', customBgFile);
       }
@@ -5909,6 +5912,40 @@ ${sermonText}`;
       hotfixes: ['px_scaling']
     });
 
+    // Carregar fundo temático oficial se selecionado
+    const isThemeTs = bgChoice === 'theme_ts' || bgChoice === 'assets/ts_theme_bg.png';
+    const isThemeBible = bgChoice === 'theme_bible' || bgChoice === 'assets/church_sermon_bg.jpg';
+    let themeBgDataUrl = null;
+    if (isThemeTs) {
+      try {
+        const tsImg = await loadDefaultTsBgImage();
+        if (tsImg) {
+          const cv = document.createElement('canvas');
+          cv.width = baseWidth;
+          cv.height = baseHeight;
+          const cx = cv.getContext('2d');
+          cx.drawImage(tsImg, 0, 0, baseWidth, baseHeight);
+          themeBgDataUrl = cv.toDataURL('image/jpeg', 0.88);
+          cv.width = 0;
+          cv.height = 0;
+        }
+      } catch (e) {}
+    } else if (isThemeBible) {
+      try {
+        const bImg = await loadDefaultChurchBgImage();
+        if (bImg) {
+          const cv = document.createElement('canvas');
+          cv.width = baseWidth;
+          cv.height = baseHeight;
+          const cx = cv.getContext('2d');
+          cx.drawImage(bImg, 0, 0, baseWidth, baseHeight);
+          themeBgDataUrl = cv.toDataURL('image/jpeg', 0.88);
+          cv.width = 0;
+          cv.height = 0;
+        }
+      } catch (e) {}
+    }
+
     // Converter hex color para RGB
     const hex = (bgChoice || '000000').replace('#', '');
     const r = parseInt(hex.substring(0, 2), 16) || 0;
@@ -5924,9 +5961,13 @@ ${sermonText}`;
         doc.addPage([baseWidth, baseHeight], isLandscape ? 'landscape' : 'portrait');
       }
 
-      // Preencher cor de fundo
-      doc.setFillColor(r, g, b);
-      doc.rect(0, 0, baseWidth, baseHeight, 'F');
+      // Preencher cor ou tema de fundo
+      if (themeBgDataUrl) {
+        doc.addImage(themeBgDataUrl, 'JPEG', 0, 0, baseWidth, baseHeight, undefined, 'FAST');
+      } else {
+        doc.setFillColor(r, g, b);
+        doc.rect(0, 0, baseWidth, baseHeight, 'F');
+      }
 
       const rawImg = slide.imgData || slide.dataUrl;
       if (!rawImg) continue;
@@ -5973,7 +6014,7 @@ ${sermonText}`;
 
       const img = new Image();
       img.crossOrigin = 'anonymous';
-      img.onload = () => {
+      img.onload = async () => {
         const canvas = document.createElement('canvas');
         try {
           const natW = img.naturalWidth || img.width || 1920;
@@ -6013,9 +6054,27 @@ ${sermonText}`;
           if (aspectChoice === 'original') {
             ctx.drawImage(img, 0, 0, canvasW, canvasH);
           } else {
-            const hex = (bgChoice || '000000').replace('#', '');
-            ctx.fillStyle = '#' + hex;
-            ctx.fillRect(0, 0, canvasW, canvasH);
+            if (bgChoice === 'theme_ts' || bgChoice === 'assets/ts_theme_bg.png') {
+              const tsImg = await loadDefaultTsBgImage();
+              if (tsImg && tsImg.naturalWidth > 0) {
+                ctx.drawImage(tsImg, 0, 0, canvasW, canvasH);
+              } else {
+                ctx.fillStyle = '#0f1115';
+                ctx.fillRect(0, 0, canvasW, canvasH);
+              }
+            } else if (bgChoice === 'theme_bible' || bgChoice === 'assets/church_sermon_bg.jpg') {
+              const bImg = await loadDefaultChurchBgImage();
+              if (bImg && bImg.naturalWidth > 0) {
+                ctx.drawImage(bImg, 0, 0, canvasW, canvasH);
+              } else {
+                ctx.fillStyle = '#0b0f19';
+                ctx.fillRect(0, 0, canvasW, canvasH);
+              }
+            } else {
+              const hex = (bgChoice || '000000').replace('#', '');
+              ctx.fillStyle = '#' + hex;
+              ctx.fillRect(0, 0, canvasW, canvasH);
+            }
 
             let drawW = canvasW;
             let drawH = canvasW / imgRatio;
@@ -6235,7 +6294,13 @@ ${sermonText}`;
           if (directExportProgressStatus) directExportProgressStatus.textContent = `PowerPoint: slide ${i + 1} de ${total}...`;
 
           const slide = pptx.addSlide();
-          slide.background = { color: bgChoice };
+          if (bgChoice === 'theme_ts' || bgChoice === 'assets/ts_theme_bg.png') {
+            slide.background = { path: 'assets/ts_theme_bg.png' };
+          } else if (bgChoice === 'theme_bible' || bgChoice === 'assets/church_sermon_bg.jpg') {
+            slide.background = { path: 'assets/church_sermon_bg.jpg' };
+          } else {
+            slide.background = { color: bgChoice };
+          }
 
           if (fitChoice === 'cover') {
             slide.addImage({ data: slideItem.imgData, x: 0, y: 0, w: '100%', h: '100%' });
@@ -7055,7 +7120,13 @@ ${sermonText}`;
           if (imagesProgressStatus) imagesProgressStatus.textContent = `PowerPoint: slide ${i + 1} de ${total}...`;
 
           const slide = pptx.addSlide();
-          slide.background = { color: bgColor };
+          if (bgColor === 'theme_ts' || bgColor === 'assets/ts_theme_bg.png') {
+            slide.background = { path: 'assets/ts_theme_bg.png' };
+          } else if (bgColor === 'theme_bible' || bgColor === 'assets/church_sermon_bg.jpg') {
+            slide.background = { path: 'assets/church_sermon_bg.jpg' };
+          } else {
+            slide.background = { color: bgColor };
+          }
 
           if (fitChoice === 'cover') {
             slide.addImage({ data: slideData.dataUrl, x: 0, y: 0, w: '100%', h: '100%' });
@@ -7486,6 +7557,8 @@ ${sermonText}`;
   const enhancePreviewCanvas = document.getElementById('enhance-preview-canvas');
   const btnEnhanceReanalyze = document.getElementById('btn-enhance-reanalyze');
   const enhanceSlideType = document.getElementById('enhance-slide-type');
+  const enhanceBgTheme = document.getElementById('enhance-bg-theme');
+  const enhanceThemeBadge = document.getElementById('enhance-theme-badge');
   const enhanceRefBox = document.getElementById('enhance-ref-box');
   const enhanceRefInput = document.getElementById('enhance-ref-input');
   const btnEnhanceFetchVerse = document.getElementById('btn-enhance-fetch-verse');
@@ -7531,9 +7604,40 @@ ${sermonText}`;
     });
   }
 
+  let defaultTsBgImage = null;
+  function loadDefaultTsBgImage() {
+    if (defaultTsBgImage && defaultTsBgImage.complete && defaultTsBgImage.naturalWidth > 0) {
+      return Promise.resolve(defaultTsBgImage);
+    }
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        defaultTsBgImage = img;
+        resolve(img);
+      };
+      img.onerror = () => {
+        const imgJpg = new Image();
+        imgJpg.onload = () => {
+          defaultTsBgImage = imgJpg;
+          resolve(imgJpg);
+        };
+        imgJpg.onerror = () => resolve(null);
+        imgJpg.src = 'assets/ts_theme_bg.jpg';
+      };
+      img.src = 'assets/ts_theme_bg.png';
+    });
+  }
+
   async function loadActiveEnhanceBgImage() {
-    const activeUrl = (typeof getActiveBackgroundUrl === 'function') ? getActiveBackgroundUrl() : 'assets/church_sermon_bg.jpg';
-    if (activeUrl && activeUrl !== 'assets/church_sermon_bg.jpg') {
+    let activeUrl = (enhanceBgTheme && enhanceBgTheme.value) ? enhanceBgTheme.value : null;
+    if (!activeUrl) {
+      activeUrl = (typeof getActiveBackgroundUrl === 'function') ? getActiveBackgroundUrl() : 'assets/church_sermon_bg.jpg';
+    }
+    if (activeUrl && (activeUrl.includes('ts_theme_bg') || activeUrl === 'assets/ts_theme_bg.png')) {
+      const tsImg = await loadDefaultTsBgImage();
+      if (tsImg) return tsImg;
+    }
+    if (activeUrl && activeUrl !== 'assets/church_sermon_bg.jpg' && !activeUrl.includes('church_sermon_bg')) {
       const customOrTemplateImg = await new Promise((resolve) => {
         const img = new Image();
         if (/^https?:\/\//i.test(activeUrl)) {
@@ -7550,8 +7654,9 @@ ${sermonText}`;
     return loadDefaultChurchBgImage();
   }
 
-  // Pré-carrega a imagem oficial da Bíblia na memória
+  // Pré-carrega as imagens oficiais dos temas Bíblia e TS na memória
   loadDefaultChurchBgImage();
+  loadDefaultTsBgImage();
 
   function scheduleEnhanceCanvasPreview() {
     if (enhanceRenderDebounceTimer) {
@@ -7590,6 +7695,18 @@ ${sermonText}`;
 
     if (enhanceSlideInfoBadge) {
       enhanceSlideInfoBadge.textContent = `Slide #${index + 1} de ${totalCount} • Pré-visualização e Ajuste`;
+    }
+
+    if (enhanceBgTheme) {
+      const activeUrl = (typeof getActiveBackgroundUrl === 'function') ? getActiveBackgroundUrl() : 'assets/church_sermon_bg.jpg';
+      if (activeUrl && activeUrl.includes('ts_theme_bg')) {
+        enhanceBgTheme.value = 'assets/ts_theme_bg.png';
+      } else {
+        enhanceBgTheme.value = 'assets/church_sermon_bg.jpg';
+      }
+      if (enhanceThemeBadge) {
+        enhanceThemeBadge.textContent = enhanceBgTheme.value.includes('ts_theme_bg') ? '✨ Fundo TS (16:9)' : '📖 Fundo Bíblia (16:9)';
+      }
     }
 
     if (enhanceSlideType) enhanceSlideType.value = 'verse';
@@ -8065,6 +8182,14 @@ Retorne ESTRITAMENTE em formato JSON puro, sem blocos markdown:
   if (enhanceRefInput) enhanceRefInput.addEventListener('input', scheduleEnhanceCanvasPreview);
   if (enhanceSlideType) enhanceSlideType.addEventListener('change', renderEnhanceCanvasPreview);
   if (enhanceTextAlign) enhanceTextAlign.addEventListener('change', renderEnhanceCanvasPreview);
+  if (enhanceBgTheme) {
+    enhanceBgTheme.addEventListener('change', () => {
+      if (enhanceThemeBadge) {
+        enhanceThemeBadge.textContent = enhanceBgTheme.value.includes('ts_theme_bg') ? '✨ Fundo TS (16:9)' : '📖 Fundo Bíblia (16:9)';
+      }
+      renderEnhanceCanvasPreview();
+    });
+  }
 
   // Botões de Tamanho estilo PowerPoint (A▲ / A▼ / ↺)
   if (btnEnhanceFontMinus) {

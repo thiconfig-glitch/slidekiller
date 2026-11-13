@@ -43,8 +43,9 @@ async function buildSermonPptx(slidesData, bgImagePath, outputFilePath) {
         } else {
           slide.background = { color: '000000' };
         }
-      } else if (itemBg.startsWith('/assets/')) {
-        const potentialPath = path.join(__dirname, 'public', itemBg);
+      } else if (itemBg.startsWith('/assets/') || itemBg.startsWith('assets/')) {
+        const rel = itemBg.startsWith('/') ? itemBg.slice(1) : itemBg;
+        const potentialPath = path.join(__dirname, 'public', rel);
         if (fs.existsSync(potentialPath)) {
           slide.background = { path: potentialPath };
         } else if (bgImagePath && fs.existsSync(bgImagePath)) {
