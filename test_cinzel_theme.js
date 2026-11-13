@@ -1,7 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const pdf = require('pdf-parse');
-const { parseSermonTextOffline } = require('./local_sermon_parser.js');
+const { extractTextFromPdf, parseSermonTextOffline } = require('./local_sermon_parser.js');
 const { buildSermonPptx } = require('./sermon_slide_engine.js');
 
 async function runCinzelTest() {
@@ -12,11 +11,11 @@ async function runCinzelTest() {
     throw new Error('PDF de sermão exemplo não encontrado: ' + sermonPdfPath);
   }
   
-  const pdfBuffer = fs.readFileSync(sermonPdfPath);
-  const pdfData = await pdf(pdfBuffer);
-  console.log(`📄 PDF carregado com sucesso (${pdfData.text.length} caracteres, ${pdfData.numpages} páginas).`);
+  const extractedText = await extractTextFromPdf(sermonPdfPath);
+  const hlCount = (extractedText.match(/\[HL\]/g) || []).length;
+  console.log(`📄 PDF carregado e analisado (${extractedText.length} caracteres, ${hlCount} destaques [HL] identificados na fonte).`);
   
-  const slides = parseSermonTextOffline(pdfData.text);
+  const slides = parseSermonTextOffline(extractedText);
   console.log(`📊 Total de slides gerados pelo parser: ${slides.length}`);
   
   const bgPath = path.join(__dirname, 'assets', 'cinzel_theme_bg.png');

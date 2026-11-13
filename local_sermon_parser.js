@@ -25,11 +25,43 @@ const BOOK_NAMES = [
 
 const BIBLE_BOOKS_REGEX = new RegExp(`(?:${BOOK_NAMES})\\s+\\d+\\s*[:.,]\\s*\\d+(?:\\s*[-–—a]\\s*\\d+)?(?:,\\s*\\d+)*`, 'i');
 
-async function extractTextFromPdf(pdfBuffer) {
+const path = require('path');
+const fs = require('fs');
+const { execFileSync } = require('child_process');
+
+async function extractTextFromPdf(pdfInput) {
+  let tempPath = null;
   try {
-    const data = await pdf(pdfBuffer);
+    const pyScript = path.join(__dirname, 'scripts', 'extract_pdf_highlights.py');
+    let targetPath = pdfInput;
+
+    if (Buffer.isBuffer(pdfInput)) {
+      tempPath = path.join(__dirname, 'temp', `pdf_${Date.now()}_${Math.random().toString(36).slice(2)}.pdf`);
+      fs.mkdirSync(path.dirname(tempPath), { recursive: true });
+      fs.writeFileSync(tempPath, pdfInput);
+      targetPath = tempPath;
+    }
+
+    if (fs.existsSync(pyScript) && typeof targetPath === 'string' && fs.existsSync(targetPath)) {
+      try {
+        const out = execFileSync('python', [pyScript, targetPath], { encoding: 'utf8', maxBuffer: 15 * 1024 * 1024 });
+        if (tempPath && fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+        if (out && out.trim().length > 0) {
+          return out;
+        }
+      } catch (pyErr) {
+        // Fallback para pdf-parse se python não estiver disponível
+      }
+    }
+    if (tempPath && fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+
+    const buf = Buffer.isBuffer(pdfInput) ? pdfInput : fs.readFileSync(pdfInput);
+    const data = await pdf(buf);
     return data && data.text ? data.text : '';
   } catch (err) {
+    if (tempPath && fs.existsSync(tempPath)) {
+      try { fs.unlinkSync(tempPath); } catch (_) {}
+    }
     console.error('❌ Erro ao extrair texto do PDF:', err.message);
     throw new Error(`Falha ao ler o PDF: ${err.message}. Verifique se o arquivo não está corrompido ou protegido por senha.`);
   }
@@ -172,26 +204,35 @@ function splitTextByPunctuation(text, maxChars = 220) {
 
 function buildRunsFromText(text) {
   if (!text) return [{ text: '', highlight: false }];
-  if (text.includes('[HL]')) {
+
+  // Suporte a marcações manuais apontadas: [HL]...[/HL], **...** ou *...*
+  let processed = text
+    .replace(/\*\*(.*?)\*\*/g, '[HL]$1[/HL]')
+    .replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, '[HL]$1[/HL]');
+
+  if (processed.includes('[HL]')) {
     const regex = /\[HL\](.*?)\[\/HL\]/gis;
     const runs = [];
     let lastIdx = 0;
     let m;
-    while ((m = regex.exec(text)) !== null) {
+    while ((m = regex.exec(processed)) !== null) {
       if (m.index > lastIdx) {
-        runs.push({ text: text.substring(lastIdx, m.index), highlight: false });
+        runs.push({ text: processed.substring(lastIdx, m.index), highlight: false });
       }
       if (m[1].length > 0) {
         runs.push({ text: m[1], highlight: true });
       }
       lastIdx = m.index + m[0].length;
     }
-    if (lastIdx < text.length) {
-      runs.push({ text: text.substring(lastIdx), highlight: false });
+    if (lastIdx < processed.length) {
+      runs.push({ text: processed.substring(lastIdx), highlight: false });
     }
     return runs.filter(r => r.text.length > 0);
   }
-  return highlightKeywords(text);
+
+  // O destaque SÓ existe quando expressamente apontado na fonte (PDF/texto).
+  // NUNCA chuta destaques em amarelo automaticamente!
+  return [{ text, highlight: false }];
 }
 
 function stripLeadingVerseNumber(text) {
@@ -201,48 +242,6 @@ function stripLeadingVerseNumber(text) {
 function formatQuotes(text) {
   const clean = (text || '').replace(/^[“"']|[”"']$/g, '').trim();
   return `“${clean}”`;
-}
-
-function highlightCinzelThematicPhrases(text) {
-  if (!text) return [{ text: '', highlight: false }];
-  if (text.includes('[HL]')) {
-    const regex = /\[HL\](.*?)\[\/HL\]/gis;
-    const runs = [];
-    let lastIdx = 0;
-    let m;
-    while ((m = regex.exec(text)) !== null) {
-      if (m.index > lastIdx) {
-        runs.push({ text: text.substring(lastIdx, m.index), highlight: false });
-      }
-      if (m[1].length > 0) {
-        runs.push({ text: m[1], highlight: true });
-      }
-      lastIdx = m.index + m[0].length;
-    }
-    if (lastIdx < text.length) {
-      runs.push({ text: text.substring(lastIdx), highlight: false });
-    }
-    return runs.filter(r => r.text.length > 0);
-  }
-
-  const thematicRegex = /(para uma viva esperança|que não se pode murchar,?|a adoção de filhos|porque sois filhos,?|cinquenta e dois dias)/gi;
-  const runs = [];
-  let lastIndex = 0;
-  let match;
-
-  while ((match = thematicRegex.exec(text)) !== null) {
-    if (match.index > lastIndex) {
-      runs.push({ text: text.substring(lastIndex, match.index), highlight: false });
-    }
-    runs.push({ text: match[0], highlight: true });
-    lastIndex = match.index + match[0].length;
-  }
-
-  if (lastIndex < text.length) {
-    runs.push({ text: text.substring(lastIndex), highlight: false });
-  }
-
-  return runs.length > 0 ? runs : [{ text, highlight: false }];
 }
 
 function reconstructParagraphs(rawText) {
@@ -381,13 +380,13 @@ function parseSermonTextOffline(rawText) {
             slides.push({
               type: 'verse',
               reference: finalRef,
-              runs: highlightCinzelThematicPhrases(formatQuotes(vText))
+              runs: buildRunsFromText(formatQuotes(vText))
             });
           } else {
             slides.push({
               type: 'verse',
               reference: ref,
-              runs: highlightCinzelThematicPhrases(formatQuotes(stripLeadingVerseNumber(p)))
+              runs: buildRunsFromText(formatQuotes(stripLeadingVerseNumber(p)))
             });
           }
         }
@@ -444,27 +443,28 @@ function parseSermonTextOffline(rawText) {
               slides.push({
                 type: 'verse',
                 reference: `${book} ${chapter}:3`,
-                runs: highlightCinzelThematicPhrases(formatQuotes(part1))
+                runs: buildRunsFromText(formatQuotes(part1))
               });
               slides.push({
                 type: 'verse',
                 reference: `${book} ${chapter}:4`,
-                runs: highlightCinzelThematicPhrases(formatQuotes(part2))
+                runs: buildRunsFromText(formatQuotes(part2))
               });
               continue;
             }
           }
 
-          if (fullVerseText.length > 190) {
+          const cleanLen = fullVerseText.replace(/\[\/?HL\]/g, '').length;
+          if (cleanLen > 210) {
             const sentences = fullVerseText.match(/[^.!?]+[.!?]+|\s*[^.!?]+$/g) || [fullVerseText];
             let curSlide = '';
             for (const s of sentences) {
               const cand = (curSlide ? curSlide + ' ' : '') + s.trim();
-              if (cand.length > 190 && curSlide.length > 0) {
+              if (cand.replace(/\[\/?HL\]/g, '').length > 210 && curSlide.length > 0) {
                 slides.push({
                   type: 'verse',
                   reference: ref,
-                  runs: highlightCinzelThematicPhrases(formatQuotes(curSlide.trim()))
+                  runs: buildRunsFromText(formatQuotes(curSlide.trim()))
                 });
                 curSlide = s.trim();
               } else {
@@ -475,14 +475,14 @@ function parseSermonTextOffline(rawText) {
               slides.push({
                 type: 'verse',
                 reference: ref,
-                runs: highlightCinzelThematicPhrases(formatQuotes(curSlide.trim()))
+                runs: buildRunsFromText(formatQuotes(curSlide.trim()))
               });
             }
           } else {
             slides.push({
               type: 'verse',
               reference: ref,
-              runs: highlightCinzelThematicPhrases(formatQuotes(fullVerseText))
+              runs: buildRunsFromText(formatQuotes(fullVerseText))
             });
           }
         }

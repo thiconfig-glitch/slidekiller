@@ -1678,7 +1678,7 @@ Retorne ESTRITAMENTE em formato JSON puro, sem crases ou markdown adicional:
       const page = await pdf.getPage(i);
       const tc = await page.getTextContent();
 
-      // 1. Detectar cores explícitas (amarelo/dourado/laranja) do operador de desenho
+      // 1. Detectar cores explícitas não-pretas (amarelo, dourado, laranja, etc.) do operador de desenho
       const coloredStrings = new Set();
       try {
         const opList = await page.getOperatorList();
@@ -1689,11 +1689,16 @@ Retorne ESTRITAMENTE em formato JSON puro, sem crases ou markdown adicional:
           if (fn === 59 || fn === 58 || fn === 54 || fn === 55 || fn === 52 || fn === 53) {
             curColor = args;
           } else if (fn === 44 || fn === 45) {
-            const isYellowOrGold = curColor && (
-              (curColor[0] > 110 && curColor[1] > 50 && (curColor[2] < 180 || curColor[0] > curColor[2])) ||
-              (curColor[0] > 0.40 && curColor[1] > 0.20 && (curColor[2] < 0.70 || curColor[0] > curColor[2]))
-            );
-            if (isYellowOrGold) {
+            const r = curColor[0];
+            const g = curColor[1];
+            const b = curColor[2];
+            const r255 = (r <= 1.0 && g <= 1.0 && b <= 1.0) ? r * 255 : r;
+            const g255 = (r <= 1.0 && g <= 1.0 && b <= 1.0) ? g * 255 : g;
+            const b255 = (r <= 1.0 && g <= 1.0 && b <= 1.0) ? b * 255 : b;
+
+            // Verifica se a cor é distintamente colorida (não é preto, branco ou cinza neutro)
+            const isHighlightedColor = (r255 > 60 || g255 > 60 || b255 > 60) && !(Math.abs(r255 - g255) < 15 && Math.abs(g255 - b255) < 15);
+            if (isHighlightedColor) {
               let s = '';
               if (Array.isArray(args[0])) {
                 s = args[0].map(it => (typeof it === 'object' ? (it.unicode || it.fontChar || '') : '')).join('');
@@ -1709,21 +1714,18 @@ Retorne ESTRITAMENTE em formato JSON puro, sem crases ou markdown adicional:
         }
       } catch (opErr) {}
 
-      // 2. Identificar a fonte principal do corpo de texto (a mais frequente na página)
-      const fontCounts = {};
-      tc.items.forEach(it => {
-        if (!it.str.trim()) return;
-        fontCounts[it.fontName] = (fontCounts[it.fontName] || 0) + it.str.length;
-      });
-
-      let mainFont = null;
-      let maxCount = -1;
-      for (const f in fontCounts) {
-        if (fontCounts[f] > maxCount) {
-          maxCount = fontCounts[f];
-          mainFont = f;
+      // 2. Anotações de marca-texto nativas do PDF (Highlight Annotations)
+      try {
+        const annots = await page.getAnnotations();
+        if (Array.isArray(annots)) {
+          for (const a of annots) {
+            if (a.subtype === 'Highlight' && a.contents) {
+              const cleanA = a.contents.trim();
+              if (cleanA.length > 1) coloredStrings.add(cleanA);
+            }
+          }
         }
-      }
+      } catch (annotErr) {}
 
       let lastY = null;
       let pageText = '';
@@ -1745,7 +1747,9 @@ Retorne ESTRITAMENTE em formato JSON puro, sem crases ou markdown adicional:
         const isDivider = /^[⸻\-_\s]{3,}$/.test(trimmed);
         const isPunctuationOnly = /^[⸻\-_\s:?.,;()0-9"“”'’/]+$/.test(trimmed);
         const isColoredByOp = coloredStrings.has(trimmed) || Array.from(coloredStrings).some(cs => cs.includes(trimmed) || (trimmed.length > 3 && trimmed.includes(cs)));
-        const isHighlight = ((item.fontName !== mainFont) || isColoredByOp) && trimmed.length > 0 && !isPunctuationOnly && !isDivider;
+        // O destaque SÓ existe quando apontado expressamente por cor ou marca-texto na fonte.
+        // NUNCA por adivinhação ou por mera diferença de fonte!
+        const isHighlight = isColoredByOp && trimmed.length > 0 && !isPunctuationOnly && !isDivider;
 
         if (isHighlight) {
           pageText += `[HL]${item.str}[/HL]`;
@@ -1758,9 +1762,10 @@ Retorne ESTRITAMENTE em formato JSON puro, sem crases ou markdown adicional:
       fullText += pageText + '\n\n';
     }
 
-    // 3. Normalizar tags: unir contíguas e resolver quebras de linha internas
+    // 3. Normalizar tags: unir contíguas e mover pontuações finais para fora do destaque
     let cleanText = fullText
       .replace(/\[\/HL\](\s*)\[HL\]/g, '$1')
+      .replace(/\[HL\]([\s\S]*?)(\s*[.,;:!?])\[\/HL\]/g, '[HL]$1[/HL]$2')
       .replace(/\[HL\]([\s\S]*?)\[\/HL\]/g, (m, inner) => '[HL]' + inner.replace(/\r?\n/g, ' ') + '[/HL]');
 
     return cleanText.trim();
@@ -2039,46 +2044,37 @@ ${sermonText}`;
     return `“${clean}”`;
   }
 
-  function highlightCinzelThematicPhrases(text) {
+  function buildRunsFromText(text) {
     if (!text) return [{ text: '', highlight: false }];
-    if (text.includes('[HL]')) {
+
+    // Suporte a marcações manuais apontadas: [HL]...[/HL], **...** ou *...*
+    let processed = text
+      .replace(/\*\*(.*?)\*\*/g, '[HL]$1[/HL]')
+      .replace(/(?<!\*)\*([^\*\n]+)\*(?!\*)/g, '[HL]$1[/HL]');
+
+    if (processed.includes('[HL]')) {
       const regex = /\[HL\](.*?)\[\/HL\]/gis;
       const runs = [];
       let lastIdx = 0;
       let m;
-      while ((m = regex.exec(text)) !== null) {
+      while ((m = regex.exec(processed)) !== null) {
         if (m.index > lastIdx) {
-          runs.push({ text: text.substring(lastIdx, m.index), highlight: false });
+          runs.push({ text: processed.substring(lastIdx, m.index), highlight: false });
         }
         if (m[1].length > 0) {
           runs.push({ text: m[1], highlight: true });
         }
         lastIdx = m.index + m[0].length;
       }
-      if (lastIdx < text.length) {
-        runs.push({ text: text.substring(lastIdx), highlight: false });
+      if (lastIdx < processed.length) {
+        runs.push({ text: processed.substring(lastIdx), highlight: false });
       }
       return runs.filter(r => r.text.length > 0);
     }
 
-    const thematicRegex = /(para uma viva esperança|que não se pode murchar,?|a adoção de filhos|porque sois filhos,?|cinquenta e dois dias)/gi;
-    const runs = [];
-    let lastIndex = 0;
-    let match;
-
-    while ((match = thematicRegex.exec(text)) !== null) {
-      if (match.index > lastIndex) {
-        runs.push({ text: text.substring(lastIndex, match.index), highlight: false });
-      }
-      runs.push({ text: match[0], highlight: true });
-      lastIndex = match.index + match[0].length;
-    }
-
-    if (lastIndex < text.length) {
-      runs.push({ text: text.substring(lastIndex), highlight: false });
-    }
-
-    return runs.length > 0 ? runs : [{ text, highlight: false }];
+    // O destaque SÓ existe quando expressamente apontado na fonte (PDF/texto).
+    // NUNCA chuta destaques em amarelo automaticamente!
+    return [{ text, highlight: false }];
   }
 
   function reconstructParagraphs(rawText) {
@@ -2216,13 +2212,13 @@ ${sermonText}`;
               slides.push({
                 type: 'verse',
                 reference: finalRef,
-                runs: highlightCinzelThematicPhrases(formatQuotes(vText))
+                runs: buildRunsFromText(formatQuotes(vText))
               });
             } else {
               slides.push({
                 type: 'verse',
                 reference: ref,
-                runs: highlightCinzelThematicPhrases(formatQuotes(stripLeadingVerseNumber(p)))
+                runs: buildRunsFromText(formatQuotes(stripLeadingVerseNumber(p)))
               });
             }
           }
@@ -2277,27 +2273,28 @@ ${sermonText}`;
                 slides.push({
                   type: 'verse',
                   reference: `${book} ${chapter}:3`,
-                  runs: highlightCinzelThematicPhrases(formatQuotes(part1))
+                  runs: buildRunsFromText(formatQuotes(part1))
                 });
                 slides.push({
                   type: 'verse',
                   reference: `${book} ${chapter}:4`,
-                  runs: highlightCinzelThematicPhrases(formatQuotes(part2))
+                  runs: buildRunsFromText(formatQuotes(part2))
                 });
                 continue;
               }
             }
 
-            if (fullVerseText.length > 190) {
+            const cleanLen = fullVerseText.replace(/\[\/?HL\]/g, '').length;
+            if (cleanLen > 210) {
               const sentences = fullVerseText.match(/[^.!?]+[.!?]+|\s*[^.!?]+$/g) || [fullVerseText];
               let curSlide = '';
               for (const s of sentences) {
                 const cand = (curSlide ? curSlide + ' ' : '') + s.trim();
-                if (cand.length > 190 && curSlide.length > 0) {
+                if (cand.replace(/\[\/?HL\]/g, '').length > 210 && curSlide.length > 0) {
                   slides.push({
                     type: 'verse',
                     reference: ref,
-                    runs: highlightCinzelThematicPhrases(formatQuotes(curSlide.trim()))
+                    runs: buildRunsFromText(formatQuotes(curSlide.trim()))
                   });
                   curSlide = s.trim();
                 } else {
@@ -2308,14 +2305,14 @@ ${sermonText}`;
                 slides.push({
                   type: 'verse',
                   reference: ref,
-                  runs: highlightCinzelThematicPhrases(formatQuotes(curSlide.trim()))
+                  runs: buildRunsFromText(formatQuotes(curSlide.trim()))
                 });
               }
             } else {
               slides.push({
                 type: 'verse',
                 reference: ref,
-                runs: highlightCinzelThematicPhrases(formatQuotes(fullVerseText))
+                runs: buildRunsFromText(formatQuotes(fullVerseText))
               });
             }
           }
