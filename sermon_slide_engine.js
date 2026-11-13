@@ -251,7 +251,7 @@ async function buildSermonPptx(slidesData, bgImagePath, outputFilePath) {
       }
 
       const runs = item.runs.map(r => ({
-        text: r.text,
+        text: (r.text || '').replace(/\[\/?HL\]/g, ''),
         options: {
           fontFace: isCinzel ? (r.highlight ? 'Cinzel Black' : (item.fontFace || 'Cinzel Bold')) : pptxFontFace,
           fontSize: fontSize,
@@ -307,7 +307,7 @@ async function buildSermonPptx(slidesData, bgImagePath, outputFilePath) {
       }
 
       const runs = item.runs.map(r => ({
-        text: r.text,
+        text: (r.text || '').replace(/\[\/?HL\]/g, ''),
         options: {
           fontFace: isCinzel ? (r.highlight ? 'Cinzel Black' : (item.fontFace || 'Cinzel Bold')) : pptxFontFace,
           fontSize: fontSize,
@@ -360,7 +360,7 @@ async function buildSermonPptx(slidesData, bgImagePath, outputFilePath) {
       }
 
       const runs = item.runs.map(r => ({
-        text: r.text,
+        text: (r.text || '').replace(/\[\/?HL\]/g, ''),
         options: {
           fontFace: isCinzel ? (r.highlight ? 'Cinzel Black' : (item.fontFace || 'Cinzel Bold')) : pptxFontFace,
           fontSize: fontSize,

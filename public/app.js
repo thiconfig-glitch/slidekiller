@@ -1912,21 +1912,21 @@ ${sermonText}`;
   }
 
   function isHeadingOrTopic(line) {
-    const trimmed = (line || '').replace(/\[\/?HL\]/g, '').replace(/^[⸻\-_\s*#]+|[⸻\-_\s*#]+$/g, '').trim();
-    if (trimmed.length < 3) return false;
-    if (isBibleRef(trimmed)) return false;
-    if (trimmed.endsWith(':') && trimmed.length < 80) return true;
-    if (/^\d{1,2}[\.\)]\s+[A-ZÀ-Ý]/.test(trimmed) && trimmed.length < 85) return true;
-    if (!trimmed.endsWith('.') && trimmed.length <= 45 && !/[;:,]/.test(trimmed)) {
-      return true;
-    }
-    const letters = trimmed.replace(/[^a-zA-ZÀ-ÿ]/g, '');
-    if (letters.length >= 4) {
-      const uppercaseLetters = (trimmed.match(/[A-ZÀ-Ý]/g) || []).length;
-      if (uppercaseLetters / letters.length >= 0.70) return true;
-    }
-    return false;
+  const trimmed = (line || '').replace(/\[\/?HL\]/g, '').replace(/^[⸻\-_\s*#]+|[⸻\-_\s*#]+$/g, '').trim();
+  if (trimmed.length < 3) return false;
+  if (isBibleRef(trimmed)) return false;
+
+  if (trimmed.endsWith(':') && trimmed.length < 80) return true;
+  if (/^\d{1,2}[\.\)]\s+[A-ZÀ-Ý]/.test(trimmed) && trimmed.length < 85) return true;
+
+  const letters = trimmed.replace(/[^a-zA-ZÀ-ÿ]/g, '');
+  if (letters.length >= 6) {
+    const uppercaseLetters = (trimmed.match(/[A-ZÀ-Ý]/g) || []).length;
+    if (uppercaseLetters / letters.length >= 0.80) return true;
   }
+
+  return false;
+}
 
   function splitTextByPunctuation(text, maxChars = 220) {
     const stripped = text.replace(/\[\/?HL\]/g, '').replace(/^[“"']|[”"']$/g, '').trim();
@@ -2045,248 +2045,225 @@ ${sermonText}`;
   }
 
   function buildRunsFromText(text) {
-    if (!text) return [{ text: '', highlight: false }];
+  if (!text) return [{ text: '', highlight: false }];
 
-    // Suporte a marcações manuais apontadas: [HL]...[/HL], **...** ou *...*
-    let processed = text
-      .replace(/\*\*(.*?)\*\*/g, '[HL]$1[/HL]')
-      .replace(/(?<!\*)\*([^\*\n]+)\*(?!\*)/g, '[HL]$1[/HL]');
+  let processed = text
+    .replace(/\*\*(.*?)\*\*/g, '[HL]$1[/HL]')
+    .replace(/(?<!\*)\*([^\*\n]+)\*(?!\*)/g, '[HL]$1[/HL]');
 
-    if (processed.includes('[HL]')) {
-      const regex = /\[HL\](.*?)\[\/HL\]/gis;
-      const runs = [];
-      let lastIdx = 0;
-      let m;
-      while ((m = regex.exec(processed)) !== null) {
-        if (m.index > lastIdx) {
-          runs.push({ text: processed.substring(lastIdx, m.index), highlight: false });
-        }
-        if (m[1].length > 0) {
-          runs.push({ text: m[1], highlight: true });
-        }
-        lastIdx = m.index + m[0].length;
+  if (processed.includes('[HL]')) {
+    const regex = /\[HL\](.*?)\[\/HL\]/gis;
+    const runs = [];
+    let lastIdx = 0;
+    let m;
+    while ((m = regex.exec(processed)) !== null) {
+      if (m.index > lastIdx) {
+        const plain = processed.substring(lastIdx, m.index).replace(/\[\/?HL\]/g, '');
+        if (plain) runs.push({ text: plain, highlight: false });
       }
-      if (lastIdx < processed.length) {
-        runs.push({ text: processed.substring(lastIdx), highlight: false });
+      const hlText = m[1].replace(/\[\/?HL\]/g, '');
+      if (hlText.length > 0) {
+        runs.push({ text: hlText, highlight: true });
       }
-      return runs.filter(r => r.text.length > 0);
+      lastIdx = m.index + m[0].length;
     }
-
-    // O destaque SÓ existe quando expressamente apontado na fonte (PDF/texto).
-    // NUNCA chuta destaques em amarelo automaticamente!
-    return [{ text, highlight: false }];
+    if (lastIdx < processed.length) {
+      const rest = processed.substring(lastIdx).replace(/\[\/?HL\]/g, '');
+      if (rest) runs.push({ text: rest, highlight: false });
+    }
+    return runs.filter(r => r.text.length > 0);
   }
+
+  const cleanText = text.replace(/\[\/?HL\]/g, '');
+  return [{ text: cleanText, highlight: false }];
+}
 
   function reconstructParagraphs(rawText) {
-    const rawLines = (rawText || '')
-      .replace(/\u00A0/g, ' ')
-      .replace(/\r\n/g, '\n')
-      .split('\n')
-      .map(l => l.trim())
-      .filter(Boolean);
+  const rawLines = (rawText || '')
+    .replace(/\u00A0/g, ' ')
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .map(l => l.trim())
+    .filter(Boolean);
 
-    const paras = [];
-    let cur = '';
+  const paras = [];
+  let cur = '';
 
-    for (let i = 0; i < rawLines.length; i++) {
-      const line = rawLines[i];
-      const isRef = isPureBibleRefLine(line);
-      const isQ = line.endsWith('?') && line.length < 90 && !isBibleRef(line);
-      const isNumbered = /^\d{1,3}\s+[A-Za-zÀ-ÿ]/.test(line);
+  for (let i = 0; i < rawLines.length; i++) {
+    const line = rawLines[i];
+    const cleanLine = line.replace(/\[\/?HL\]/g, '').trim();
 
-      if (i === 0 && line.length < 80 && !isBibleRef(line)) {
-        paras.push(line);
-        continue;
-      }
+    // Descartar divisores decorativos
+    if (/^[⸻⸺—–\-_=\s]{3,}$/.test(cleanLine)) {
+      if (cur) { paras.push(cur.trim()); cur = ''; }
+      continue;
+    }
 
-      if (isRef || isQ) {
-        if (cur) { paras.push(cur.trim()); cur = ''; }
-        paras.push(line);
-        continue;
-      }
+    const isRef = isPureBibleRefLine(line);
+    const isQ = cleanLine.endsWith('?') && cleanLine.length < 90 && !isBibleRef(line);
+    const isNumbered = /^\d{1,3}\s+[A-Za-zÀ-ÿ\[]/.test(cleanLine);
+    const isHeading = isHeadingOrTopic(line);
 
-      if (isNumbered) {
-        if (cur) { paras.push(cur.trim()); cur = ''; }
-        cur = line;
-        continue;
-      }
+    if (i === 0 && cleanLine.length < 80 && !isBibleRef(line)) {
+      paras.push(line);
+      continue;
+    }
 
-      if (!cur) {
+    if (isRef || isQ || isHeading) {
+      if (cur) { paras.push(cur.trim()); cur = ''; }
+      paras.push(line);
+      continue;
+    }
+
+    if (isNumbered) {
+      if (cur) { paras.push(cur.trim()); cur = ''; }
+      cur = line;
+      continue;
+    }
+
+    if (!cur) {
+      cur = line;
+    } else {
+      const prevEndsPunct = /[.!?…]$/.test(cur) || cur.endsWith('...');
+      if (prevEndsPunct && /^[A-ZÀ-Ý“"']/.test(cleanLine)) {
+        paras.push(cur.trim());
         cur = line;
       } else {
-        const prevEndsPunct = /[.!?…]$/.test(cur) || cur.endsWith('...');
-        if (prevEndsPunct && /^[A-ZÀ-Ý“"']/.test(line)) {
-          paras.push(cur.trim());
-          cur = line;
-        } else {
-          cur += ' ' + line;
-        }
+        cur += ' ' + line;
       }
     }
-    if (cur) paras.push(cur.trim());
-
-    return paras;
   }
+  if (cur) paras.push(cur.trim());
 
-  function parseSermonOfflineBrowser(rawText) {
-    const paras = reconstructParagraphs(rawText);
-    const slides = [];
-    let i = 0;
+  return paras;
+}
 
-    while (i < paras.length) {
-      const para = paras[i];
+function parseSermonOfflineBrowser(rawText) {
+  const paras = reconstructParagraphs(rawText);
+  const slides = [];
+  let i = 0;
 
-      // 1. Capa / Título do Sermão (Slide 1)
-      if (i === 0 && para.length < 90 && !isBibleRef(para)) {
-        let l1 = para.toUpperCase();
-        let l2 = '';
-        const splitWords = ['TÊM PARTE', 'TEM PARTE', 'PARTE NA', 'PARTE DA'];
-        for (const sw of splitWords) {
-          const idx = l1.indexOf(sw);
-          if (idx !== -1) {
-            l2 = l1.substring(idx).trim();
-            l1 = l1.substring(0, idx).trim();
-            break;
-          }
-        }
-        slides.push({
-          type: 'cinzel_cover',
-          line1: l1,
-          line2: l2 || para.toUpperCase(),
-          text: para,
-          runs: [{ text: para, highlight: false }]
-        });
-        i++;
-        continue;
-      }
+  while (i < paras.length) {
+    const para = paras[i];
+    const cleanPara = para.replace(/\[\/?HL\]/g, '').trim();
 
-      // 2. Pergunta retórica / Tópico curto
-      if (para.endsWith('?') && para.length < 90 && !isBibleRef(para)) {
-        const words = para.split(' ');
-        let q1 = para;
-        let q2 = '';
-        if (words.length >= 4) {
-          const mid = Math.max(3, Math.floor(words.length / 2));
-          q1 = words.slice(0, mid).join(' ');
-          q2 = words.slice(mid).join(' ').toUpperCase();
-        }
-        slides.push({
-          type: 'cinzel_question',
-          line1: q1,
-          line2: q2,
-          text: para,
-          runs: [{ text: para, highlight: false }]
-        });
-        i++;
-        continue;
-      }
-
-      // 3. Busca por referência bíblica nos próximos blocos
-      let nextRefIdx = -1;
-      for (let j = i; j < Math.min(i + 15, paras.length); j++) {
-        if (isPureBibleRefLine(paras[j])) {
-          nextRefIdx = j;
-          break;
-        }
-        if (paras[j].endsWith('?') && paras[j].length < 90) {
+    // 1. Capa / Título do Sermão (Slide 1)
+    if (i === 0 && cleanPara.length < 90 && !isBibleRef(para)) {
+      let l1 = cleanPara.toUpperCase();
+      let l2 = '';
+      const splitWords = ['TÊM PARTE', 'TEM PARTE', 'PARTE NA', 'PARTE DA'];
+      for (const sw of splitWords) {
+        const idx = l1.indexOf(sw);
+        if (idx !== -1) {
+          l2 = l1.substring(idx).trim();
+          l1 = l1.substring(0, idx).trim();
           break;
         }
       }
+      slides.push({
+        type: 'cinzel_cover',
+        line1: l1,
+        line2: l2 || cleanPara.toUpperCase(),
+        text: cleanPara,
+        runs: buildRunsFromText(para)
+      });
+      i++;
+      continue;
+    }
 
-      if (nextRefIdx !== -1) {
-        const ref = normalizeBibleRefName(isBibleRef(paras[nextRefIdx]));
-        const precedingParas = paras.slice(i, nextRefIdx);
+    // 2. Pergunta retórica de impacto
+    if (cleanPara.endsWith('?') && cleanPara.length < 90 && !isBibleRef(para)) {
+      const words = cleanPara.split(' ');
+      let q1 = cleanPara;
+      let q2 = '';
+      if (words.length >= 4) {
+        const mid = Math.max(3, Math.floor(words.length / 2));
+        q1 = words.slice(0, mid).join(' ');
+        q2 = words.slice(mid).join(' ').toUpperCase();
+      }
+      slides.push({
+        type: 'cinzel_question',
+        line1: q1,
+        line2: q2,
+        text: cleanPara,
+        runs: buildRunsFromText(para)
+      });
+      i++;
+      continue;
+    }
 
-        const hasNumberedVerses = precedingParas.some(p => /^\d{1,3}\s+[A-Za-zÀ-ÿ]/.test(p));
-        if (hasNumberedVerses) {
-          const match = ref.match(/^(.+?)\s*(\d+)\s*[:.,]/);
-          const book = match ? match[1] : ref.split(/[:.,]/)[0];
-          const chapter = match ? match[2] : '';
+    // 3. Tópico / Título em destaque (All-caps ou seção)
+    if (isHeadingOrTopic(para)) {
+      slides.push({
+        type: 'topic',
+        runs: buildRunsFromText(para)
+      });
+      i++;
+      continue;
+    }
 
-          for (const p of precedingParas) {
-            const m = p.match(/^(\d{1,3})\s+(.*)$/);
-            if (m) {
-              const vNum = m[1];
-              const vText = stripLeadingVerseNumber(m[2]);
-              const finalRef = chapter ? `${book} ${chapter}:${vNum}` : `${book}:${vNum}`;
+    // 4. Caso A: A referência bíblica está NO INÍCIO (ex: Mateus 6:19-21, Provérbios 3:5-10, Marcos 5:22)
+    if (isPureBibleRefLine(para)) {
+      const ref = normalizeBibleRefName(isBibleRef(para));
+      const match = ref.match(/^(.+?)\s*(\d+)\s*[:.,]/);
+      const book = match ? match[1] : ref.split(/[:.,]/)[0];
+      const chapter = match ? match[2] : '';
+
+      // Coleta versículos subsequentes pertencentes a esta referência
+      let j = i + 1;
+      const verseParas = [];
+      while (j < paras.length) {
+        const pCandidate = paras[j];
+        if (isPureBibleRefLine(pCandidate) || isHeadingOrTopic(pCandidate) || (pCandidate.replace(/\[\/?HL\]/g, '').endsWith('?') && pCandidate.length < 90)) {
+          break;
+        }
+        verseParas.push(pCandidate);
+        j++;
+      }
+
+      if (verseParas.length > 0) {
+        for (const vp of verseParas) {
+          const numMatch = vp.match(/^(\d{1,3})\s+(.*)$/s);
+          if (numMatch) {
+            const vNum = numMatch[1];
+            const vText = stripLeadingVerseNumber(numMatch[2]);
+            const finalRef = chapter ? `${book} ${chapter}:${vNum}` : `${book}:${vNum}`;
+            const cleanLen = vText.replace(/\[\/?HL\]/g, '').length;
+            if (cleanLen > 210) {
+              const sentences = vText.match(/[^.!?]+[.!?]+|\s*[^.!?]+$/g) || [vText];
+              let curSlide = '';
+              for (const s of sentences) {
+                const cand = (curSlide ? curSlide + ' ' : '') + s.trim();
+                if (cand.replace(/\[\/?HL\]/g, '').length > 210 && curSlide.length > 0) {
+                  slides.push({
+                    type: 'verse',
+                    reference: finalRef,
+                    runs: buildRunsFromText(formatQuotes(curSlide.trim()))
+                  });
+                  curSlide = s.trim();
+                } else {
+                  curSlide = cand;
+                }
+              }
+              if (curSlide.trim().length > 0) {
+                slides.push({
+                  type: 'verse',
+                  reference: finalRef,
+                  runs: buildRunsFromText(formatQuotes(curSlide.trim()))
+                });
+              }
+            } else {
               slides.push({
                 type: 'verse',
                 reference: finalRef,
                 runs: buildRunsFromText(formatQuotes(vText))
               });
-            } else {
-              slides.push({
-                type: 'verse',
-                reference: ref,
-                runs: buildRunsFromText(formatQuotes(stripLeadingVerseNumber(p)))
-              });
-            }
-          }
-          i = nextRefIdx + 1;
-          continue;
-        }
-
-        let verseStartIndex = precedingParas.length - 1;
-        if (precedingParas.length >= 2 && precedingParas[precedingParas.length - 2].startsWith('Para remir')) {
-          verseStartIndex = precedingParas.length - 2;
-        }
-
-        for (let pIdx = 0; pIdx < precedingParas.length; pIdx++) {
-          const pText = precedingParas[pIdx];
-          if (pIdx < verseStartIndex) {
-            const sentences = pText.match(/[^.!?]+[.!?]+|\s*[^.!?]+$/g) || [pText];
-            let curSlide = '';
-            for (const s of sentences) {
-              const cand = (curSlide ? curSlide + ' ' : '') + s.trim();
-              if (cand.length > 165 && curSlide.length > 0) {
-                slides.push({
-                  type: 'reflection',
-                  runs: [{ text: curSlide.trim(), highlight: false }]
-                });
-                curSlide = s.trim();
-              } else {
-                curSlide = cand;
-              }
-            }
-            if (curSlide.trim().length > 0) {
-              slides.push({
-                type: 'reflection',
-                runs: [{ text: curSlide.trim(), highlight: false }]
-              });
             }
           } else {
-            let fullVerseText = stripLeadingVerseNumber(pText);
-            if (pIdx === verseStartIndex && verseStartIndex < precedingParas.length - 1) {
-              const nextPara = precedingParas[pIdx + 1];
-              fullVerseText = `${fullVerseText} ${stripLeadingVerseNumber(nextPara)}`;
-              pIdx++;
-            }
-
-            if (ref.includes('1:3-4') || ref.includes('1:3,4')) {
-              const vSplitIdx = fullVerseText.indexOf(', para uma herança');
-              if (vSplitIdx !== -1) {
-                const part1 = fullVerseText.substring(0, vSplitIdx + 1).trim();
-                const part2 = fullVerseText.substring(vSplitIdx + 2).trim();
-                const match = ref.match(/^(.+?)\s*(\d+)\s*[:.,]/);
-                const book = match ? match[1] : ref.split(/[:.,]/)[0];
-                const chapter = match ? match[2] : '1';
-                slides.push({
-                  type: 'verse',
-                  reference: `${book} ${chapter}:3`,
-                  runs: buildRunsFromText(formatQuotes(part1))
-                });
-                slides.push({
-                  type: 'verse',
-                  reference: `${book} ${chapter}:4`,
-                  runs: buildRunsFromText(formatQuotes(part2))
-                });
-                continue;
-              }
-            }
-
-            const cleanLen = fullVerseText.replace(/\[\/?HL\]/g, '').length;
+            const cleanVp = stripLeadingVerseNumber(vp);
+            const cleanLen = cleanVp.replace(/\[\/?HL\]/g, '').length;
             if (cleanLen > 210) {
-              const sentences = fullVerseText.match(/[^.!?]+[.!?]+|\s*[^.!?]+$/g) || [fullVerseText];
+              const sentences = cleanVp.match(/[^.!?]+[.!?]+|\s*[^.!?]+$/g) || [cleanVp];
               let curSlide = '';
               for (const s of sentences) {
                 const cand = (curSlide ? curSlide + ' ' : '') + s.trim();
@@ -2312,45 +2289,187 @@ ${sermonText}`;
               slides.push({
                 type: 'verse',
                 reference: ref,
-                runs: buildRunsFromText(formatQuotes(fullVerseText))
+                runs: buildRunsFromText(formatQuotes(cleanVp))
               });
             }
           }
         }
+        i = j;
+        continue;
+      }
+    }
 
+    // 5. Caso B: Referência no final do bloco (ex: I Pedro 1:3-4, Gálatas 4:4-7, Neemias 6:15)
+    let nextRefIdx = -1;
+    for (let j = i; j < Math.min(i + 15, paras.length); j++) {
+      if (isPureBibleRefLine(paras[j])) {
+        nextRefIdx = j;
+        break;
+      }
+      if (isHeadingOrTopic(paras[j]) || (paras[j].replace(/\[\/?HL\]/g, '').endsWith('?') && paras[j].length < 90)) {
+        break;
+      }
+    }
+
+    if (nextRefIdx !== -1) {
+      const ref = normalizeBibleRefName(isBibleRef(paras[nextRefIdx]));
+      const precedingParas = paras.slice(i, nextRefIdx);
+
+      const hasNumberedVerses = precedingParas.some(p => /^\d{1,3}\s+[A-Za-zÀ-ÿ\[]/.test(p));
+      if (hasNumberedVerses) {
+        const match = ref.match(/^(.+?)\s*(\d+)\s*[:.,]/);
+        const book = match ? match[1] : ref.split(/[:.,]/)[0];
+        const chapter = match ? match[2] : '';
+
+        for (const p of precedingParas) {
+          const m = p.match(/^(\d{1,3})\s+(.*)$/);
+          if (m) {
+            const vNum = m[1];
+            const vText = stripLeadingVerseNumber(m[2]);
+            const finalRef = chapter ? `${book} ${chapter}:${vNum}` : `${book}:${vNum}`;
+            slides.push({
+              type: 'verse',
+              reference: finalRef,
+              runs: buildRunsFromText(formatQuotes(vText))
+            });
+          } else {
+            slides.push({
+              type: 'verse',
+              reference: ref,
+              runs: buildRunsFromText(formatQuotes(stripLeadingVerseNumber(p)))
+            });
+          }
+        }
         i = nextRefIdx + 1;
         continue;
       }
 
-      const sentences = para.match(/[^.!?]+[.!?]+|\s*[^.!?]+$/g) || [para];
-      let curSlide = '';
-      for (const s of sentences) {
-        const cand = (curSlide ? curSlide + ' ' : '') + s.trim();
-        if (cand.length > 165 && curSlide.length > 0) {
-          slides.push({
-            type: 'reflection',
-            runs: [{ text: curSlide.trim(), highlight: false }]
-          });
-          curSlide = s.trim();
+      let verseStartIndex = precedingParas.length - 1;
+      if (precedingParas.length >= 2 && precedingParas[precedingParas.length - 2].startsWith('Para remir')) {
+        verseStartIndex = precedingParas.length - 2;
+      }
+
+      for (let pIdx = 0; pIdx < precedingParas.length; pIdx++) {
+        const pText = precedingParas[pIdx];
+        if (pIdx < verseStartIndex) {
+          const sentences = pText.match(/[^.!?]+[.!?]+|\s*[^.!?]+$/g) || [pText];
+          let curSlide = '';
+          for (const s of sentences) {
+            const cand = (curSlide ? curSlide + ' ' : '') + s.trim();
+            if (cand.length > 165 && curSlide.length > 0) {
+              slides.push({
+                type: 'reflection',
+                runs: buildRunsFromText(curSlide.trim())
+              });
+              curSlide = s.trim();
+            } else {
+              curSlide = cand;
+            }
+          }
+          if (curSlide.trim().length > 0) {
+            slides.push({
+              type: 'reflection',
+              runs: buildRunsFromText(curSlide.trim())
+            });
+          }
         } else {
-          curSlide = cand;
+          let fullVerseText = stripLeadingVerseNumber(pText);
+          if (pIdx === verseStartIndex && verseStartIndex < precedingParas.length - 1) {
+            const nextPara = precedingParas[pIdx + 1];
+            fullVerseText = `${fullVerseText} ${stripLeadingVerseNumber(nextPara)}`;
+            pIdx++;
+          }
+
+          if (ref.includes('1:3-4') || ref.includes('1:3,4')) {
+            const vSplitIdx = fullVerseText.indexOf(', para uma herança');
+            if (vSplitIdx !== -1) {
+              const part1 = fullVerseText.substring(0, vSplitIdx + 1).trim();
+              const part2 = fullVerseText.substring(vSplitIdx + 2).trim();
+              const match = ref.match(/^(.+?)\s*(\d+)\s*[:.,]/);
+              const book = match ? match[1] : ref.split(/[:.,]/)[0];
+              const chapter = match ? match[2] : '1';
+              slides.push({
+                type: 'verse',
+                reference: `${book} ${chapter}:3`,
+                runs: buildRunsFromText(formatQuotes(part1))
+              });
+              slides.push({
+                type: 'verse',
+                reference: `${book} ${chapter}:4`,
+                runs: buildRunsFromText(formatQuotes(part2))
+              });
+              continue;
+            }
+          }
+
+          const cleanLen = fullVerseText.replace(/\[\/?HL\]/g, '').length;
+          if (cleanLen > 210) {
+            const sentences = fullVerseText.match(/[^.!?]+[.!?]+|\s*[^.!?]+$/g) || [fullVerseText];
+            let curSlide = '';
+            for (const s of sentences) {
+              const cand = (curSlide ? curSlide + ' ' : '') + s.trim();
+              if (cand.replace(/\[\/?HL\]/g, '').length > 210 && curSlide.length > 0) {
+                slides.push({
+                  type: 'verse',
+                  reference: ref,
+                  runs: buildRunsFromText(formatQuotes(curSlide.trim()))
+                });
+                curSlide = s.trim();
+              } else {
+                curSlide = cand;
+              }
+            }
+            if (curSlide.trim().length > 0) {
+              slides.push({
+                type: 'verse',
+                reference: ref,
+                runs: buildRunsFromText(formatQuotes(curSlide.trim()))
+              });
+            }
+          } else {
+            slides.push({
+              type: 'verse',
+              reference: ref,
+              runs: buildRunsFromText(formatQuotes(fullVerseText))
+            });
+          }
         }
       }
-      if (curSlide.trim().length > 0) {
-        slides.push({
-          type: 'reflection',
-          runs: [{ text: curSlide.trim(), highlight: false }]
-        });
-      }
-      i++;
+
+      i = nextRefIdx + 1;
+      continue;
     }
 
-    return slides.length > 0 ? slides : [{
-      type: 'verse',
-      reference: 'Sermão',
-      runs: [{ text: rawText.substring(0, 200), highlight: false }]
-    }];
+    // 6. Comentário pastoral fora de bloco de versículo
+    const sentences = para.match(/[^.!?]+[.!?]+|\s*[^.!?]+$/g) || [para];
+    let curSlide = '';
+    for (const s of sentences) {
+      const cand = (curSlide ? curSlide + ' ' : '') + s.trim();
+      if (cand.length > 165 && curSlide.length > 0) {
+        slides.push({
+          type: 'reflection',
+          runs: buildRunsFromText(curSlide.trim())
+        });
+        curSlide = s.trim();
+      } else {
+        curSlide = cand;
+      }
+    }
+    if (curSlide.trim().length > 0) {
+      slides.push({
+        type: 'reflection',
+        runs: buildRunsFromText(curSlide.trim())
+      });
+    }
+    i++;
   }
+
+  return slides.length > 0 ? slides : [{
+    type: 'verse',
+    reference: 'Sermão',
+    runs: [{ text: rawText.substring(0, 200), highlight: false }]
+  }];
+}
 
   // --- MOTOR ESPECIALIZADO DE SERMÃO / ROTEIRO DO TEAMS ---
   function parseTeamsDirectionTextBrowser(rawText, options = { onlyVerses: true }) {
@@ -2675,9 +2794,9 @@ ${sermonText}`;
       card.dataset.index = String(index);
 
       const slideBgUrl = slide.bgImage || globalBgUrl;
-      const fullText = (slide.runs || []).map(r => r.text).join('');
+      const fullText = (slide.runs || []).map(r => (r.text || '').replace(/\[\/?HL\]/g, '')).join('');
       const previewHtml = (slide.runs || []).map(r => {
-        return r.highlight ? `<span class="highlight">${escapeHtml(r.text)}</span>` : escapeHtml(r.text);
+        const clean = (r.text || '').replace(/\[\/?HL\]/g, ''); return r.highlight ? `<span class="highlight">${escapeHtml(clean)}</span>` : escapeHtml(clean);
       }).join('');
 
       // Ajuste proporcional do tamanho de fonte para a miniatura 16:9 refletir fielmente o telão
@@ -3162,7 +3281,7 @@ ${sermonText}`;
         }
 
         const runs = (item.runs || []).map(r => ({
-          text: r.text,
+          text: (r.text || '').replace(/\[\/?HL\]/g, ''),
           options: {
             fontFace: isCinzel ? (r.highlight ? 'Cinzel Black' : 'Cinzel Bold') : pptxFontFace,
             fontSize: fontSize,
@@ -3215,7 +3334,7 @@ ${sermonText}`;
         }
 
         const runs = (item.runs || []).map(r => ({
-          text: r.text,
+          text: (r.text || '').replace(/\[\/?HL\]/g, ''),
           options: {
             fontFace: isCinzel ? 'Cinzel Bold' : pptxFontFace,
             fontSize: fontSize,
@@ -3268,7 +3387,7 @@ ${sermonText}`;
         }
 
         const runs = (item.runs || []).map(r => ({
-          text: r.text,
+          text: (r.text || '').replace(/\[\/?HL\]/g, ''),
           options: {
             fontFace: isCinzel ? (r.highlight ? 'Cinzel Black' : 'Cinzel Bold') : pptxFontFace,
             fontSize: fontSize,

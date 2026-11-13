@@ -86,14 +86,11 @@ function isHeadingOrTopic(line) {
 
   if (trimmed.endsWith(':') && trimmed.length < 80) return true;
   if (/^\d{1,2}[\.\)]\s+[A-ZÀ-Ý]/.test(trimmed) && trimmed.length < 85) return true;
-  if (!trimmed.endsWith('.') && trimmed.length <= 45 && !/[;:,]/.test(trimmed)) {
-    return true;
-  }
 
   const letters = trimmed.replace(/[^a-zA-ZÀ-ÿ]/g, '');
-  if (letters.length >= 4) {
+  if (letters.length >= 6) {
     const uppercaseLetters = (trimmed.match(/[A-ZÀ-Ý]/g) || []).length;
-    if (uppercaseLetters / letters.length >= 0.70) return true;
+    if (uppercaseLetters / letters.length >= 0.80) return true;
   }
 
   return false;
@@ -205,10 +202,9 @@ function splitTextByPunctuation(text, maxChars = 220) {
 function buildRunsFromText(text) {
   if (!text) return [{ text: '', highlight: false }];
 
-  // Suporte a marcações manuais apontadas: [HL]...[/HL], **...** ou *...*
   let processed = text
     .replace(/\*\*(.*?)\*\*/g, '[HL]$1[/HL]')
-    .replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, '[HL]$1[/HL]');
+    .replace(/(?<!\*)\*([^\*\n]+)\*(?!\*)/g, '[HL]$1[/HL]');
 
   if (processed.includes('[HL]')) {
     const regex = /\[HL\](.*?)\[\/HL\]/gis;
@@ -217,22 +213,24 @@ function buildRunsFromText(text) {
     let m;
     while ((m = regex.exec(processed)) !== null) {
       if (m.index > lastIdx) {
-        runs.push({ text: processed.substring(lastIdx, m.index), highlight: false });
+        const plain = processed.substring(lastIdx, m.index).replace(/\[\/?HL\]/g, '');
+        if (plain) runs.push({ text: plain, highlight: false });
       }
-      if (m[1].length > 0) {
-        runs.push({ text: m[1], highlight: true });
+      const hlText = m[1].replace(/\[\/?HL\]/g, '');
+      if (hlText.length > 0) {
+        runs.push({ text: hlText, highlight: true });
       }
       lastIdx = m.index + m[0].length;
     }
     if (lastIdx < processed.length) {
-      runs.push({ text: processed.substring(lastIdx), highlight: false });
+      const rest = processed.substring(lastIdx).replace(/\[\/?HL\]/g, '');
+      if (rest) runs.push({ text: rest, highlight: false });
     }
     return runs.filter(r => r.text.length > 0);
   }
 
-  // O destaque SÓ existe quando expressamente apontado na fonte (PDF/texto).
-  // NUNCA chuta destaques em amarelo automaticamente!
-  return [{ text, highlight: false }];
+  const cleanText = text.replace(/\[\/?HL\]/g, '');
+  return [{ text: cleanText, highlight: false }];
 }
 
 function stripLeadingVerseNumber(text) {
@@ -257,16 +255,25 @@ function reconstructParagraphs(rawText) {
 
   for (let i = 0; i < rawLines.length; i++) {
     const line = rawLines[i];
-    const isRef = isPureBibleRefLine(line);
-    const isQ = line.endsWith('?') && line.length < 90 && !isBibleRef(line);
-    const isNumbered = /^\d{1,3}\s+[A-Za-zÀ-ÿ]/.test(line);
+    const cleanLine = line.replace(/\[\/?HL\]/g, '').trim();
 
-    if (i === 0 && line.length < 80 && !isBibleRef(line)) {
+    // Descartar divisores decorativos
+    if (/^[⸻⸺—–\-_=\s]{3,}$/.test(cleanLine)) {
+      if (cur) { paras.push(cur.trim()); cur = ''; }
+      continue;
+    }
+
+    const isRef = isPureBibleRefLine(line);
+    const isQ = cleanLine.endsWith('?') && cleanLine.length < 90 && !isBibleRef(line);
+    const isNumbered = /^\d{1,3}\s+[A-Za-zÀ-ÿ\[]/.test(cleanLine);
+    const isHeading = isHeadingOrTopic(line);
+
+    if (i === 0 && cleanLine.length < 80 && !isBibleRef(line)) {
       paras.push(line);
       continue;
     }
 
-    if (isRef || isQ) {
+    if (isRef || isQ || isHeading) {
       if (cur) { paras.push(cur.trim()); cur = ''; }
       paras.push(line);
       continue;
@@ -282,7 +289,7 @@ function reconstructParagraphs(rawText) {
       cur = line;
     } else {
       const prevEndsPunct = /[.!?…]$/.test(cur) || cur.endsWith('...');
-      if (prevEndsPunct && /^[A-ZÀ-Ý“"']/.test(line)) {
+      if (prevEndsPunct && /^[A-ZÀ-Ý“"']/.test(cleanLine)) {
         paras.push(cur.trim());
         cur = line;
       } else {
@@ -302,10 +309,11 @@ function parseSermonTextOffline(rawText) {
 
   while (i < paras.length) {
     const para = paras[i];
+    const cleanPara = para.replace(/\[\/?HL\]/g, '').trim();
 
     // 1. Capa / Título do Sermão (Slide 1)
-    if (i === 0 && para.length < 90 && !isBibleRef(para)) {
-      let l1 = para.toUpperCase();
+    if (i === 0 && cleanPara.length < 90 && !isBibleRef(para)) {
+      let l1 = cleanPara.toUpperCase();
       let l2 = '';
       const splitWords = ['TÊM PARTE', 'TEM PARTE', 'PARTE NA', 'PARTE DA'];
       for (const sw of splitWords) {
@@ -319,18 +327,18 @@ function parseSermonTextOffline(rawText) {
       slides.push({
         type: 'cinzel_cover',
         line1: l1,
-        line2: l2 || para.toUpperCase(),
-        text: para,
-        runs: [{ text: para, highlight: false }]
+        line2: l2 || cleanPara.toUpperCase(),
+        text: cleanPara,
+        runs: buildRunsFromText(para)
       });
       i++;
       continue;
     }
 
-    // 2. Pergunta retórica / Tópico curto
-    if (para.endsWith('?') && para.length < 90 && !isBibleRef(para)) {
-      const words = para.split(' ');
-      let q1 = para;
+    // 2. Pergunta retórica de impacto
+    if (cleanPara.endsWith('?') && cleanPara.length < 90 && !isBibleRef(para)) {
+      const words = cleanPara.split(' ');
+      let q1 = cleanPara;
       let q2 = '';
       if (words.length >= 4) {
         const mid = Math.max(3, Math.floor(words.length / 2));
@@ -341,21 +349,128 @@ function parseSermonTextOffline(rawText) {
         type: 'cinzel_question',
         line1: q1,
         line2: q2,
-        text: para,
-        runs: [{ text: para, highlight: false }]
+        text: cleanPara,
+        runs: buildRunsFromText(para)
       });
       i++;
       continue;
     }
 
-    // 3. Busca por referência bíblica nos próximos blocos
+    // 3. Tópico / Título em destaque (All-caps ou seção)
+    if (isHeadingOrTopic(para)) {
+      slides.push({
+        type: 'topic',
+        runs: buildRunsFromText(para)
+      });
+      i++;
+      continue;
+    }
+
+    // 4. Caso A: A referência bíblica está NO INÍCIO (ex: Mateus 6:19-21, Provérbios 3:5-10, Marcos 5:22)
+    if (isPureBibleRefLine(para)) {
+      const ref = normalizeBibleRefName(isBibleRef(para));
+      const match = ref.match(/^(.+?)\s*(\d+)\s*[:.,]/);
+      const book = match ? match[1] : ref.split(/[:.,]/)[0];
+      const chapter = match ? match[2] : '';
+
+      // Coleta versículos subsequentes pertencentes a esta referência
+      let j = i + 1;
+      const verseParas = [];
+      while (j < paras.length) {
+        const pCandidate = paras[j];
+        if (isPureBibleRefLine(pCandidate) || isHeadingOrTopic(pCandidate) || (pCandidate.replace(/\[\/?HL\]/g, '').endsWith('?') && pCandidate.length < 90)) {
+          break;
+        }
+        verseParas.push(pCandidate);
+        j++;
+      }
+
+      if (verseParas.length > 0) {
+        for (const vp of verseParas) {
+          const numMatch = vp.match(/^(\d{1,3})\s+(.*)$/s);
+          if (numMatch) {
+            const vNum = numMatch[1];
+            const vText = stripLeadingVerseNumber(numMatch[2]);
+            const finalRef = chapter ? `${book} ${chapter}:${vNum}` : `${book}:${vNum}`;
+            const cleanLen = vText.replace(/\[\/?HL\]/g, '').length;
+            if (cleanLen > 210) {
+              const sentences = vText.match(/[^.!?]+[.!?]+|\s*[^.!?]+$/g) || [vText];
+              let curSlide = '';
+              for (const s of sentences) {
+                const cand = (curSlide ? curSlide + ' ' : '') + s.trim();
+                if (cand.replace(/\[\/?HL\]/g, '').length > 210 && curSlide.length > 0) {
+                  slides.push({
+                    type: 'verse',
+                    reference: finalRef,
+                    runs: buildRunsFromText(formatQuotes(curSlide.trim()))
+                  });
+                  curSlide = s.trim();
+                } else {
+                  curSlide = cand;
+                }
+              }
+              if (curSlide.trim().length > 0) {
+                slides.push({
+                  type: 'verse',
+                  reference: finalRef,
+                  runs: buildRunsFromText(formatQuotes(curSlide.trim()))
+                });
+              }
+            } else {
+              slides.push({
+                type: 'verse',
+                reference: finalRef,
+                runs: buildRunsFromText(formatQuotes(vText))
+              });
+            }
+          } else {
+            const cleanVp = stripLeadingVerseNumber(vp);
+            const cleanLen = cleanVp.replace(/\[\/?HL\]/g, '').length;
+            if (cleanLen > 210) {
+              const sentences = cleanVp.match(/[^.!?]+[.!?]+|\s*[^.!?]+$/g) || [cleanVp];
+              let curSlide = '';
+              for (const s of sentences) {
+                const cand = (curSlide ? curSlide + ' ' : '') + s.trim();
+                if (cand.replace(/\[\/?HL\]/g, '').length > 210 && curSlide.length > 0) {
+                  slides.push({
+                    type: 'verse',
+                    reference: ref,
+                    runs: buildRunsFromText(formatQuotes(curSlide.trim()))
+                  });
+                  curSlide = s.trim();
+                } else {
+                  curSlide = cand;
+                }
+              }
+              if (curSlide.trim().length > 0) {
+                slides.push({
+                  type: 'verse',
+                  reference: ref,
+                  runs: buildRunsFromText(formatQuotes(curSlide.trim()))
+                });
+              }
+            } else {
+              slides.push({
+                type: 'verse',
+                reference: ref,
+                runs: buildRunsFromText(formatQuotes(cleanVp))
+              });
+            }
+          }
+        }
+        i = j;
+        continue;
+      }
+    }
+
+    // 5. Caso B: Referência no final do bloco (ex: I Pedro 1:3-4, Gálatas 4:4-7, Neemias 6:15)
     let nextRefIdx = -1;
     for (let j = i; j < Math.min(i + 15, paras.length); j++) {
       if (isPureBibleRefLine(paras[j])) {
         nextRefIdx = j;
         break;
       }
-      if (paras[j].endsWith('?') && paras[j].length < 90) {
+      if (isHeadingOrTopic(paras[j]) || (paras[j].replace(/\[\/?HL\]/g, '').endsWith('?') && paras[j].length < 90)) {
         break;
       }
     }
@@ -364,8 +479,7 @@ function parseSermonTextOffline(rawText) {
       const ref = normalizeBibleRefName(isBibleRef(paras[nextRefIdx]));
       const precedingParas = paras.slice(i, nextRefIdx);
 
-      // Se contém versículos numerados explícitos (ex: 15 Acabou-se... 16 E sucedeu...)
-      const hasNumberedVerses = precedingParas.some(p => /^\d{1,3}\s+[A-Za-zÀ-ÿ]/.test(p));
+      const hasNumberedVerses = precedingParas.some(p => /^\d{1,3}\s+[A-Za-zÀ-ÿ\[]/.test(p));
       if (hasNumberedVerses) {
         const match = ref.match(/^(.+?)\s*(\d+)\s*[:.,]/);
         const book = match ? match[1] : ref.split(/[:.,]/)[0];
@@ -394,7 +508,6 @@ function parseSermonTextOffline(rawText) {
         continue;
       }
 
-      // Parágrafos anteriores antes do versículo são comentários pastorais
       let verseStartIndex = precedingParas.length - 1;
       if (precedingParas.length >= 2 && precedingParas[precedingParas.length - 2].startsWith('Para remir')) {
         verseStartIndex = precedingParas.length - 2;
@@ -410,7 +523,7 @@ function parseSermonTextOffline(rawText) {
             if (cand.length > 165 && curSlide.length > 0) {
               slides.push({
                 type: 'reflection',
-                runs: [{ text: curSlide.trim(), highlight: false }]
+                runs: buildRunsFromText(curSlide.trim())
               });
               curSlide = s.trim();
             } else {
@@ -420,11 +533,10 @@ function parseSermonTextOffline(rawText) {
           if (curSlide.trim().length > 0) {
             slides.push({
               type: 'reflection',
-              runs: [{ text: curSlide.trim(), highlight: false }]
+              runs: buildRunsFromText(curSlide.trim())
             });
           }
         } else {
-          // Versículo da passagem bíblica
           let fullVerseText = stripLeadingVerseNumber(pText);
           if (pIdx === verseStartIndex && verseStartIndex < precedingParas.length - 1) {
             const nextPara = precedingParas[pIdx + 1];
@@ -492,7 +604,7 @@ function parseSermonTextOffline(rawText) {
       continue;
     }
 
-    // Comentário pastoral fora de bloco de versículo
+    // 6. Comentário pastoral fora de bloco de versículo
     const sentences = para.match(/[^.!?]+[.!?]+|\s*[^.!?]+$/g) || [para];
     let curSlide = '';
     for (const s of sentences) {
@@ -500,7 +612,7 @@ function parseSermonTextOffline(rawText) {
       if (cand.length > 165 && curSlide.length > 0) {
         slides.push({
           type: 'reflection',
-          runs: [{ text: curSlide.trim(), highlight: false }]
+          runs: buildRunsFromText(curSlide.trim())
         });
         curSlide = s.trim();
       } else {
@@ -510,7 +622,7 @@ function parseSermonTextOffline(rawText) {
     if (curSlide.trim().length > 0) {
       slides.push({
         type: 'reflection',
-        runs: [{ text: curSlide.trim(), highlight: false }]
+        runs: buildRunsFromText(curSlide.trim())
       });
     }
     i++;
