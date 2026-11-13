@@ -141,7 +141,7 @@ app.get('/api/health', (req, res) => {
   res.json({
     status: 'online',
     service: 'Central Multimídia Church',
-    version: '2.12.13',
+    version: '2.13.0',
     modules: ['slidekiller', 'pdf-to-pptx', 'images-to-pptx'],
     timestamp: new Date().toISOString()
   });
