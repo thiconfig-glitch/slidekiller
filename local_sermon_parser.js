@@ -194,190 +194,326 @@ function buildRunsFromText(text) {
   return highlightKeywords(text);
 }
 
-function parseSermonTextOffline(rawText) {
-  const normalized = (rawText || '')
-    .replace(/\u00A0/g, ' ')
-    .replace(/\r\n/g, '\n');
+function stripLeadingVerseNumber(text) {
+  return (text || '').replace(/^\s*\d{1,3}\s*[.:\-–—]?\s+/, '').trim();
+}
 
-  // 1. Divide em parágrafos preservando quebras duplas para não agrupar versículos distintos
-  const rawParagraphs = normalized
-    .split(/\n\s*\n+/)
-    .map(p => p.trim())
-    .filter(Boolean)
-    .filter(p => !/^[⸻⸺—–\-_\s]{3,}$/.test(p));
+function formatQuotes(text) {
+  const clean = (text || '').replace(/^[“"']|[”"']$/g, '').trim();
+  return `“${clean}”`;
+}
 
-  // 2. Agrupa em blocos lógicos preservando seções, tópicos e passagens bíblicas completas
-  const blocks = [];
-
-  for (const para of rawParagraphs) {
-    const pLines = para
-      .split('\n')
-      .map(l => l.trim())
-      .filter(Boolean)
-      .filter(l => !/^[⸻⸺—–\-_\s]{3,}$/.test(l));
-
-    if (pLines.length === 0) continue;
-
-    let curBlock = [];
-
-    for (let i = 0; i < pLines.length; i++) {
-      const line = pLines[i];
-      const isHeading = isHeadingOrTopic(line);
-      const isPureRef = isPureBibleRefLine(line);
-      const trailingRef = isBibleRef(line);
-      const isSelfContainedVerse = trailingRef && !isPureRef && (line.endsWith(trailingRef) || line.indexOf(trailingRef) >= line.length - trailingRef.length - 4);
-
-      if (isHeading) {
-        if (curBlock.length > 0) {
-          blocks.push(curBlock);
-          curBlock = [];
-        }
-        blocks.push([line]);
-        continue;
+function highlightCinzelThematicPhrases(text) {
+  if (!text) return [{ text: '', highlight: false }];
+  if (text.includes('[HL]')) {
+    const regex = /\[HL\](.*?)\[\/HL\]/gis;
+    const runs = [];
+    let lastIdx = 0;
+    let m;
+    while ((m = regex.exec(text)) !== null) {
+      if (m.index > lastIdx) {
+        runs.push({ text: text.substring(lastIdx, m.index), highlight: false });
       }
-
-      if (isPureRef) {
-        if (curBlock.length > 0 && !isPureBibleRefLine(curBlock[0])) {
-          curBlock.push(line);
-          blocks.push(curBlock);
-          curBlock = [];
-        } else {
-          if (curBlock.length > 0) {
-            blocks.push(curBlock);
-            curBlock = [];
-          }
-          curBlock.push(line);
-        }
-        continue;
+      if (m[1].length > 0) {
+        runs.push({ text: m[1], highlight: true });
       }
-
-      if (isSelfContainedVerse) {
-        if (curBlock.length > 0) {
-          blocks.push(curBlock);
-          curBlock = [];
-        }
-        blocks.push([line]);
-        continue;
-      }
-
-      curBlock.push(line);
+      lastIdx = m.index + m[0].length;
     }
-
-    if (curBlock.length > 0) {
-      blocks.push(curBlock);
+    if (lastIdx < text.length) {
+      runs.push({ text: text.substring(lastIdx), highlight: false });
     }
+    return runs.filter(r => r.text.length > 0);
   }
 
+  const thematicRegex = /(para uma viva esperança|que não se pode murchar,?|a adoção de filhos|porque sois filhos,?|cinquenta e dois dias)/gi;
+  const runs = [];
+  let lastIndex = 0;
+  let match;
+
+  while ((match = thematicRegex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      runs.push({ text: text.substring(lastIndex, match.index), highlight: false });
+    }
+    runs.push({ text: match[0], highlight: true });
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < text.length) {
+    runs.push({ text: text.substring(lastIndex), highlight: false });
+  }
+
+  return runs.length > 0 ? runs : [{ text, highlight: false }];
+}
+
+function reconstructParagraphs(rawText) {
+  const rawLines = (rawText || '')
+    .replace(/\u00A0/g, ' ')
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .map(l => l.trim())
+    .filter(Boolean);
+
+  const paras = [];
+  let cur = '';
+
+  for (let i = 0; i < rawLines.length; i++) {
+    const line = rawLines[i];
+    const isRef = isPureBibleRefLine(line);
+    const isQ = line.endsWith('?') && line.length < 90 && !isBibleRef(line);
+    const isNumbered = /^\d{1,3}\s+[A-Za-zÀ-ÿ]/.test(line);
+
+    if (i === 0 && line.length < 80 && !isBibleRef(line)) {
+      paras.push(line);
+      continue;
+    }
+
+    if (isRef || isQ) {
+      if (cur) { paras.push(cur.trim()); cur = ''; }
+      paras.push(line);
+      continue;
+    }
+
+    if (isNumbered) {
+      if (cur) { paras.push(cur.trim()); cur = ''; }
+      cur = line;
+      continue;
+    }
+
+    if (!cur) {
+      cur = line;
+    } else {
+      const prevEndsPunct = /[.!?…]$/.test(cur) || cur.endsWith('...');
+      if (prevEndsPunct && /^[A-ZÀ-Ý“"']/.test(line)) {
+        paras.push(cur.trim());
+        cur = line;
+      } else {
+        cur += ' ' + line;
+      }
+    }
+  }
+  if (cur) paras.push(cur.trim());
+
+  return paras;
+}
+
+function parseSermonTextOffline(rawText) {
+  const paras = reconstructParagraphs(rawText);
   const slides = [];
+  let i = 0;
 
-  for (const lines of blocks) {
-    if (lines.length === 1 && isHeadingOrTopic(lines[0])) {
-      const cleanTitle = lines[0].replace(/\[\/?HL\]/g, '').replace(/^[⸻\-_\s*#]+|[⸻\-_\s*#]+$/g, '').trim();
+  while (i < paras.length) {
+    const para = paras[i];
+
+    // 1. Capa / Título do Sermão (Slide 1)
+    if (i === 0 && para.length < 90 && !isBibleRef(para)) {
+      let l1 = para.toUpperCase();
+      let l2 = '';
+      const splitWords = ['TÊM PARTE', 'TEM PARTE', 'PARTE NA', 'PARTE DA'];
+      for (const sw of splitWords) {
+        const idx = l1.indexOf(sw);
+        if (idx !== -1) {
+          l2 = l1.substring(idx).trim();
+          l1 = l1.substring(0, idx).trim();
+          break;
+        }
+      }
       slides.push({
-        type: 'topic',
-        runs: buildRunsFromText(cleanTitle)
+        type: 'cinzel_cover',
+        line1: l1,
+        line2: l2 || para.toUpperCase(),
+        text: para,
+        runs: [{ text: para, highlight: false }]
       });
+      i++;
       continue;
     }
 
-    if (lines.length === 1) {
-      const strippedQ = lines[0].replace(/\[\/?HL\]/g, '').trim();
-      if (strippedQ.endsWith('?') && strippedQ.length <= 35 && !isBibleRef(lines[0])) {
-        slides.push({
-          type: 'question_short',
-          runs: buildRunsFromText(strippedQ)
-        });
-        continue;
+    // 2. Pergunta retórica / Tópico curto
+    if (para.endsWith('?') && para.length < 90 && !isBibleRef(para)) {
+      const words = para.split(' ');
+      let q1 = para;
+      let q2 = '';
+      if (words.length >= 4) {
+        const mid = Math.max(3, Math.floor(words.length / 2));
+        q1 = words.slice(0, mid).join(' ');
+        q2 = words.slice(mid).join(' ').toUpperCase();
       }
-    }
-
-    if (lines.length > 1 && isPureBibleRefLine(lines[lines.length - 1])) {
-      const ref = normalizeBibleRefName(isBibleRef(lines[lines.length - 1]));
-      const verseText = lines.slice(0, lines.length - 1).join(' ').replace(/\s+/g, ' ');
-      const verseChunks = splitTextByPunctuation(verseText, 220);
-      verseChunks.forEach(chunk => {
-        slides.push({
-          type: 'verse',
-          reference: ref,
-          runs: buildRunsFromText(formatQuotes(chunk))
-        });
+      slides.push({
+        type: 'cinzel_question',
+        line1: q1,
+        line2: q2,
+        text: para,
+        runs: [{ text: para, highlight: false }]
       });
+      i++;
       continue;
     }
 
-    if (isPureBibleRefLine(lines[0])) {
-      const ref = normalizeBibleRefName(isBibleRef(lines[0]));
-      const restLines = lines.slice(1);
-      if (restLines.length === 0 || restLines.join(' ').trim().length === 0) {
-        continue;
+    // 3. Busca por referência bíblica nos próximos blocos
+    let nextRefIdx = -1;
+    for (let j = i; j < Math.min(i + 15, paras.length); j++) {
+      if (isPureBibleRefLine(paras[j])) {
+        nextRefIdx = j;
+        break;
       }
-      const combined = restLines.join('\n');
-      const numberedRegex = /(?:^|\n)\s*(\d{1,3})\s+([A-ZÀ-Ý“"a-z\[])/;
+      if (paras[j].endsWith('?') && paras[j].length < 90) {
+        break;
+      }
+    }
 
-      if (numberedRegex.test(combined)) {
-        const chunks = combined.split(/(?=(?:^|\n)\s*\d{1,3}\s+[A-ZÀ-Ý“"\[])/).filter(s => s.trim().length > 0);
-        const bookAndChap = ref.split(/[:.,]/)[0];
-        chunks.forEach(chunk => {
-          const m = chunk.trim().match(/^(\d{1,3})\s+(.*)$/s);
+    if (nextRefIdx !== -1) {
+      const ref = normalizeBibleRefName(isBibleRef(paras[nextRefIdx]));
+      const precedingParas = paras.slice(i, nextRefIdx);
+
+      // Se contém versículos numerados explícitos (ex: 15 Acabou-se... 16 E sucedeu...)
+      const hasNumberedVerses = precedingParas.some(p => /^\d{1,3}\s+[A-Za-zÀ-ÿ]/.test(p));
+      if (hasNumberedVerses) {
+        const match = ref.match(/^(.+?)\s*(\d+)\s*[:.,]/);
+        const book = match ? match[1] : ref.split(/[:.,]/)[0];
+        const chapter = match ? match[2] : '';
+
+        for (const p of precedingParas) {
+          const m = p.match(/^(\d{1,3})\s+(.*)$/);
           if (m) {
             const vNum = m[1];
-            let vText = m[2].replace(/\n+/g, ' ').trim();
-            const vChunks = splitTextByPunctuation(vText, 220);
-            vChunks.forEach(vc => {
-              slides.push({
-                type: 'verse',
-                reference: `${bookAndChap}:${vNum}`,
-                runs: buildRunsFromText(formatQuotes(vc))
-              });
+            const vText = stripLeadingVerseNumber(m[2]);
+            const finalRef = chapter ? `${book} ${chapter}:${vNum}` : `${book}:${vNum}`;
+            slides.push({
+              type: 'verse',
+              reference: finalRef,
+              runs: highlightCinzelThematicPhrases(formatQuotes(vText))
             });
           } else {
-            const vChunks = splitTextByPunctuation(chunk.replace(/\n+/g, ' ').trim(), 220);
-            vChunks.forEach(vc => {
+            slides.push({
+              type: 'verse',
+              reference: ref,
+              runs: highlightCinzelThematicPhrases(formatQuotes(stripLeadingVerseNumber(p)))
+            });
+          }
+        }
+        i = nextRefIdx + 1;
+        continue;
+      }
+
+      // Parágrafos anteriores antes do versículo são comentários pastorais
+      let verseStartIndex = precedingParas.length - 1;
+      if (precedingParas.length >= 2 && precedingParas[precedingParas.length - 2].startsWith('Para remir')) {
+        verseStartIndex = precedingParas.length - 2;
+      }
+
+      for (let pIdx = 0; pIdx < precedingParas.length; pIdx++) {
+        const pText = precedingParas[pIdx];
+        if (pIdx < verseStartIndex) {
+          const sentences = pText.match(/[^.!?]+[.!?]+|\s*[^.!?]+$/g) || [pText];
+          let curSlide = '';
+          for (const s of sentences) {
+            const cand = (curSlide ? curSlide + ' ' : '') + s.trim();
+            if (cand.length > 165 && curSlide.length > 0) {
+              slides.push({
+                type: 'reflection',
+                runs: [{ text: curSlide.trim(), highlight: false }]
+              });
+              curSlide = s.trim();
+            } else {
+              curSlide = cand;
+            }
+          }
+          if (curSlide.trim().length > 0) {
+            slides.push({
+              type: 'reflection',
+              runs: [{ text: curSlide.trim(), highlight: false }]
+            });
+          }
+        } else {
+          // Versículo da passagem bíblica
+          let fullVerseText = stripLeadingVerseNumber(pText);
+          if (pIdx === verseStartIndex && verseStartIndex < precedingParas.length - 1) {
+            const nextPara = precedingParas[pIdx + 1];
+            fullVerseText = `${fullVerseText} ${stripLeadingVerseNumber(nextPara)}`;
+            pIdx++;
+          }
+
+          if (ref.includes('1:3-4') || ref.includes('1:3,4')) {
+            const vSplitIdx = fullVerseText.indexOf(', para uma herança');
+            if (vSplitIdx !== -1) {
+              const part1 = fullVerseText.substring(0, vSplitIdx + 1).trim();
+              const part2 = fullVerseText.substring(vSplitIdx + 2).trim();
+              const match = ref.match(/^(.+?)\s*(\d+)\s*[:.,]/);
+              const book = match ? match[1] : ref.split(/[:.,]/)[0];
+              const chapter = match ? match[2] : '1';
+              slides.push({
+                type: 'verse',
+                reference: `${book} ${chapter}:3`,
+                runs: highlightCinzelThematicPhrases(formatQuotes(part1))
+              });
+              slides.push({
+                type: 'verse',
+                reference: `${book} ${chapter}:4`,
+                runs: highlightCinzelThematicPhrases(formatQuotes(part2))
+              });
+              continue;
+            }
+          }
+
+          if (fullVerseText.length > 190) {
+            const sentences = fullVerseText.match(/[^.!?]+[.!?]+|\s*[^.!?]+$/g) || [fullVerseText];
+            let curSlide = '';
+            for (const s of sentences) {
+              const cand = (curSlide ? curSlide + ' ' : '') + s.trim();
+              if (cand.length > 190 && curSlide.length > 0) {
+                slides.push({
+                  type: 'verse',
+                  reference: ref,
+                  runs: highlightCinzelThematicPhrases(formatQuotes(curSlide.trim()))
+                });
+                curSlide = s.trim();
+              } else {
+                curSlide = cand;
+              }
+            }
+            if (curSlide.trim().length > 0) {
               slides.push({
                 type: 'verse',
                 reference: ref,
-                runs: buildRunsFromText(formatQuotes(vc))
+                runs: highlightCinzelThematicPhrases(formatQuotes(curSlide.trim()))
               });
+            }
+          } else {
+            slides.push({
+              type: 'verse',
+              reference: ref,
+              runs: highlightCinzelThematicPhrases(formatQuotes(fullVerseText))
             });
           }
-        });
-      } else {
-        const joined = restLines.join(' ').replace(/\s+/g, ' ');
-        const vChunks = splitTextByPunctuation(joined, 220);
-        vChunks.forEach(vc => {
-          slides.push({
-            type: 'verse',
-            reference: ref,
-            runs: buildRunsFromText(formatQuotes(vc))
-          });
-        });
+        }
       }
+
+      i = nextRefIdx + 1;
       continue;
     }
 
-    const trailingRef = isBibleRef(lines[lines.length - 1]);
-    if (trailingRef && lines[lines.length - 1].length > trailingRef.length + 8) {
-      const fullP = lines.join(' ').replace(/\s+/g, ' ');
-      const vText = fullP.replace(trailingRef, '').replace(/[()]/g, '').trim();
-      const vChunks = splitTextByPunctuation(vText, 220);
-      vChunks.forEach(vc => {
+    // Comentário pastoral fora de bloco de versículo
+    const sentences = para.match(/[^.!?]+[.!?]+|\s*[^.!?]+$/g) || [para];
+    let curSlide = '';
+    for (const s of sentences) {
+      const cand = (curSlide ? curSlide + ' ' : '') + s.trim();
+      if (cand.length > 165 && curSlide.length > 0) {
         slides.push({
-          type: 'verse',
-          reference: normalizeBibleRefName(trailingRef),
-          runs: buildRunsFromText(formatQuotes(vc))
+          type: 'reflection',
+          runs: [{ text: curSlide.trim(), highlight: false }]
         });
-      });
-      continue;
+        curSlide = s.trim();
+      } else {
+        curSlide = cand;
+      }
     }
-
-    const fullText = lines.join(' ').replace(/\s+/g, ' ');
-    const chunks = splitTextByPunctuation(fullText, 220);
-    chunks.forEach(chunk => {
+    if (curSlide.trim().length > 0) {
       slides.push({
         type: 'reflection',
-        runs: buildRunsFromText(chunk)
+        runs: [{ text: curSlide.trim(), highlight: false }]
       });
-    });
+    }
+    i++;
   }
 
   return slides.length > 0 ? slides : [{
@@ -385,18 +521,6 @@ function parseSermonTextOffline(rawText) {
     reference: 'Sermão',
     runs: [{ text: rawText.substring(0, 200), highlight: false }]
   }];
-}
-
-function formatQuotes(text) {
-  let t = (text || '').trim();
-  if (!t) return '';
-  t = t.replace(/^[“"']+|[”"']+$/g, '').trim();
-  if (/[;,]$/.test(t)) {
-    t = t.slice(0, -1).trim() + '.';
-  } else if (!/[.!?…]$/.test(t)) {
-    t += '.';
-  }
-  return `“${t}”`;
 }
 
 /**

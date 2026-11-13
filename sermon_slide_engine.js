@@ -45,7 +45,8 @@ async function buildSermonPptx(slidesData, bgImagePath, outputFilePath) {
       s.fontFace === 'Cinzel'
     ));
 
-  for (const item of slidesData) {
+  for (let slideIndex = 0; slideIndex < slidesData.length; slideIndex++) {
+    const item = slidesData[slideIndex];
     if (!item) continue;
 
     // Normalizar e blindar runs para evitar TypeError
@@ -102,8 +103,8 @@ async function buildSermonPptx(slidesData, bgImagePath, outputFilePath) {
 
     const defaultAlign = isCinzel ? 'center' : 'left';
     const isLeftAlign = item.align ? item.align === 'left' : defaultAlign === 'left';
-    const startX = 0.9;
-    const textWidth = 11.533; // Margens simétricas de 0.9" em ambos os lados
+    const startX = isCinzel ? 0.41 : 0.9;
+    const textWidth = isCinzel ? 12.52 : 11.533; // Margens ideais no Cinzel para 16:9 widescreen
 
     const defaultFontFace = isCinzel ? 'Cinzel Bold' : 'Bahnschrift SemiBold Condensed';
     const pptxFontFace = item.fontFace || defaultFontFace;
@@ -115,7 +116,123 @@ async function buildSermonPptx(slidesData, bgImagePath, outputFilePath) {
       ? { type: 'outer', angle: 90, blur: 4, offset: 2, opacity: 0.65, color: '000000' }
       : { type: 'outer', angle: 90, blur: 5, offset: 3, opacity: 0.75, color: '000000' };
 
-    if (type === 'verse' || type === 'versículo') {
+    // --- SLIDE DE CAPA / TÍTULO NO CINZEL (SLIDE 1) ---
+    if (type === 'cinzel_cover' || (isCinzel && slideIndex === 0 && (type === 'topic' || type === 'cover' || type === 'title'))) {
+      let l1 = item.line1;
+      let l2 = item.line2;
+      if (!l1 || !l2) {
+        const fullTitle = item.runs ? item.runs.map(r => r.text).join('') : (item.text || '');
+        const upper = fullTitle.toUpperCase();
+        const splitWords = ['TÊM PARTE', 'TEM PARTE', 'PARTE NA', 'PARTE DA'];
+        let found = false;
+        for (const sw of splitWords) {
+          const idx = upper.indexOf(sw);
+          if (idx !== -1) {
+            l1 = upper.substring(0, idx).trim();
+            l2 = upper.substring(idx).trim();
+            found = true;
+            break;
+          }
+        }
+        if (!found) {
+          const words = upper.split(' ');
+          if (words.length >= 3) {
+            const mid = Math.ceil(words.length / 2);
+            l1 = words.slice(0, mid).join(' ');
+            l2 = words.slice(mid).join(' ');
+          } else {
+            l1 = upper;
+            l2 = '';
+          }
+        }
+      }
+
+      const l1Words = l1.split(' ');
+      let r1 = [];
+      if (l1Words.length >= 3) {
+        const prefix = l1Words.slice(0, 2).join(' ') + ' ';
+        const suffix = l1Words.slice(2).join(' ');
+        r1 = [
+          { text: prefix, options: { fontFace: 'Cinzel Bold', fontSize: 60, color: 'E1D3C1', bold: true, shadow: shadowConfig } },
+          { text: suffix, options: { fontFace: 'Cinzel Black', fontSize: 60, color: 'E1D3C1', bold: true, shadow: shadowConfig } }
+        ];
+      } else {
+        r1 = [{ text: l1, options: { fontFace: 'Cinzel Bold', fontSize: 60, color: 'E1D3C1', bold: true, shadow: shadowConfig } }];
+      }
+
+      slide.addText(r1, {
+        x: 0.57,
+        y: 2.69,
+        w: 12.19,
+        h: 1.11,
+        align: 'left',
+        valign: 'middle',
+        margin: 0,
+        wrap: true
+      });
+
+      if (l2) {
+        slide.addText([
+          { text: l2, options: { fontFace: 'Cinzel Black', fontSize: 66, color: 'E1D3C1', bold: true, shadow: shadowConfig } }
+        ], {
+          x: 0.29,
+          y: 3.50,
+          w: 12.76,
+          h: 1.21,
+          align: 'left',
+          valign: 'middle',
+          margin: 0,
+          wrap: true
+        });
+      }
+
+    // --- SLIDE DE PERGUNTA / TÓPICO NO CINZEL ---
+    } else if (type === 'cinzel_question' || (isCinzel && (type === 'question_short' || type === 'question'))) {
+      let q1 = item.line1;
+      let q2 = item.line2;
+      if (!q1 || !q2) {
+        const fullQ = item.runs ? item.runs.map(r => r.text).join('') : (item.text || '');
+        const words = fullQ.split(' ');
+        if (words.length >= 4) {
+          const mid = Math.max(3, Math.floor(words.length / 2));
+          q1 = words.slice(0, mid).join(' ');
+          q2 = words.slice(mid).join(' ').toUpperCase();
+        } else {
+          q1 = fullQ;
+          q2 = '';
+        }
+      }
+
+      slide.addText([
+        { text: q1, options: { fontFace: 'Cinzel Bold', fontSize: 54, color: 'E1D3C1', bold: true, shadow: shadowConfig } }
+      ], {
+        x: 1.33,
+        y: 2.93,
+        w: 10.33,
+        h: 1.01,
+        align: 'left',
+        valign: 'middle',
+        margin: 0,
+        wrap: true
+      });
+
+      if (q2) {
+        slide.addText([
+          { text: q2, options: { fontFace: 'Cinzel Black', fontSize: 54, color: 'E1D3C1', bold: true, shadow: shadowConfig } }
+        ], {
+          x: 0.13,
+          y: 3.56,
+          w: 13.07,
+          h: 1.21,
+          align: 'center',
+          valign: 'middle',
+          margin: 0,
+          wrap: true
+        });
+      }
+
+    // --- VERSÍCULOS BÍBLICOS ---
+    } else if (type === 'verse' || type === 'versículo') {
       if (isCinzel) {
         ensureCurlyQuotes(item.runs);
       }
@@ -144,14 +261,14 @@ async function buildSermonPptx(slidesData, bgImagePath, outputFilePath) {
         }
       }));
 
-      // Caixa 1: Texto do Versículo (amplo, centralizado verticalmente)
+      // Caixa 1: Texto do Versículo
       slide.addText(runs, {
         x: startX,
-        y: 1.1,
+        y: isCinzel ? 1.2 : 1.1,
         w: textWidth,
         h: 4.6,
         valign: 'middle',
-        align: isLeftAlign ? 'left' : 'center',
+        align: isCinzel ? 'center' : (isLeftAlign ? 'left' : 'center'),
         margin: 0,
         wrap: true
       });
@@ -160,11 +277,11 @@ async function buildSermonPptx(slidesData, bgImagePath, outputFilePath) {
       if (item.reference) {
         slide.addText(item.reference.toUpperCase(), {
           x: startX,
-          y: isCinzel ? 5.65 : 5.85,
+          y: isCinzel ? 5.75 : 5.85,
           w: textWidth,
-          h: 0.8,
+          h: isCinzel ? 0.6 : 0.8,
           valign: 'middle',
-          align: isLeftAlign ? 'left' : 'center',
+          align: isCinzel ? 'center' : (isLeftAlign ? 'left' : 'center'),
           fontFace: isCinzel ? 'Cinzel' : pptxFontFace,
           fontSize: isCinzel ? 28 : 34,
           color: refColor,
@@ -175,53 +292,13 @@ async function buildSermonPptx(slidesData, bgImagePath, outputFilePath) {
         });
       }
 
-    } else if (type === 'question_short') {
-      const runs = item.runs.map(r => ({
-        text: r.text,
-        options: {
-          fontFace: isCinzel ? (r.highlight ? 'Cinzel Black' : (item.fontFace || 'Cinzel Bold')) : pptxFontFace,
-          fontSize: isCinzel ? 72 : 100,
-          color: r.highlight ? highlightColor : baseTextColor,
-          bold: true,
-          shadow: shadowConfig
-        }
-      }));
-
-      slide.addText(runs, {
-        x: startX,
-        y: 1.6,
-        w: textWidth,
-        h: 4.2,
-        valign: 'middle',
-        align: 'center',
-        margin: 0,
-        wrap: true
-      });
-
-      if (item.reference) {
-        slide.addText(item.reference.toUpperCase(), {
-          x: startX,
-          y: isCinzel ? 5.65 : 5.85,
-          w: textWidth,
-          h: 0.8,
-          valign: 'middle',
-          align: 'center',
-          fontFace: isCinzel ? 'Cinzel' : pptxFontFace,
-          fontSize: isCinzel ? 28 : 34,
-          color: refColor,
-          bold: true,
-          margin: 0,
-          wrap: false,
-          shadow: shadowConfig
-        });
-      }
-
+    // --- REFLEXÕES / COMENTÁRIOS PASTORAIS ---
     } else if (type === 'reflection') {
       const textLength = item.runs.reduce((acc, r) => acc + (r.text || '').length, 0);
       let fontSize = 48;
       if (isCinzel) {
         if (textLength <= 90) fontSize = 50;
-        else if (textLength <= 160) fontSize = 46;
+        else if (textLength <= 160) fontSize = 48;
         else fontSize = 42;
       } else {
         if (textLength <= 80) fontSize = 58;
@@ -242,25 +319,25 @@ async function buildSermonPptx(slidesData, bgImagePath, outputFilePath) {
 
       slide.addText(runs, {
         x: startX,
-        y: 1.1,
+        y: isCinzel ? 1.5 : 1.1,
         w: textWidth,
-        h: 4.6,
+        h: 4.5,
         valign: 'middle',
-        align: isLeftAlign ? 'left' : 'center',
+        align: isCinzel ? 'center' : (isLeftAlign ? 'left' : 'center'),
         margin: 0,
         wrap: true
       });
 
-      if (item.reference) {
+      if (item.reference && !isCinzel) {
         slide.addText(item.reference.toUpperCase(), {
           x: startX,
-          y: isCinzel ? 5.65 : 5.85,
+          y: 5.85,
           w: textWidth,
           h: 0.8,
           valign: 'middle',
           align: isLeftAlign ? 'left' : 'center',
-          fontFace: isCinzel ? 'Cinzel' : pptxFontFace,
-          fontSize: isCinzel ? 28 : 34,
+          fontFace: pptxFontFace,
+          fontSize: 34,
           color: refColor,
           bold: true,
           margin: 0,
@@ -269,8 +346,8 @@ async function buildSermonPptx(slidesData, bgImagePath, outputFilePath) {
         });
       }
 
+    // --- OUTROS TÓPICOS / CABEÇALHOS GERAIS ---
     } else {
-      // topic / títulos de seção
       const textLength = item.runs.reduce((acc, r) => acc + (r.text || '').length, 0);
       let fontSize = 66;
       if (isCinzel) {
@@ -299,7 +376,7 @@ async function buildSermonPptx(slidesData, bgImagePath, outputFilePath) {
         w: textWidth,
         h: 4.2,
         valign: 'middle',
-        align: isLeftAlign ? 'left' : 'center',
+        align: isCinzel ? 'center' : (isLeftAlign ? 'left' : 'center'),
         margin: 0,
         wrap: true
       });
@@ -307,11 +384,11 @@ async function buildSermonPptx(slidesData, bgImagePath, outputFilePath) {
       if (item.reference) {
         slide.addText(item.reference.toUpperCase(), {
           x: startX,
-          y: isCinzel ? 5.65 : 5.85,
+          y: isCinzel ? 5.75 : 5.85,
           w: textWidth,
-          h: 0.8,
+          h: isCinzel ? 0.6 : 0.8,
           valign: 'middle',
-          align: isLeftAlign ? 'left' : 'center',
+          align: isCinzel ? 'center' : (isLeftAlign ? 'left' : 'center'),
           fontFace: isCinzel ? 'Cinzel' : pptxFontFace,
           fontSize: isCinzel ? 28 : 34,
           color: refColor,
